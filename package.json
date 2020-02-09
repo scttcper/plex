@@ -7,7 +7,6 @@
   "repository": "",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
-  "module": "./dist/module/index.js",
   "files": [
     "dist"
   ],
@@ -20,7 +19,7 @@
     "lint": "eslint --ext .js,.ts, .",
     "lint:fix": "eslint --fix --ext .js,.ts, .",
     "prepare": "npm run build",
-    "build": "del dist && tsc -p tsconfig.build.json && tsc -p tsconfig.module.json",
+    "build": "del dist && tsc -p tsconfig.build.json",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverage",
