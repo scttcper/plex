@@ -1,0 +1,58 @@
+{
+  "name": "@ctrl/plex",
+  "version": "0.0.0-placeholder",
+  "description": "plex api client in typescript",
+  "author": "Scott Cooper <scttcper@gmail.com>",
+  "license": "MIT",
+  "repository": "",
+  "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
+  "module": "./dist/module/index.js",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "plex",
+    "typescript"
+  ],
+  "scripts": {
+    "lint": "eslint --ext .js,.ts, .",
+    "lint:fix": "eslint --fix --ext .js,.ts, .",
+    "prepare": "npm run build",
+    "build": "del dist && tsc -p tsconfig.build.json && tsc -p tsconfig.module.json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverage",
+    "semantic-release": "semantic-release"
+  },
+  "dependencies": {
+    "got": "^10.5.5"
+  },
+  "devDependencies": {
+    "@types/jest": "25.1.2",
+    "@types/node": "13.7.0",
+    "@typescript-eslint/eslint-plugin": "2.19.0",
+    "@typescript-eslint/parser": "2.19.0",
+    "del-cli": "3.0.0",
+    "eslint": "6.8.0",
+    "eslint-config-xo-space": "0.22.0",
+    "eslint-config-xo-typescript": "0.26.0",
+    "eslint-plugin-import": "2.20.1",
+    "jest": "25.1.0",
+    "jest-junit": "10.0.0",
+    "semantic-release": "17.0.2",
+    "ts-jest": "25.2.0",
+    "typescript": "3.7.5"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node"
+  },
+  "release": {
+    "branch": "master"
+  },
+  "engines": {
+    "node": ">=8"
+  }
+}
