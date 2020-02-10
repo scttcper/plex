@@ -10,5 +10,6 @@ module.exports = {
     '@typescript-eslint/indent': ['error', 2, { SwitchCase: 1 }],
     'comma-dangle': ['error', 'always-multiline'],
     '@typescript-eslint/no-explicit-any': 0,
+    'capitalized-comments': 0,
   },
 };

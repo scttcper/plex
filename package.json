@@ -26,11 +26,18 @@
     "semantic-release": "semantic-release"
   },
   "dependencies": {
-    "got": "^10.5.5"
+    "debug": "^4.1.1",
+    "getmac": "^5.1.0",
+    "got": "^10.5.5",
+    "macaddr": "0.0.1",
+    "tough-cookie": "^3.0.1",
+    "xml2js": "^0.4.23"
   },
   "devDependencies": {
     "@types/jest": "25.1.2",
     "@types/node": "13.7.0",
+    "@types/tough-cookie": "^2.3.6",
+    "@types/xml2js": "^0.4.5",
     "@typescript-eslint/eslint-plugin": "2.19.0",
     "@typescript-eslint/parser": "2.19.0",
     "del-cli": "3.0.0",

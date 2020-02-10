@@ -36,3 +36,6 @@ build
 docs
 dist
 yarn.lock
+
+# my garbage
+src/test.ts
