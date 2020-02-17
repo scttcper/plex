@@ -2,6 +2,7 @@ import got from 'got';
 import { URL } from 'url';
 import debug from 'debug';
 import { CookieJar } from 'tough-cookie';
+import pAny from 'p-any';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
 import { UserResponse, ResourcesResponse, Connection } from './myplexInterfaces';
@@ -300,7 +301,6 @@ export class MyPlexResource {
     const connections = [...this.data.connections].sort((a, b) => {
       return Number(b.data.local) - Number(a.data.local);
     });
-    console.log('connections', connections);
     const ownedOrUnownedNonLocal = (connection: ResourceConnection): boolean => {
       if (this.data.owned || (!this.data.owned && !connection.data.local)) {
         return true;
@@ -328,7 +328,7 @@ export class MyPlexResource {
     const promises = attemptUrls.map(async url =>
       connect((...args) => new PlexServer(...args), url, this.data.accessToken, timeout),
     );
-    const result = await Promise.race(promises);
+    const result = await pAny(promises);
     return result;
   }
 

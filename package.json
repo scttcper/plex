@@ -4,7 +4,7 @@
   "description": "plex api client in typescript",
   "author": "Scott Cooper <scttcper@gmail.com>",
   "license": "MIT",
-  "repository": "",
+  "repository": "typectrl/plex",
   "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "files": [
@@ -30,6 +30,7 @@
     "getmac": "^5.1.0",
     "got": "^10.5.5",
     "macaddr": "0.0.1",
+    "p-any": "^2.1.0",
     "tough-cookie": "^3.0.1",
     "xml2js": "^0.4.23"
   },
