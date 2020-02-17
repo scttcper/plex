@@ -11,5 +11,6 @@ module.exports = {
     'comma-dangle': ['error', 'always-multiline'],
     '@typescript-eslint/no-explicit-any': 0,
     'capitalized-comments': 0,
+    'max-params': 0,
   },
 };
