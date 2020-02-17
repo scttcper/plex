@@ -1,48 +1,71 @@
+/* eslint-disable max-params */
 import got from 'got';
 import { URL } from 'url';
 import { parseStringPromise } from 'xml2js';
+import debug from 'debug';
+import { CookieJar } from 'tough-cookie';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
+import { UserResponse } from './myplexXml';
 
-/* eslint-disable max-params */
+const log = debug('plex');
+
+export interface MyPlexData {
+  /** Your Plex account ID */
+  id: string;
+  /** Unknown */
+  uuid: string;
+  /**
+   * auth token for user by plex
+   */
+  authenticationToken: string;
+  /** Unknown */
+  certificateVersion: number;
+  /** Your account username */
+  username: string;
+  /** Unknown. - Looks like an alias for `username` */
+  title: string;
+  /** Your current Plex email address */
+  email: string;
+  /** URL of your account thumbnail */
+  thumb: string;
+  /** Unknown */
+  guest: boolean;
+  /** Unknown */
+  home: boolean;
+  /** Unknown */
+  homeSize: number;
+  /** Unknown */
+  maxHomeSize: number;
+  /** Your Plex locale */
+  locale: string;
+  /** Your current mailing list status. */
+  mailingListStatus: 'active' | 'Inactive';
+  mailingListActive: boolean;
+  /** Email address to add items to your `Watch Later` queue. */
+  queueEmail: string;
+  /** Unknown */
+  restricted: boolean;
+  /** Description */
+  scrobbleTypes: string;
+  /** Name of subscription plan */
+  subscriptionPlan: string;
+  /** String representation of `subscriptionActive` */
+  subscriptionStatus: 'active' | 'Inactive';
+  /** True if your subsctiption is active */
+  subscriptionActive: boolean;
+  /** List of features allowed on your subscription */
+  subscriptionFeatures: string[];
+  /** List of devices your allowed to use with this account */
+  entitlements: string[];
+}
+
 /**
  * MyPlex account and profile information. This object represents the data found Account on
-        the myplex.tv servers at the url https://plex.tv/users/account. You may create this object
-        directly by passing in your username & password (or token). There is also a convenience
-        method provided at :class:`~plexapi.server.PlexServer.myPlexAccount()` which will create
-        and return this object.
-
-        Attributes:
-            SIGNIN (str): 'https://plex.tv/users/sign_in.xml'
-            key (str): 'https://plex.tv/users/account'
-            authenticationToken (str): Unknown.
-            certificateVersion (str): Unknown.
-            cloudSyncDevice (str): Unknown.
-            email (str): Your current Plex email address.
-            entitlements (List<str>): List of devices your allowed to use with this account.
-            guest (bool): Unknown.
-            home (bool): Unknown.
-            homeSize (int): Unknown.
-            id (str): Your Plex account ID.
-            locale (str): Your Plex locale
-            mailing_list_status (str): Your current mailing list status.
-            maxHomeSize (int): Unknown.
-            queueEmail (str): Email address to add items to your `Watch Later` queue.
-            queueUid (str): Unknown.
-            restricted (bool): Unknown.
-            roles: (List<str>) Lit of account roles. Plexpass membership listed here.
-            scrobbleTypes (str): Description
-            secure (bool): Description
-            subscriptionActive (bool): True if your subsctiption is active.
-            subscriptionFeatures: (List<str>) List of features allowed on your subscription.
-            subscriptionPlan (str): Name of subscription plan.
-            subscriptionStatus (str): String representation of `subscriptionActive`.
-            thumb (str): URL of your account thumbnail.
-            title (str): Unknown. - Looks like an alias for `username`.
-            username (str): Your account username.
-            uuid (str): Unknown.
-            _token (str): Token used to access this client.
-            _session (obj): Requests session object used to access this client.
+ * the myplex.tv servers at the url https://plex.tv/users/account. You may create this object
+ * directly by passing in your username & password (or token). There is also a convenience
+ * method provided at :class:`~plexapi.server.PlexServer.myPlexAccount()` which will create
+ * and return this object.
  */
 export class MyPlexAccount {
   FRIENDINVITE = 'https://plex.tv/api/servers/{machineId}/shared_servers'; // post with data
@@ -58,27 +81,51 @@ export class MyPlexAccount {
   SIGNIN = 'https://plex.tv/users/sign_in.xml'; // get with auth
   WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'; // get, post with data
 
-  key = 'https://plex.tv/api/v2/users/signin';
+  key = 'https://plex.tv/api/v2/user';
+
+  data?: MyPlexData;
+
+  private _token: string;
 
   /**
    *
    * @param username Your MyPlex username
    * @param password Your MyPlex password
-   * @param token
+   * @param token Token used to access this client.
    * @param session Use your own session object if you want to cache the http responses from PMS
    * @param timeout timeout in seconds on initial connect to myplex
    */
   constructor(
     private readonly username?: string,
     private readonly password?: string,
-    private readonly token?: any,
-    private readonly session?: any,
-    private readonly timeout?: number,
-  ) {}
+    readonly token?: any,
+    private readonly session = new CookieJar(),
+    private readonly timeout = TIMEOUT,
+  ) {
+    this._token = token;
+  }
 
-  async connect(): Promise<any> {
-    const [data, initpath] = await this._signin(this.username, this.password, this.timeout);
-    console.log(data, initpath);
+  /**
+   * Returns a new :class:`~server.PlexServer` or :class:`~client.PlexClient` object.
+   * Often times there is more than one address specified for a server or client.
+   * This function will prioritize local connections before remote and HTTPS before HTTP.
+   * After trying to connect to all available addresses for this resource and
+   * assuming at least one connection was successful, the PlexServer object is built and returned.
+   */
+  async connect(): Promise<MyPlexAccount> {
+    if (!this._token) {
+      log('Logging in with username', { username: this.username });
+      const [data, initpath] = await this._signin(this.username, this.password, this.timeout);
+      console.log(data, initpath);
+      this._loadData(data);
+      return this;
+    }
+
+    log('Logging in with token');
+    const data = await this.query(this.key);
+    console.log(data, this.key);
+    this._loadData(data);
+    return this;
   }
 
   async _signin(username?: string, password?: string, timeout?: number): Promise<any> {
@@ -119,19 +166,52 @@ export class MyPlexAccount {
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
-    console.log({ url, username, password, headers: requestHeaders });
     const response = await got({
       method,
       url: new URL(url),
       headers: requestHeaders,
       timeout: timeout ?? TIMEOUT,
+      cookieJar: this.session,
       username,
       password,
       retry: 0,
     });
 
     console.log(response.body);
-    const xml = await parseStringPromise(response.body);
+    const xml = await parseStringPromise(response.body, { trim: true });
     return xml;
+  }
+
+  private _loadData(data: UserResponse): void {
+    console.log(JSON.stringify(data));
+    const { user } = data;
+    this._token = user.$.authToken;
+    const subscription = user.subscription[0];
+    const plexData: MyPlexData = {
+      authenticationToken: this._token,
+      certificateVersion: Number(user.$.certificateVersion),
+      email: user.$.email,
+      guest: user.$.guest === '1',
+      home: user.$.home === '1',
+      homeSize: Number(user.$.homeSize),
+      maxHomeSize: Number(user.$.maxHomeSize),
+      id: user.$.id,
+      uuid: user.$.uuid,
+      username: user.$.username,
+      title: user.$.title,
+      locale: user.$.locale,
+      mailingListStatus: user.$.mailingListStatus,
+      mailingListActive: user.$.mailingListActive === '1',
+      queueEmail: user.$.queueEmail,
+      thumb: user.$.thumb,
+      scrobbleTypes: user.$.scrobbleTypes,
+      restricted: user.$.restricted === '1',
+      subscriptionActive: subscription.$.active === '0',
+      subscriptionStatus: subscription.$.status,
+      subscriptionPlan: subscription.$.plan,
+      subscriptionFeatures: subscription.features?.map(feature => feature?.feature?.[0]?.$?.id),
+      entitlements: user.entitlements?.map(entitlement => entitlement?.entitlement?.[0]?.$?.id).filter(x => x),
+    };
+    this.data = plexData;
   }
 }
