@@ -29,7 +29,6 @@ const base16Mac: string = macaddr
   .toString(16);
 export const X_PLEX_IDENTIFIER = `0x${base16Mac}`;
 export const BASE_HEADERS = {
-  'Content-type': 'application/json',
   'X-Plex-Platform': X_PLEX_PLATFORM,
   'X-Plex-Platform-Version': X_PLEX_PLATFORM_VERSION,
   'X-Plex-Provides': X_PLEX_PROVIDES,

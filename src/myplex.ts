@@ -179,7 +179,10 @@ export class MyPlexAccount {
   }
 
   private _headers(): Record<string, string> {
-    const headers = { ...BASE_HEADERS };
+    const headers = {
+      ...BASE_HEADERS,
+      'Content-type': 'application/json',
+    };
     if (this.token) {
       headers['X-Plex-Token'] = this.token;
     }

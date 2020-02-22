@@ -2,10 +2,6 @@
  * returned from the root of a server
  */
 export interface ServerRootResponse {
-  MediaContainer: MediaContainer;
-}
-
-export interface MediaContainer {
   size: number;
   allowCameraUpload: boolean;
   allowChannelAccess: boolean;

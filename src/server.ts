@@ -5,6 +5,9 @@ import { CookieJar } from 'tough-cookie';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
 import { ServerRootResponse } from './serverInterfaces';
+import { Library } from './library';
+import { MediaContainer } from './util';
+import { LibraryRootResponse } from './libraryInterfaces';
 
 const log = debug('plex');
 
@@ -130,6 +133,7 @@ export interface PlexServerData {
 export class PlexServer {
   key = '/';
   data!: PlexServerData;
+  _library?: Library;
 
   constructor(
     public readonly baseurl,
@@ -138,10 +142,29 @@ export class PlexServer {
     public readonly timeout,
   ) {}
 
-  async connect(): Promise<PlexServer> {
-    const data = await this.query<ServerRootResponse>(this.key, undefined, undefined, this.timeout);
-    this._loadData(data);
-    return this;
+  async connect(): Promise<void> {
+    const data = await this.query<MediaContainer<ServerRootResponse>>(this.key, undefined, undefined, this.timeout);
+    this._loadData(data.MediaContainer);
+  }
+
+  /**
+   * Library to browse or search your media.
+   */
+  async library(): Promise<Library> {
+    if (this._library) {
+      return this._library;
+    }
+
+    try {
+      const data = await this.query<MediaContainer<LibraryRootResponse>>(Library.key);
+      this._library = new Library(this, data.MediaContainer);
+    } catch {
+      // TODO: validate error type, also TODO figure out how this is used
+      const data = await this.query<MediaContainer<LibraryRootResponse>>('/library/sections/');
+      this._library = new Library(this, data.MediaContainer);
+    }
+
+    return this._library;
   }
 
   /**
@@ -205,7 +228,10 @@ export class PlexServer {
   }
 
   private _headers(): Record<string, string> {
-    const headers = { ...BASE_HEADERS };
+    const headers = {
+      ...BASE_HEADERS,
+      'Content-type': 'application/json',
+    };
     if (this.token) {
       headers['X-Plex-Token'] = this.token;
     }
@@ -215,51 +241,51 @@ export class PlexServer {
 
   private _loadData(data: ServerRootResponse): void {
     const rootData: PlexServerData = {
-      allowCameraUpload: data.MediaContainer.allowCameraUpload,
-      allowChannelAccess: data.MediaContainer.allowChannelAccess,
-      allowMediaDeletion: data.MediaContainer.allowMediaDeletion,
-      allowSharing: data.MediaContainer.allowSharing,
-      allowSync: data.MediaContainer.allowSync,
-      allowTuners: data.MediaContainer.allowTuners,
-      livetv: data.MediaContainer.livetv,
-      backgroundProcessing: data.MediaContainer.backgroundProcessing,
-      certificate: data.MediaContainer.certificate,
-      companionProxy: data.MediaContainer.companionProxy,
-      diagnostics: data.MediaContainer.diagnostics,
-      eventStream: data.MediaContainer.eventStream,
-      friendlyName: data.MediaContainer.friendlyName,
-      hubSearch: data.MediaContainer.hubSearch,
-      machineIdentifier: data.MediaContainer.machineIdentifier,
-      multiuser: data.MediaContainer.multiuser,
-      myPlex: data.MediaContainer.myPlex,
-      myPlexMappingState: data.MediaContainer.myPlexMappingState,
-      myPlexSigninState: data.MediaContainer.myPlexSigninState,
-      myPlexSubscription: data.MediaContainer.myPlexSubscription,
-      myPlexUsername: data.MediaContainer.myPlexUsername,
-      ownerFeatures: data.MediaContainer.ownerFeatures.split(','),
-      photoAutoTag: data.MediaContainer.photoAutoTag,
-      platform: data.MediaContainer.platform,
-      platformVersion: data.MediaContainer.platformVersion,
-      pluginHost: data.MediaContainer.pluginHost,
-      pushNotifications: data.MediaContainer.pushNotifications,
-      readOnlyLibraries: data.MediaContainer.readOnlyLibraries,
-      requestParametersInCookie: data.MediaContainer.requestParametersInCookie,
-      streamingBrainABRVersion: data.MediaContainer.streamingBrainABRVersion,
-      streamingBrainVersion: data.MediaContainer.streamingBrainVersion,
-      sync: data.MediaContainer.sync,
-      transcoderActiveVideoSessions: data.MediaContainer.transcoderActiveVideoSessions,
-      transcoderAudio: data.MediaContainer.transcoderAudio,
-      transcoderLyrics: data.MediaContainer.transcoderLyrics,
-      transcoderPhoto: data.MediaContainer.transcoderPhoto,
-      transcoderSubtitles: data.MediaContainer.transcoderSubtitles,
-      transcoderVideo: data.MediaContainer.transcoderVideo,
-      transcoderVideoBitrates: data.MediaContainer.transcoderVideoBitrates,
-      transcoderVideoQualities: data.MediaContainer.transcoderVideoQualities,
-      transcoderVideoResolutions: data.MediaContainer.transcoderVideoResolutions,
-      updatedAt: data.MediaContainer.updatedAt,
-      updater: data.MediaContainer.updater,
-      version: data.MediaContainer.version,
-      voiceSearch: data.MediaContainer.voiceSearch,
+      allowCameraUpload: data.allowCameraUpload,
+      allowChannelAccess: data.allowChannelAccess,
+      allowMediaDeletion: data.allowMediaDeletion,
+      allowSharing: data.allowSharing,
+      allowSync: data.allowSync,
+      allowTuners: data.allowTuners,
+      livetv: data.livetv,
+      backgroundProcessing: data.backgroundProcessing,
+      certificate: data.certificate,
+      companionProxy: data.companionProxy,
+      diagnostics: data.diagnostics,
+      eventStream: data.eventStream,
+      friendlyName: data.friendlyName,
+      hubSearch: data.hubSearch,
+      machineIdentifier: data.machineIdentifier,
+      multiuser: data.multiuser,
+      myPlex: data.myPlex,
+      myPlexMappingState: data.myPlexMappingState,
+      myPlexSigninState: data.myPlexSigninState,
+      myPlexSubscription: data.myPlexSubscription,
+      myPlexUsername: data.myPlexUsername,
+      ownerFeatures: data.ownerFeatures.split(','),
+      photoAutoTag: data.photoAutoTag,
+      platform: data.platform,
+      platformVersion: data.platformVersion,
+      pluginHost: data.pluginHost,
+      pushNotifications: data.pushNotifications,
+      readOnlyLibraries: data.readOnlyLibraries,
+      requestParametersInCookie: data.requestParametersInCookie,
+      streamingBrainABRVersion: data.streamingBrainABRVersion,
+      streamingBrainVersion: data.streamingBrainVersion,
+      sync: data.sync,
+      transcoderActiveVideoSessions: data.transcoderActiveVideoSessions,
+      transcoderAudio: data.transcoderAudio,
+      transcoderLyrics: data.transcoderLyrics,
+      transcoderPhoto: data.transcoderPhoto,
+      transcoderSubtitles: data.transcoderSubtitles,
+      transcoderVideo: data.transcoderVideo,
+      transcoderVideoBitrates: data.transcoderVideoBitrates,
+      transcoderVideoQualities: data.transcoderVideoQualities,
+      transcoderVideoResolutions: data.transcoderVideoResolutions,
+      updatedAt: data.updatedAt,
+      updater: data.updater,
+      version: data.version,
+      voiceSearch: data.voiceSearch,
     };
     this.data = rootData;
   }
