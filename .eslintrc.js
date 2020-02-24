@@ -12,5 +12,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 0,
     'capitalized-comments': 0,
     'max-params': 0,
+    '@typescript-eslint/prefer-readonly': 0,
   },
 };

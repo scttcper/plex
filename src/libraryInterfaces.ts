@@ -53,3 +53,75 @@ export interface Location {
   id: number;
   path: string;
 }
+
+export interface MediaItems {
+  size: number;
+  allowSync: boolean;
+  art: string;
+  identifier: string;
+  librarySectionID: number;
+  librarySectionTitle: string;
+  librarySectionUUID: string;
+  mediaTagPrefix: string;
+  mediaTagVersion: number;
+  thumb: string;
+  title1: string;
+  title2: string;
+  viewGroup: string;
+  viewMode: number;
+  Metadata: Metadatum[];
+}
+
+export interface Metadatum {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  studio: string;
+  type: string;
+  title: string;
+  titleSort: string;
+  contentRating: string;
+  summary: string;
+  rating: number;
+  viewCount?: number;
+  lastViewedAt?: number;
+  year: number;
+  tagline: string;
+  thumb: string;
+  art: string;
+  duration: number;
+  originallyAvailableAt: Date;
+  addedAt: number;
+  updatedAt: number;
+  chapterSource: string;
+  primaryExtraKey: string;
+  ratingImage: string;
+  Media: Media[];
+  Genre: Country[];
+  Director: Country[];
+  Writer: Country[];
+  Country: Country[];
+  Role: Country[];
+}
+
+export interface Country {
+  tag: string;
+}
+
+export interface Media {
+  id: number;
+  duration: number;
+  bitrate: number;
+  videoProfile: string;
+  Part: Part[];
+}
+
+export interface Part {
+  id: number;
+  key: string;
+  duration: number;
+  file: string;
+  size: number;
+  container: string;
+  videoProfile: string;
+}

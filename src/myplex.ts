@@ -10,56 +10,6 @@ import { PlexServer } from './server';
 
 const log = debug('plex');
 
-export interface MyPlexData {
-  /** Your Plex account ID */
-  id: number;
-  /** Unknown */
-  uuid: string;
-  /**
-   * auth token for user by plex
-   */
-  authenticationToken: string;
-  /** Unknown */
-  certificateVersion: number;
-  /** Your account username */
-  username: string;
-  /** Unknown. - Looks like an alias for `username` */
-  title: string;
-  /** Your current Plex email address */
-  email: string;
-  /** URL of your account thumbnail */
-  thumb: string;
-  /** Unknown */
-  guest: boolean;
-  /** Unknown */
-  home: boolean;
-  /** Unknown */
-  homeSize: number;
-  /** Unknown */
-  maxHomeSize: number;
-  /** Your Plex locale */
-  locale: string | null;
-  /** Your current mailing list status. */
-  mailingListStatus: 'active' | 'inactive';
-  mailingListActive: boolean;
-  /** Email address to add items to your `Watch Later` queue. */
-  queueEmail: string;
-  /** Unknown */
-  restricted: boolean;
-  /** Description */
-  scrobbleTypes: string;
-  /** Name of subscription plan */
-  subscriptionPlan: string | null;
-  /** String representation of `subscriptionActive` */
-  subscriptionStatus: 'active' | 'inactive';
-  /** True if your subsctiption is active */
-  subscriptionActive: boolean | null;
-  /** List of features allowed on your subscription */
-  subscriptionFeatures: string[];
-  /** List of devices your allowed to use with this account */
-  entitlements: string[];
-}
-
 /**
  * MyPlex account and profile information. This object represents the data found Account on
  * the myplex.tv servers at the url https://plex.tv/users/account. You may create this object
@@ -83,7 +33,51 @@ export class MyPlexAccount {
   SIGNIN = 'https://plex.tv/users/sign_in.json'; // get with auth
   WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'; // get, post with data
 
-  data?: MyPlexData;
+  /** Your Plex account ID */
+  id?: number;
+  /** Unknown */
+  uuid?: string;
+  /**
+   * auth token for user by plex
+   */
+  authenticationToken?: string;
+  /** Unknown */
+  certificateVersion?: number;
+  /** Unknown. - Looks like an alias for `username` */
+  title?: string;
+  /** Your current Plex email address */
+  email?: string;
+  /** URL of your account thumbnail */
+  thumb?: string;
+  /** Unknown */
+  guest?: boolean;
+  /** Unknown */
+  home?: boolean;
+  /** Unknown */
+  homeSize?: number;
+  /** Unknown */
+  maxHomeSize?: number;
+  /** Your Plex locale */
+  locale?: string | null;
+  /** Your current mailing list status. */
+  mailingListStatus?: 'active' | 'inactive';
+  mailingListActive?: boolean;
+  /** Email address to add items to your `Watch Later` queue. */
+  queueEmail?: string;
+  /** Unknown */
+  restricted?: boolean;
+  /** Description */
+  scrobbleTypes?: string;
+  /** Name of subscription plan */
+  subscriptionPlan?: string | null;
+  /** String representation of `subscriptionActive` */
+  subscriptionStatus?: 'active' | 'inactive';
+  /** True if your subsctiption is active */
+  subscriptionActive?: boolean | null;
+  /** List of features allowed on your subscription */
+  subscriptionFeatures?: string[];
+  /** List of devices your allowed to use with this account */
+  entitlements?: string[];
 
   /**
    *
@@ -94,7 +88,7 @@ export class MyPlexAccount {
    * @param timeout timeout in seconds on initial connect to myplex
    */
   constructor(
-    private readonly username?: string,
+    public username?: string,
     private readonly password?: string,
     public token?: string,
     readonly session = new CookieJar(),
@@ -127,7 +121,7 @@ export class MyPlexAccount {
    */
   async resource(name: string): Promise<MyPlexResource> {
     const resources = await this.resources();
-    const matchingResource = resources.find(resource => resource.data.name === name);
+    const matchingResource = resources.find(resource => resource.name === name);
     if (matchingResource) {
       return matchingResource;
     }
@@ -207,70 +201,31 @@ export class MyPlexAccount {
   }
 
   private _loadData(user: UserResponse): void {
-    console.log(user);
     this.token = user.authToken;
-    const plexData: MyPlexData = {
-      authenticationToken: this.token,
-      certificateVersion: Number(user.certificateVersion),
-      email: user.email,
-      guest: user.guest,
-      home: user.home,
-      homeSize: Number(user.homeSize),
-      maxHomeSize: Number(user.maxHomeSize),
-      id: user.id,
-      uuid: user.uuid,
-      username: user.username,
-      title: user.title,
-      locale: user.locale,
-      mailingListStatus: user.mailingListStatus ?? 'inactive',
-      mailingListActive: user.mailingListActive,
-      queueEmail: user.queueEmail,
-      thumb: user.thumb,
-      scrobbleTypes: user.scrobbleTypes,
-      restricted: user.restricted,
-      subscriptionActive: user.subscription?.active ?? null,
-      subscriptionStatus: (user.subscription?.status?.toLowerCase() as 'active') ?? 'inactive',
-      subscriptionPlan: user.subscription?.plan ?? null,
-      subscriptionFeatures: user.subscription?.features ?? [],
-      entitlements: user.entitlements,
-    };
-    this.data = plexData;
+    this.authenticationToken = this.token;
+    this.certificateVersion = Number(user.certificateVersion);
+    this.email = user.email;
+    this.guest = user.guest;
+    this.home = user.home;
+    this.homeSize = Number(user.homeSize);
+    this.maxHomeSize = Number(user.maxHomeSize);
+    this.id = user.id;
+    this.uuid = user.uuid;
+    this.username = user.username;
+    this.title = user.title;
+    this.locale = user.locale;
+    this.mailingListStatus = user.mailingListStatus ?? 'inactive';
+    this.mailingListActive = user.mailingListActive;
+    this.queueEmail = user.queueEmail;
+    this.thumb = user.thumb;
+    this.scrobbleTypes = user.scrobbleTypes;
+    this.restricted = user.restricted;
+    this.subscriptionActive = user.subscription?.active ?? null;
+    this.subscriptionStatus = (user.subscription?.status?.toLowerCase() as 'active') ?? 'inactive';
+    this.subscriptionPlan = user.subscription?.plan ?? null;
+    this.subscriptionFeatures = user.subscription?.features ?? [];
+    this.entitlements = user.entitlements;
   }
-}
-
-export interface MyPlexResourceData {
-  /** Descriptive name of this resource */
-  name: string;
-  /** True if this resource is one of your own (you logged into it) */
-  owned: boolean;
-  /** This resources accesstoken */
-  accessToken: string;
-  /** Unique ID for this resource */
-  clientIdentifier: string;
-  /** List of :class:`~myplex.ResourceConnection` objects for this resource */
-  connections: ResourceConnection[];
-  /** Timestamp this resource first connected to your server */
-  createdAt: Date;
-  /** Timestamp this resource last connected */
-  lastSeenAt: Date;
-  /** Best guess on the type of device this is (PS, iPhone, Linux, etc) */
-  device: string | null;
-  /** Unknown */
-  home: boolean;
-  /** OS the resource is running (Linux, Windows, Chrome, etc.) */
-  platform: string;
-  /** Version of the platform */
-  platformVersion: string;
-  /** True if the resource is online */
-  presence: boolean;
-  /** Plex product (Plex Media Server, Plex for iOS, Plex Web, etc.) */
-  product: string;
-  /** Version of the product. */
-  productVersion: string;
-  /** List of services this resource provides (client, server, player, pubsub-player, etc.) */
-  provides: string;
-  /** Unknown (possibly True if the resource has synced content?) */
-  synced: boolean;
 }
 
 /**
@@ -294,18 +249,49 @@ export async function connect(
 export class MyPlexResource {
   static key = 'https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1';
   TAG = 'Device';
-  data!: MyPlexResourceData;
+  /** Descriptive name of this resource */
+  name!: string;
+  /** True if this resource is one of your own (you logged into it) */
+  owned!: boolean;
+  /** This resources accesstoken */
+  accessToken!: string;
+  /** Unique ID for this resource */
+  clientIdentifier!: string;
+  /** List of !:class!:`~myplex.ResourceConnection` objects for this resource */
+  connections!: ResourceConnection[];
+  /** Timestamp this resource first connected to your server */
+  createdAt!: Date;
+  /** Timestamp this resource last connected */
+  lastSeenAt!: Date;
+  /** Best guess on the type of device this is (PS, iPhone, Linux, etc) */
+  device!: string | null;
+  /** Unknown */
+  home!: boolean;
+  /** OS the resource is running (Linux, Windows, Chrome, etc.) */
+  platform!: string;
+  /** Version of the platform */
+  platformVersion!: string;
+  /** True if the resource is online */
+  presence!: boolean;
+  /** Plex product (Plex Media Server, Plex for iOS, Plex Web, etc.) */
+  product!: string;
+  /** Version of the product. */
+  productVersion!: string;
+  /** List of services this resource provides (client, server, player, pubsub-player, etc.) */
+  provides!: string;
+  /** Unknown (possibly True if the resource has synced content?) */
+  synced!: boolean;
 
   constructor(data: ResourcesResponse) {
     this._loadData(data);
   }
 
   async connect(ssl: boolean | null = null, timeout?): Promise<PlexServer> {
-    const connections = [...this.data.connections].sort((a, b) => {
-      return Number(b.data.local) - Number(a.data.local);
+    const connections = [...this.connections].sort((a, b) => {
+      return Number(b.local) - Number(a.local);
     });
     const ownedOrUnownedNonLocal = (connection: ResourceConnection): boolean => {
-      if (this.data.owned || (!this.data.owned && !connection.data.local)) {
+      if (this.owned || (!this.owned && !connection.local)) {
         return true;
       }
 
@@ -314,8 +300,8 @@ export class MyPlexResource {
 
     // Sort connections from (https, local) to (http, remote)
     // Only check non-local connections unless we own the resource
-    const https = connections.filter(x => ownedOrUnownedNonLocal(x)).map(x => x.data.uri);
-    const http = connections.filter(x => ownedOrUnownedNonLocal(x)).map(x => x.data.httpuri);
+    const https = connections.filter(x => ownedOrUnownedNonLocal(x)).map(x => x.uri);
+    const http = connections.filter(x => ownedOrUnownedNonLocal(x)).map(x => x.httpuri);
 
     let attemptUrls: string[];
     if (ssl === null) {
@@ -329,67 +315,57 @@ export class MyPlexResource {
     // Try connecting to all known resource connections in parellel, but
     // only return the first server (in order) that provides a response.
     const promises = attemptUrls.map(async url =>
-      connect((...args) => new PlexServer(...args), url, this.data.accessToken, timeout),
+      connect((...args) => new PlexServer(...args), url, this.accessToken, timeout),
     );
     const result = await pAny(promises);
     return result;
   }
 
   private _loadData(data: ResourcesResponse): void {
-    const ResourceData: MyPlexResourceData = {
-      name: data.name,
-      accessToken: data.accessToken ?? '',
-      owned: data.owned,
-      clientIdentifier: data.clientIdentifier,
-      createdAt: new Date(data.createdAt),
-      lastSeenAt: new Date(data.lastSeenAt),
-      device: data.device,
-      home: data.home,
-      platform: data.platform,
-      platformVersion: data.platformVersion,
-      provides: data.provides,
-      synced: data.synced,
-      presence: data.presence,
-      product: data.product,
-      productVersion: data.productVersion,
-      connections: data.connections.map(connection => new ResourceConnection(connection)),
-    };
-    this.data = ResourceData;
+    this.name = data.name;
+    this.accessToken = data.accessToken ?? '';
+    this.owned = data.owned;
+    this.clientIdentifier = data.clientIdentifier;
+    this.createdAt = new Date(data.createdAt);
+    this.lastSeenAt = new Date(data.lastSeenAt);
+    this.device = data.device;
+    this.home = data.home;
+    this.platform = data.platform;
+    this.platformVersion = data.platformVersion;
+    this.provides = data.provides;
+    this.synced = data.synced;
+    this.presence = data.presence;
+    this.product = data.product;
+    this.productVersion = data.productVersion;
+    this.connections = data.connections.map(connection => new ResourceConnection(connection));
   }
-}
-
-export interface ConnectionData {
-  /** Local IP address */
-  address: string;
-  /** Full local address */
-  httpuri: string;
-  /** True if local */
-  local: boolean;
-  /** 32400 */
-  port: number;
-  /** HTTP or HTTPS */
-  protocol: string;
-  /** External address */
-  uri: string;
 }
 
 export class ResourceConnection {
   TAG = 'Connection';
-  data!: ConnectionData;
+  /** Local IP address */
+  address!: string;
+  /** Full local address */
+  httpuri!: string;
+  /** True if local */
+  local!: boolean;
+  /** 32400 */
+  port!: number;
+  /** HTTP or HTTPS */
+  protocol!: string;
+  /** External address */
+  uri!: string;
 
   constructor(data: Connection) {
     this._loadData(data);
   }
 
   private _loadData(data: Connection): void {
-    const connectionData: ConnectionData = {
-      address: data.address,
-      protocol: data.protocol,
-      port: Number(data.port),
-      uri: data.uri,
-      local: data.local,
-      httpuri: `http://${data.address}:${data.port}`,
-    };
-    this.data = connectionData;
+    this.address = data.address;
+    this.protocol = data.protocol;
+    this.port = Number(data.port);
+    this.uri = data.uri;
+    this.local = data.local;
+    this.httpuri = `http://${data.address}:${data.port}`;
   }
 }

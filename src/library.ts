@@ -1,24 +1,27 @@
 import { PlexServer } from './server';
-import { LibraryRootResponse, SectionsResponse, SectionsDirectory, Location } from './libraryInterfaces';
+import {
+  LibraryRootResponse,
+  SectionsResponse,
+  SectionsDirectory,
+  Location,
+  Metadatum,
+} from './libraryInterfaces';
 import { MediaContainer } from './util';
+import { PlexObject } from './base';
+import { Movie } from './video';
 
-export interface LibraryData {
-  /** Unknown ('com.plexapp.plugins.library') */
-  identifier: string;
-  /** Unknown (/system/bundle/media/flags/) */
-  mediaTagPrefix: string;
-  /** 'Plex Library' (not sure how useful this is) */
-  title1: string;
-  /** Second title (this is blank on my setup) */
-  title2: string;
-}
-
-export type SectionClasses = MovieSection | ShowSection;
+export type Section = MovieSection | ShowSection;
 
 export class Library {
   static key = '/library';
-
-  data!: LibraryData;
+  /** Unknown ('com.plexapp.plugins.library') */
+  identifier!: string;
+  /** Unknown (/system/bundle/media/flags/) */
+  mediaTagPrefix!: string;
+  /** 'Plex Library' (not sure how useful this is) */
+  title1!: string;
+  /** Second title (this is blank on my setup) */
+  title2!: string;
 
   constructor(private readonly server: PlexServer, data: LibraryRootResponse) {
     this._loadData(data);
@@ -27,9 +30,9 @@ export class Library {
   /**
    * @returns a list of all media sections in this library. Library sections may be any of
    */
-  async sections(): Promise<SectionClasses[]> {
+  async sections(): Promise<Section[]> {
     const key = '/library/sections';
-    const sections: SectionClasses[] = [];
+    const sections: Section[] = [];
     const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
     for (const elem of elems.MediaContainer.Directory) {
       for (const cls of [MovieSection, ShowSection]) {
@@ -44,9 +47,9 @@ export class Library {
     return sections;
   }
 
-  async section(title: string): Promise<SectionClasses> {
+  async section<T extends Section = Section>(title: string): Promise<T> {
     const sections = await this.sections();
-    const section = sections.find(s => s.data.title.toLowerCase() === title.toLowerCase());
+    const section = sections.find(s => s.title.toLowerCase() === title.toLowerCase()) as T | undefined;
     if (!section) {
       throw new Error(`Invalid library section: ${title}`);
     }
@@ -54,9 +57,9 @@ export class Library {
     return section;
   }
 
-  async sectionByID(sectionId: string): Promise<SectionClasses> {
+  async sectionByID(sectionId: string): Promise<Section> {
     const sections = await this.sections();
-    const section = sections.find(s => s.data.key);
+    const section = sections.find(s => s.key);
     if (!section) {
       throw new Error(`Invalid library section id: ${sectionId}`);
     }
@@ -65,91 +68,97 @@ export class Library {
   }
 
   private _loadData(data: LibraryRootResponse): void {
-    const libraryData: LibraryData = {
-      identifier: data.identifier,
-      mediaTagPrefix: data.mediaTagPrefix,
-      title1: data.title1,
-      title2: data.title2,
-    };
-    this.data = libraryData;
+    this.identifier = data.identifier;
+    this.mediaTagPrefix = data.mediaTagPrefix;
+    this.title1 = data.title1;
+    this.title2 = data.title2;
   }
 }
 
-export interface LibrarySectionData {
-  /** Unknown (com.plexapp.agents.imdb, etc) */
-  agent: string;
-  /** l True if you allow syncing content from this section. */
-  allowSync: boolean;
-  /** Wallpaper artwork used to respresent this section. */
-  art: string;
-  /** Composit image used to represent this section. */
-  composite: string;
-  /** Unknown */
-  filters: boolean;
-  /** Key (or ID) of this library section. */
-  key: string;
-  /** Language represented in this section (en, xn, etc). */
-  language: string;
-  /** Paths on disk where section content is stored. */
-  locations: Location[];
-  /** True if this section is currently being refreshed. */
-  refreshing: boolean;
-  /** Internal scanner used to find media (Plex Movie Scanner, Plex Premium Music Scanner, etc.) */
-  scanner: string;
-  /** Thumbnail image used to represent this section. */
-  thumb: string;
-  /** Title of this section. */
-  title: string;
-  /** Type of content section represents (movie, artist, photo, show). */
-  type: string;
-  /** Datetime this library section was last updated. */
-  updatedAt: Date;
-  /** Datetime this library section was created. */
-  createdAt: Date;
-  scannedAt: Date;
-  /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
-  uuid: string;
-}
-
-export abstract class LibrarySection {
+/**
+ * Base class for a single library section.
+ */
+export abstract class LibrarySection<MediaType> extends PlexObject {
   static ALLOWED_FILTERS: string[] = [];
   static ALLOWED_SORT: string[] = [];
   static BOOLEAN_FILTERS = ['unwatched', 'duplicate'];
-  static TYPE: string;
-  data!: LibrarySectionData;
+  /** Unknown (com.plexapp.agents.imdb, etc) */
+  agent!: string;
+  /** l True if you allow syncing content from this section. */
+  allowSync!: boolean;
+  /** Wallpaper artwork used to respresent this section. */
+  art!: string;
+  /** Composit image used to represent this section. */
+  composite!: string;
+  /** Unknown */
+  filters!: boolean;
+  /** Key (or ID) of this library section. */
+  key!: string;
+  /** Language represented in this section (en, xn, etc). */
+  language!: string;
+  /** Paths on disk where section content is stored. */
+  locations!: Location[];
+  /** True if this section is currently being refreshed. */
+  refreshing!: boolean;
+  /** Internal scanner used to find media (Plex Movie Scanner, Plex Premium Music Scanner, etc.) */
+  scanner!: string;
+  /** Thumbnail image used to represent this section. */
+  thumb!: string;
+  /** Title of this section. */
+  title!: string;
+  /** Type of content section represents (movie, artist, photo, show). */
+  type!: string;
+  /** Datetime this library section was last updated. */
+  updatedAt!: Date;
+  /** Datetime this library section was created. */
+  createdAt!: Date;
+  scannedAt!: Date;
+  /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
+  uuid!: string;
 
   /**
    * @param initpath Relative path requested when retrieving specified `data`
    */
-  constructor(private readonly server: PlexServer, data: any, private readonly initpath: string) {
+  constructor(
+    server: PlexServer,
+    data: SectionsDirectory,
+    private readonly initpath: string,
+  ) {
+    super(server, data);
     this._loadData(data);
   }
 
-  private _loadData(data: SectionsDirectory): void {
-    const libraryData: LibrarySectionData = {
-      uuid: data.uuid,
-      key: data.key,
-      agent: data.agent,
-      allowSync: data.allowSync,
-      art: data.art,
-      composite: data.composite,
-      filters: data.filters,
-      language: data.language,
-      locations: data.Location,
-      refreshing: data.refreshing,
-      scanner: data.scanner,
-      thumb: data.thumb,
-      title: data.title,
-      type: data.type,
-      updatedAt: new Date(data.updatedAt * 1000),
-      createdAt: new Date(data.createdAt * 1000),
-      scannedAt: new Date(data.scannedAt * 1000),
-    };
-    this.data = libraryData;
+  /**
+   * @param title Title of the item to return.
+   * @returns the media item with the specified title.
+   */
+  async get(title: string): Promise<Metadatum> {
+    const key = `/library/sections/${this.key}/all?title=${title}`;
+    return this.fetchItem(key, { title__iexact: title });
+  }
+
+  _loadData(data: SectionsDirectory): void {
+    this.uuid = data.uuid;
+    this.key = data.key;
+    this.agent = data.agent;
+    this.allowSync = data.allowSync;
+    this.art = data.art;
+    this.composite = data.composite;
+    this.filters = data.filters;
+    this.language = data.language;
+    this.locations = data.Location;
+    this.refreshing = data.refreshing;
+    this.scanner = data.scanner;
+    this.thumb = data.thumb;
+    this.title = data.title;
+    this.type = data.type;
+    this.updatedAt = new Date(data.updatedAt * 1000);
+    this.createdAt = new Date(data.createdAt * 1000);
+    this.scannedAt = new Date(data.scannedAt * 1000);
   }
 }
 
-export class MovieSection extends LibrarySection {
+export class MovieSection extends LibrarySection<Movie> {
   static TYPE = 'movie';
   static ALLOWED_FILTERS = [
     'unwatched',
@@ -190,8 +199,7 @@ export class MovieSection extends LibrarySection {
   static CONTENT_TYPE = 'video';
 }
 
-export class ShowSection extends LibrarySection {
-  static TYPE = 'show';
+export class ShowSection extends LibrarySection<any> {
   static ALLOWED_FILTERS = [
     'unwatched',
     'year',
@@ -229,6 +237,7 @@ export class ShowSection extends LibrarySection {
     'unwatched',
   ];
 
+  static TYPE = 'show';
   static TAG = 'Directory';
   static METADATA_TYPE = 'episode';
   static CONTENT_TYPE = 'video';
