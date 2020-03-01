@@ -32,6 +32,7 @@
     "macaddr": "0.0.1",
     "p-any": "^2.1.0",
     "tough-cookie": "^3.0.1",
+    "type-fest": "^0.11.0",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {

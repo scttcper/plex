@@ -69,11 +69,15 @@ export interface MediaItems {
   title2: string;
   viewGroup: string;
   viewMode: number;
-  Metadata: Metadatum[];
+  Metadata: MediaItem[];
 }
 
-export interface Metadatum {
+export interface MediaItem {
   ratingKey: string;
+  userRating?: number;
+  audienceRating?: number;
+  audienceRatingImage?: string;
+  originalTitle?: string;
   key: string;
   guid: string;
   studio: string;
@@ -84,13 +88,14 @@ export interface Metadatum {
   summary: string;
   rating: number;
   viewCount?: number;
+  viewOffset?: number;
   lastViewedAt?: number;
   year: number;
   tagline: string;
   thumb: string;
   art: string;
   duration: number;
-  originallyAvailableAt: Date;
+  originallyAvailableAt: string;
   addedAt: number;
   updatedAt: number;
   chapterSource: string;

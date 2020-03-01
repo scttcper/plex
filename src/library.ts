@@ -4,13 +4,15 @@ import {
   SectionsResponse,
   SectionsDirectory,
   Location,
-  Metadatum,
+  MediaItem,
 } from './libraryInterfaces';
 import { MediaContainer } from './util';
 import { PlexObject } from './base';
-import { Movie } from './video';
+import { Movie, VideoType } from './video';
+import { Class } from 'type-fest';
 
-export type Section = MovieSection | ShowSection;
+// export type Section = MovieSection | ShowSection;
+export type Section = MovieSection;
 
 export class Library {
   static key = '/library';
@@ -35,7 +37,7 @@ export class Library {
     const sections: Section[] = [];
     const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
     for (const elem of elems.MediaContainer.Directory) {
-      for (const cls of [MovieSection, ShowSection]) {
+      for (const cls of [MovieSection]) {
         if (cls.TYPE === elem.type) {
           // eslint-disable-next-line new-cap
           const instance = new cls(this.server, elem, key);
@@ -78,7 +80,7 @@ export class Library {
 /**
  * Base class for a single library section.
  */
-export abstract class LibrarySection<MediaType> extends PlexObject {
+export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexObject {
   static ALLOWED_FILTERS: string[] = [];
   static ALLOWED_SORT: string[] = [];
   static BOOLEAN_FILTERS = ['unwatched', 'duplicate'];
@@ -115,6 +117,7 @@ export abstract class LibrarySection<MediaType> extends PlexObject {
   scannedAt!: Date;
   /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
   uuid!: string;
+  VIDEO_TYPE!: Class<SectionVideoType>;
 
   /**
    * @param initpath Relative path requested when retrieving specified `data`
@@ -132,12 +135,57 @@ export abstract class LibrarySection<MediaType> extends PlexObject {
    * @param title Title of the item to return.
    * @returns the media item with the specified title.
    */
-  async get(title: string): Promise<Metadatum> {
+  async get(title: string): Promise<SectionVideoType> {
     const key = `/library/sections/${this.key}/all?title=${title}`;
-    return this.fetchItem(key, { title__iexact: title });
+    const data = await this.fetchItem(key, { title__iexact: title });
+    return new this.VIDEO_TYPE(this.server, data, this.key);
+  }
+
+  /**
+   * Run an analysis on all of the items in this library section.
+   * See :func:`~plexapi.base.PlexPartialObject.analyze` for more details.
+   */
+  async analyze(): Promise<void> {
+    const key = `/library/sections/${this.key}/analyze`;
+    this.server.query(key, 'post');
+  }
+
+  /**
+   * Scan this section for new media.
+   */
+  async update(): Promise<void> {
+    const key = `/library/sections/${this.key}/refresh`;
+    this.server.query(key);
+  }
+
+  /**
+   * Cancel update of this Library Section.
+   */
+  async cancelUpdate(): Promise<void> {
+    const key = `/library/sections/${this.key}/refresh`;
+    this.server.query(key, 'delete');
+  }
+
+  /**
+   * Forces a download of fresh media information from the internet.
+   * This can take a long time. Any locked fields are not modified.
+   */
+  async refresh(): Promise<void> {
+    const key = `/library/sections/${this.key}/refresh?force=1`;
+    this.server.query(key);
+  }
+
+  /**
+   * Delete the preview thumbnails for items in this library. This cannot
+   * be undone. Recreating media preview files can take hours or even days.
+   */
+  async deleteMediaPreviews(): Promise<void> {
+    const key = `/library/sections/${this.key}/indexes`;
+    this.server.query(key, 'delete');
   }
 
   _loadData(data: SectionsDirectory): void {
+    console.log('LibrarySection', data);
     this.uuid = data.uuid;
     this.key = data.key;
     this.agent = data.agent;
@@ -197,48 +245,50 @@ export class MovieSection extends LibrarySection<Movie> {
   static TAG = 'Directory';
   static METADATA_TYPE = 'movie';
   static CONTENT_TYPE = 'video';
+  VIDEO_TYPE = Movie;
 }
 
-export class ShowSection extends LibrarySection<any> {
-  static ALLOWED_FILTERS = [
-    'unwatched',
-    'year',
-    'genre',
-    'contentRating',
-    'network',
-    'collection',
-    'guid',
-    'duplicate',
-    'label',
-    'show.title',
-    'show.year',
-    'show.userRating',
-    'show.viewCount',
-    'show.lastViewedAt',
-    'show.actor',
-    'show.addedAt',
-    'episode.title',
-    'episode.originallyAvailableAt',
-    'episode.resolution',
-    'episode.subtitleLanguage',
-    'episode.unwatched',
-    'episode.addedAt',
-    'episode.userRating',
-    'episode.viewCount',
-    'episode.lastViewedAt',
-  ];
+// export class ShowSection extends LibrarySection<any> {
+//   static ALLOWED_FILTERS = [
+//     'unwatched',
+//     'year',
+//     'genre',
+//     'contentRating',
+//     'network',
+//     'collection',
+//     'guid',
+//     'duplicate',
+//     'label',
+//     'show.title',
+//     'show.year',
+//     'show.userRating',
+//     'show.viewCount',
+//     'show.lastViewedAt',
+//     'show.actor',
+//     'show.addedAt',
+//     'episode.title',
+//     'episode.originallyAvailableAt',
+//     'episode.resolution',
+//     'episode.subtitleLanguage',
+//     'episode.unwatched',
+//     'episode.addedAt',
+//     'episode.userRating',
+//     'episode.viewCount',
+//     'episode.lastViewedAt',
+//   ];
 
-  static ALLOWED_SORT = [
-    'addedAt',
-    'lastViewedAt',
-    'originallyAvailableAt',
-    'titleSort',
-    'rating',
-    'unwatched',
-  ];
+//   static ALLOWED_SORT = [
+//     'addedAt',
+//     'lastViewedAt',
+//     'originallyAvailableAt',
+//     'titleSort',
+//     'rating',
+//     'unwatched',
+//   ];
 
-  static TYPE = 'show';
-  static TAG = 'Directory';
-  static METADATA_TYPE = 'episode';
-  static CONTENT_TYPE = 'video';
-}
+//   static TYPE = 'show';
+//   static TAG = 'Directory';
+//   static METADATA_TYPE = 'episode';
+//   static CONTENT_TYPE = 'video';
+//   SECTION = Show;
+// }

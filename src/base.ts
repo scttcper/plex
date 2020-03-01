@@ -1,6 +1,6 @@
 import { PlexServer } from './server';
 import { MediaContainer } from './util';
-import { MediaItems, Metadatum } from './libraryInterfaces';
+import { MediaItems, MediaItem } from './libraryInterfaces';
 
 const OPERATORS = {
   exact: (v: string | number, q: string | number) => v === q,
@@ -33,7 +33,7 @@ export abstract class PlexObject {
   /** plex relative url */
   key: string | null = null;
 
-  constructor(private readonly server: PlexServer, data: any) {
+  constructor(public readonly server: PlexServer, data: any) {
     this._loadData(data);
   }
 
@@ -50,7 +50,7 @@ export abstract class PlexObject {
     ekey: string | number,
     options?: Record<string, string | number>,
     cls?: any,
-  ): Promise<Metadatum> {
+  ): Promise<MediaItem> {
     const key = typeof ekey === 'number' ? `/library/metadata/${ekey.toString()}` : ekey;
     const response = await this.server.query<MediaContainer<MediaItems>>(key);
     const elems = response.MediaContainer.Metadata;
@@ -75,7 +75,7 @@ export abstract class PlexObject {
     return [attr, 'exact', OPERATORS.exact];
   }
 
-  private _checkAttrs(elem: Metadatum, obj: Record<string, string | number> = {}): boolean {
+  private _checkAttrs(elem: MediaItem, obj: Record<string, string | number> = {}): boolean {
     const attrsFound: Record<string, boolean> = {};
     for (const [attr, query] of Object.entries(obj)) {
       const [key, op, operator] = this._getAttrOperator(attr);
@@ -91,6 +91,10 @@ export abstract class PlexObject {
 
 export abstract class PartialPlexObject extends PlexObject {
   private _details_key: string | null = null;
+
+  async section(): Promise<any> {
+
+  }
 }
 
 /**
@@ -99,5 +103,18 @@ export abstract class PartialPlexObject extends PlexObject {
  * Albums which are all not playable.
  */
 export abstract class Playable extends PartialPlexObject {
-
+  /** (int): Active session key. */
+  sessionKey: any;
+  /** (str): Username of the person playing this item (for active sessions). */
+  usernames: any;
+  /** (:class:`~plexapi.client.PlexClient`): Client objects playing this item (for active sessions). */
+  players: any;
+  /** (:class:`~plexapi.media.Session`): Session object, for a playing media file. */
+  session: any;
+  /** (:class:`~plexapi.media.TranscodeSession`): Transcode Session object if item is being transcoded (None otherwise). */
+  transcodeSessions: any;
+  /** (datetime): Datetime item was last viewed (history). */
+  viewedAt: any;
+  /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
+  playlistItemID: any;
 }
