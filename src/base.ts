@@ -31,10 +31,25 @@ export abstract class PlexObject {
   /** xml element type */
   static TYPE: string | null = null;
   /** plex relative url */
-  key: string | null = null;
+  key!: string;
+  _details_key?: string;
 
-  constructor(public readonly server: PlexServer, data: any) {
+  constructor(public readonly server: PlexServer, data: any, protected initpath?: string) {
     this._loadData(data);
+  }
+
+  /**
+   * Reload the data for this object from self.key.
+   */
+  async reload(ekey?: string): Promise<void> {
+    const key = ekey ?? this._details_key ?? this.key;
+    if (!key) {
+      throw new Error('Cannot reload an object not built from a URL');
+    }
+
+    const data = await this.server.query(key);
+    const innerData = data.MediaContainer ? data.MediaContainer : data;
+    this._loadData(innerData);
   }
 
   /**
@@ -63,6 +78,45 @@ export abstract class PlexObject {
     throw new Error('Unable to find item');
   }
 
+  /**
+   * Load the specified key to find and build all items with the specified tag
+   * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
+   * on how this is used.
+   */
+  async fetchItems(
+    ekey: string,
+    options?: Record<string, string | number>,
+    cls?: any,
+  ): Promise<any> {
+    const data = await this.server.query(ekey);
+    const items = this.findItems(data, options, cls);
+    return items;
+  }
+
+  /**
+   * Load the specified data to find and build all items with the specified tag
+   * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
+   * on how this is used.
+   */
+  findItems(data: any[], options: Record<string, string | number> = {}, cls?: any): any[] {
+    if (cls?.TAG && !('tag' in options)) {
+      options.etag = cls.TAG;
+    }
+
+    if (cls?.TYPE && !('type' in options)) {
+      options.type = cls.TYPE;
+    }
+
+    const items: any[] = [];
+    for (const elem of data) {
+      if (this._checkAttrs(elem, options)) {
+        items.push(elem);
+      }
+    }
+
+    return items;
+  }
+
   private _getAttrOperator(attr: string): [string, keyof typeof OPERATORS, (a: any, b: any) => boolean] {
     // OPERATORS
     for (const [op, operator] of Object.entries(OPERATORS)) {
@@ -86,15 +140,35 @@ export abstract class PlexObject {
     return Object.values(attrsFound).every(x => x);
   }
 
-  abstract _loadData(data: any): void;
+  protected abstract _loadData(data: any): void;
 }
 
 export abstract class PartialPlexObject extends PlexObject {
-  private _details_key: string | null = null;
+  /**
+   * load full data / reload the data for this object from self.key.
+   */
+  async reload(ekey?: string): Promise<void> {
+    const key = ekey ?? this._details_key ?? this.key;
+    if (!key) {
+      throw new Error('Cannot reload an object not built from a URL');
+    }
+
+    this.initpath = key;
+    console.log({ key });
+    const data = await this.server.query(key);
+    const innerData = data.MediaContainer ? data.MediaContainer : data;
+    this._loadFullData(innerData);
+  }
 
   async section(): Promise<any> {
 
   }
+
+  get isFullObject(): boolean {
+    return !this.key || this.key === this.initpath;
+  }
+
+  protected abstract _loadFullData(data: any): void;
 }
 
 /**
@@ -117,4 +191,10 @@ export abstract class Playable extends PartialPlexObject {
   viewedAt: any;
   /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
   playlistItemID: any;
+
+  get isFullObject(): boolean {
+    console.log('_details_key', this._details_key);
+    console.log('initpath', this.initpath);
+    return this._details_key === this.initpath || !this.key;
+  }
 }

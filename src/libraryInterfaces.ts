@@ -1,3 +1,5 @@
+import { ChapterSource } from './videoInterfaces';
+
 export interface LibraryRootResponse {
   size: number;
   allowSync: boolean;
@@ -83,7 +85,7 @@ export interface MediaItem {
   studio: string;
   type: string;
   title: string;
-  titleSort: string;
+  titleSort?: string;
   contentRating: string;
   summary: string;
   rating: number;
@@ -91,14 +93,14 @@ export interface MediaItem {
   viewOffset?: number;
   lastViewedAt?: number;
   year: number;
-  tagline: string;
+  tagline?: string;
   thumb: string;
   art: string;
   duration: number;
   originallyAvailableAt: string;
   addedAt: number;
   updatedAt: number;
-  chapterSource: string;
+  chapterSource?: ChapterSource;
   primaryExtraKey: string;
   ratingImage: string;
   Media: Media[];

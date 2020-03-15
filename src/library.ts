@@ -69,7 +69,7 @@ export class Library {
     return section;
   }
 
-  private _loadData(data: LibraryRootResponse): void {
+  protected _loadData(data: LibraryRootResponse): void {
     this.identifier = data.identifier;
     this.mediaTagPrefix = data.mediaTagPrefix;
     this.title1 = data.title1;
@@ -125,9 +125,9 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   constructor(
     server: PlexServer,
     data: SectionsDirectory,
-    private readonly initpath: string,
+    initpath: string,
   ) {
-    super(server, data);
+    super(server, data, initpath);
     this._loadData(data);
   }
 
@@ -138,7 +138,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   async get(title: string): Promise<SectionVideoType> {
     const key = `/library/sections/${this.key}/all?title=${title}`;
     const data = await this.fetchItem(key, { title__iexact: title });
-    return new this.VIDEO_TYPE(this.server, data, this.key);
+    return new this.VIDEO_TYPE(this.server, data, key);
   }
 
   /**
@@ -184,7 +184,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     this.server.query(key, 'delete');
   }
 
-  _loadData(data: SectionsDirectory): void {
+  protected _loadData(data: SectionsDirectory): void {
     console.log('LibrarySection', data);
     this.uuid = data.uuid;
     this.key = data.key;
