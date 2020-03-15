@@ -38,8 +38,8 @@
   "devDependencies": {
     "@types/jest": "25.1.4",
     "@types/node": "13.9.1",
-    "@types/tough-cookie": "^2.3.6",
-    "@types/xml2js": "^0.4.5",
+    "@types/tough-cookie": "2.3.6",
+    "@types/xml2js": "0.4.5",
     "@typescript-eslint/eslint-plugin": "2.23.0",
     "@typescript-eslint/parser": "2.23.0",
     "del-cli": "3.0.0",
