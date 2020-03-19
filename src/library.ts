@@ -4,7 +4,6 @@ import {
   SectionsResponse,
   SectionsDirectory,
   Location,
-  MediaItem,
 } from './libraryInterfaces';
 import { MediaContainer } from './util';
 import { PlexObject } from './base';

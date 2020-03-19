@@ -154,7 +154,6 @@ export abstract class PartialPlexObject extends PlexObject {
     }
 
     this.initpath = key;
-    console.log({ key });
     const data = await this.server.query(key);
     const innerData = data.MediaContainer ? data.MediaContainer : data;
     this._loadFullData(innerData);
@@ -193,8 +192,6 @@ export abstract class Playable extends PartialPlexObject {
   playlistItemID: any;
 
   get isFullObject(): boolean {
-    console.log('_details_key', this._details_key);
-    console.log('initpath', this.initpath);
     return this._details_key === this.initpath || !this.key;
   }
 }
