@@ -22,11 +22,7 @@ jobs:
           node-version: 12
       - uses: plexinc/pms-docker@latest
         with:
-
-      - run: npm install
-      - run: npm run lint
-      - run: npm run test:ci
-      - run: npm run build
+          PLEX_CLAIM: ${{ env.PLEX_CLAIM }}
 
   coverage:
     needs: build
