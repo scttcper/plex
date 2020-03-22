@@ -23,6 +23,8 @@ jobs:
       - uses: plexinc/pms-docker@latest
         with:
           PLEX_CLAIM: ${{ env.PLEX_CLAIM }}
+      - run: npm install
+      - run: npm run set-claim-code
 
   coverage:
     needs: build
