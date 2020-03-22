@@ -172,6 +172,17 @@ export class MyPlexAccount {
     return response;
   }
 
+  /**
+   * Returns a str, a new "claim-token", which you can use to register your new Plex Server instance to your account.
+   * @link https://hub.docker.com/r/plexinc/pms-docker/
+   * @link https://www.plex.tv/claim/
+   */
+  async claimToken(): Promise<string> {
+    const url = 'https://plex.tv/api/claim/token.json';
+    const response = await this.query<{ token: string }>(url, 'get', undefined, TIMEOUT);
+    return response.token;
+  }
+
   private _headers(): Record<string, string> {
     const headers = {
       ...BASE_HEADERS,
