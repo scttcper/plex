@@ -7,7 +7,7 @@ async function setup(): Promise<void> {
   ).connect();
   const claimToken = await account.claimToken();
   // https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
-  console.log(`::set-env name=PLEX_CLAIM::${claimToken}`);
+  console.log(`::set-output name=PLEX_CLAIM::${claimToken}`);
 }
 
 setup();
