@@ -15,14 +15,18 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    services:
+      plex:
+        image: plexinc/pms-docker@latest
+        ports:
+          - 32400:32400
+        env:
+          PLEX_CLAIM: ${{ env.PLEX_CLAIM }}
     steps:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
           node-version: 12
-      - uses: plexinc/pms-docker@latest
-        with:
-          PLEX_CLAIM: ${{ env.PLEX_CLAIM }}
       - run: npm install
       - run: npm run set-claim-code
 
