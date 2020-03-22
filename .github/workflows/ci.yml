@@ -11,7 +11,7 @@ jobs:
         with:
           node-version: 12
       - run: npm install
-      - run: npm run setClaim
+      - run: npm run set-claim-code
 
   build:
     runs-on: ubuntu-latest
