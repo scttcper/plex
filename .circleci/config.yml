@@ -3,7 +3,7 @@ jobs:
   test:
     docker:
       - image: circleci/node:12-browsers
-      - image: plexinc/pms-docker
+      - image: linuxserver/plex
         name: plex
     steps:
       - checkout
