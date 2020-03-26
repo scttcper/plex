@@ -28,6 +28,8 @@ async function main() {
   await frame.type('#password', password);
   await frame.click('[type="submit"]');
   await page.waitForNavigation();
+  await page.goto('http://plex:32400/web');
+  await page.waitForNavigation();
   await page.waitForSelector('.next-btn');
   await page.waitFor(5000);
   console.log('clicking');
