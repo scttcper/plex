@@ -225,7 +225,6 @@ export class Library {
       language,
     });
     const url = '/library/sections?' + search.toString();
-    console.log({ url });
     return this.server.query(url, 'post');
   }
 
@@ -341,7 +340,6 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   }
 
   protected _loadData(data: SectionsDirectory): void {
-    console.log('LibrarySection', data);
     this.uuid = data.uuid;
     this.key = data.key;
     this.agent = data.agent;

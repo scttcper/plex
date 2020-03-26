@@ -193,7 +193,6 @@ export class PlexServer {
     }
 
     const url = this.url(path);
-    console.log({ url });
     const response = await got({
       method,
       url,
@@ -203,7 +202,7 @@ export class PlexServer {
       username,
       password,
       retry: 0,
-    }).json<any>();
+    }).json<T>();
 
     return response;
   }

@@ -85,7 +85,6 @@ export class PlexClient {
    */
   async connect(timeout?: number): Promise<void> {
     const data = await this.query(this.key, undefined, undefined, timeout);
-    console.log(data);
   }
 
   /**
@@ -111,7 +110,6 @@ export class PlexClient {
       retry: 0,
     });
 
-    console.log(response.body);
     const xml = await parseStringPromise(response.body);
     return xml;
   }
