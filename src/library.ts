@@ -9,6 +9,7 @@ import { MediaContainer } from './util';
 import { PlexObject } from './base';
 import { Movie, VideoType } from './video';
 import { Class } from 'type-fest';
+import { URLSearchParams, URL } from 'url';
 
 // export type Section = MovieSection | ShowSection;
 export type Section = MovieSection;
@@ -50,7 +51,9 @@ export class Library {
 
   async section<T extends Section = Section>(title: string): Promise<T> {
     const sections = await this.sections();
-    const section = sections.find(s => s.title.toLowerCase() === title.toLowerCase()) as T | undefined;
+    const section = sections.find(s => s.title.toLowerCase() === title.toLowerCase()) as
+      | T
+      | undefined;
     if (!section) {
       throw new Error(`Invalid library section: ${title}`);
     }
@@ -66,6 +69,164 @@ export class Library {
     }
 
     return section;
+  }
+
+  /**
+   * Simplified add for the most common options.
+   *
+   * Parameters:
+   *     name (str): Name of the library
+   *     agent (str): Example com.plexapp.agents.imdb
+   *     type (str): movie, show, # check me
+   *     location (str): /path/to/files
+   *     language (str): Two letter language fx en
+   *     kwargs (dict): Advanced options should be passed as a dict. where the id is the key.
+   *
+   * **Photo Preferences**
+   *
+   *     * **agent** (str): com.plexapp.agents.none
+   *     * **enableAutoPhotoTags** (bool): Tag photos. Default value false.
+   *     * **enableBIFGeneration** (bool): Enable video preview thumbnails. Default value true.
+   *     * **includeInGlobal** (bool): Include in dashboard. Default value true.
+   *     * **scanner** (str): Plex Photo Scanner
+   *
+   * **Movie Preferences**
+   *
+   *     * **agent** (str): com.plexapp.agents.none, com.plexapp.agents.imdb, com.plexapp.agents.themoviedb
+   *     * **enableBIFGeneration** (bool): Enable video preview thumbnails. Default value true.
+   *     * **enableCinemaTrailers** (bool): Enable Cinema Trailers. Default value true.
+   *     * **includeInGlobal** (bool): Include in dashboard. Default value true.
+   *     * **scanner** (str): Plex Movie Scanner, Plex Video Files Scanner
+   *
+   * **IMDB Movie Options** (com.plexapp.agents.imdb)
+   *
+   *     * **title** (bool): Localized titles. Default value false.
+   *     * **extras** (bool): Find trailers and extras automatically (Plex Pass required). Default value true.
+   *     * **only_trailers** (bool): Skip extras which aren't trailers. Default value false.
+   *     * **redband** (bool): Use red band (restricted audiences) trailers when available. Default value false.
+   *     * **native_subs** (bool): Include extras with subtitles in Library language. Default value false.
+   *     * **cast_list** (int): Cast List Source: Default value 1 Possible options: 0:IMDb,1:The Movie Database.
+   *     * **ratings** (int): Ratings Source, Default value 0 Possible options:
+   *       0:Rotten Tomatoes, 1:IMDb, 2:The Movie Database.
+   *     * **summary** (int): Plot Summary Source: Default value 1 Possible options: 0:IMDb,1:The Movie Database.
+   *     * **country** (int): Default value 46 Possible options 0:Argentina, 1:Australia, 2:Austria,
+   *       3:Belgium, 4:Belize, 5:Bolivia, 6:Brazil, 7:Canada, 8:Chile, 9:Colombia, 10:Costa Rica,
+   *       11:Czech Republic, 12:Denmark, 13:Dominican Republic, 14:Ecuador, 15:El Salvador,
+   *       16:France, 17:Germany, 18:Guatemala, 19:Honduras, 20:Hong Kong SAR, 21:Ireland,
+   *       22:Italy, 23:Jamaica, 24:Korea, 25:Liechtenstein, 26:Luxembourg, 27:Mexico, 28:Netherlands,
+   *       29:New Zealand, 30:Nicaragua, 31:Panama, 32:Paraguay, 33:Peru, 34:Portugal,
+   *       35:Peoples Republic of China, 36:Puerto Rico, 37:Russia, 38:Singapore, 39:South Africa,
+   *       40:Spain, 41:Sweden, 42:Switzerland, 43:Taiwan, 44:Trinidad, 45:United Kingdom,
+   *       46:United States, 47:Uruguay, 48:Venezuela.
+   *     * **collections** (bool): Use collection info from The Movie Database. Default value false.
+   *     * **localart** (bool): Prefer artwork based on library language. Default value true.
+   *     * **adult** (bool): Include adult content. Default value false.
+   *     * **usage** (bool): Send anonymous usage data to Plex. Default value true.
+   *
+   * **TheMovieDB Movie Options** (com.plexapp.agents.themoviedb)
+   *
+   *     * **collections** (bool): Use collection info from The Movie Database. Default value false.
+   *     * **localart** (bool): Prefer artwork based on library language. Default value true.
+   *     * **adult** (bool): Include adult content. Default value false.
+   *     * **country** (int): Country (used for release date and content rating). Default value 47 Possible
+   *       options 0:, 1:Argentina, 2:Australia, 3:Austria, 4:Belgium, 5:Belize, 6:Bolivia, 7:Brazil, 8:Canada,
+   *       9:Chile, 10:Colombia, 11:Costa Rica, 12:Czech Republic, 13:Denmark, 14:Dominican Republic, 15:Ecuador,
+   *       16:El Salvador, 17:France, 18:Germany, 19:Guatemala, 20:Honduras, 21:Hong Kong SAR, 22:Ireland,
+   *       23:Italy, 24:Jamaica, 25:Korea, 26:Liechtenstein, 27:Luxembourg, 28:Mexico, 29:Netherlands,
+   *       30:New Zealand, 31:Nicaragua, 32:Panama, 33:Paraguay, 34:Peru, 35:Portugal,
+   *       36:Peoples Republic of China, 37:Puerto Rico, 38:Russia, 39:Singapore, 40:South Africa, 41:Spain,
+   *       42:Sweden, 43:Switzerland, 44:Taiwan, 45:Trinidad, 46:United Kingdom, 47:United States, 48:Uruguay,
+   *       49:Venezuela.
+   *
+   * **Show Preferences**
+   *
+   *     * **agent** (str): com.plexapp.agents.none, com.plexapp.agents.thetvdb, com.plexapp.agents.themoviedb
+   *     * **enableBIFGeneration** (bool): Enable video preview thumbnails. Default value true.
+   *     * **episodeSort** (int): Episode order. Default -1 Possible options: 0:Oldest first, 1:Newest first.
+   *     * **flattenSeasons** (int): Seasons. Default value 0 Possible options: 0:Show,1:Hide.
+   *     * **includeInGlobal** (bool): Include in dashboard. Default value true.
+   *     * **scanner** (str): Plex Series Scanner
+   *
+   * **TheTVDB Show Options** (com.plexapp.agents.thetvdb)
+   *
+   *     * **extras** (bool): Find trailers and extras automatically (Plex Pass required). Default value true.
+   *     * **native_subs** (bool): Include extras with subtitles in Library language. Default value false.
+   *
+   * **TheMovieDB Show Options** (com.plexapp.agents.themoviedb)
+   *
+   *     * **collections** (bool): Use collection info from The Movie Database. Default value false.
+   *     * **localart** (bool): Prefer artwork based on library language. Default value true.
+   *     * **adult** (bool): Include adult content. Default value false.
+   *     * **country** (int): Country (used for release date and content rating). Default value 47 options
+   *       0:, 1:Argentina, 2:Australia, 3:Austria, 4:Belgium, 5:Belize, 6:Bolivia, 7:Brazil, 8:Canada, 9:Chile,
+   *       10:Colombia, 11:Costa Rica, 12:Czech Republic, 13:Denmark, 14:Dominican Republic, 15:Ecuador,
+   *       16:El Salvador, 17:France, 18:Germany, 19:Guatemala, 20:Honduras, 21:Hong Kong SAR, 22:Ireland,
+   *       23:Italy, 24:Jamaica, 25:Korea, 26:Liechtenstein, 27:Luxembourg, 28:Mexico, 29:Netherlands,
+   *       30:New Zealand, 31:Nicaragua, 32:Panama, 33:Paraguay, 34:Peru, 35:Portugal,
+   *       36:Peoples Republic of China, 37:Puerto Rico, 38:Russia, 39:Singapore, 40:South Africa,
+   *       41:Spain, 42:Sweden, 43:Switzerland, 44:Taiwan, 45:Trinidad, 46:United Kingdom, 47:United States,
+   *       48:Uruguay, 49:Venezuela.
+   *
+   * **Other Video Preferences**
+   *
+   *     * **agent** (str): com.plexapp.agents.none, com.plexapp.agents.imdb, com.plexapp.agents.themoviedb
+   *     * **enableBIFGeneration** (bool): Enable video preview thumbnails. Default value true.
+   *     * **enableCinemaTrailers** (bool): Enable Cinema Trailers. Default value true.
+   *     * **includeInGlobal** (bool): Include in dashboard. Default value true.
+   *     * **scanner** (str): Plex Movie Scanner, Plex Video Files Scanner
+   *
+   * **IMDB Other Video Options** (com.plexapp.agents.imdb)
+   *
+   *     * **title** (bool): Localized titles. Default value false.
+   *     * **extras** (bool): Find trailers and extras automatically (Plex Pass required). Default value true.
+   *     * **only_trailers** (bool): Skip extras which aren't trailers. Default value false.
+   *     * **redband** (bool): Use red band (restricted audiences) trailers when available. Default value false.
+   *     * **native_subs** (bool): Include extras with subtitles in Library language. Default value false.
+   *     * **cast_list** (int): Cast List Source: Default value 1 Possible options: 0:IMDb,1:The Movie Database.
+   *     * **ratings** (int): Ratings Source Default value 0 Possible options:
+   *       0:Rotten Tomatoes,1:IMDb,2:The Movie Database.
+   *     * **summary** (int): Plot Summary Source: Default value 1 Possible options: 0:IMDb,1:The Movie Database.
+   *     * **country** (int): Country: Default value 46 Possible options: 0:Argentina, 1:Australia, 2:Austria,
+   *       3:Belgium, 4:Belize, 5:Bolivia, 6:Brazil, 7:Canada, 8:Chile, 9:Colombia, 10:Costa Rica,
+   *       11:Czech Republic, 12:Denmark, 13:Dominican Republic, 14:Ecuador, 15:El Salvador, 16:France,
+   *       17:Germany, 18:Guatemala, 19:Honduras, 20:Hong Kong SAR, 21:Ireland, 22:Italy, 23:Jamaica,
+   *       24:Korea, 25:Liechtenstein, 26:Luxembourg, 27:Mexico, 28:Netherlands, 29:New Zealand, 30:Nicaragua,
+   *       31:Panama, 32:Paraguay, 33:Peru, 34:Portugal, 35:Peoples Republic of China, 36:Puerto Rico,
+   *       37:Russia, 38:Singapore, 39:South Africa, 40:Spain, 41:Sweden, 42:Switzerland, 43:Taiwan, 44:Trinidad,
+   *       45:United Kingdom, 46:United States, 47:Uruguay, 48:Venezuela.
+   *     * **collections** (bool): Use collection info from The Movie Database. Default value false.
+   *     * **localart** (bool): Prefer artwork based on library language. Default value true.
+   *     * **adult** (bool): Include adult content. Default value false.
+   *     * **usage** (bool): Send anonymous usage data to Plex. Default value true.
+   *
+   * **TheMovieDB Other Video Options** (com.plexapp.agents.themoviedb)
+   *
+   *     * **collections** (bool): Use collection info from The Movie Database. Default value false.
+   *     * **localart** (bool): Prefer artwork based on library language. Default value true.
+   *     * **adult** (bool): Include adult content. Default value false.
+   *     * **country** (int): Country (used for release date and content rating). Default
+   *       value 47 Possible options 0:, 1:Argentina, 2:Australia, 3:Austria, 4:Belgium, 5:Belize,
+   *       6:Bolivia, 7:Brazil, 8:Canada, 9:Chile, 10:Colombia, 11:Costa Rica, 12:Czech Republic,
+   *       13:Denmark, 14:Dominican Republic, 15:Ecuador, 16:El Salvador, 17:France, 18:Germany,
+   *       19:Guatemala, 20:Honduras, 21:Hong Kong SAR, 22:Ireland, 23:Italy, 24:Jamaica,
+   *       25:Korea, 26:Liechtenstein, 27:Luxembourg, 28:Mexico, 29:Netherlands, 30:New Zealand,
+   *       31:Nicaragua, 32:Panama, 33:Paraguay, 34:Peru, 35:Portugal,
+   *       36:Peoples Republic of China, 37:Puerto Rico, 38:Russia, 39:Singapore,
+   *       40:South Africa, 41:Spain, 42:Sweden, 43:Switzerland, 44:Taiwan, 45:Trinidad,
+   *       46:United Kingdom, 47:United States, 48:Uruguay, 49:Venezuela.
+   */
+  async add(name = '', type = '', agent = '', scanner = '', location = '', language = 'en') {
+    const search = new URLSearchParams({
+      name,
+      type,
+      agent,
+      scanner,
+      location,
+      language,
+    });
+    const url = '/library/sections?' + search.toString();
+    console.log({ url });
+    return this.server.query(url, 'post');
   }
 
   protected _loadData(data: LibraryRootResponse): void {
@@ -121,11 +282,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   /**
    * @param initpath Relative path requested when retrieving specified `data`
    */
-  constructor(
-    server: PlexServer,
-    data: SectionsDirectory,
-    initpath: string,
-  ) {
+  constructor(server: PlexServer, data: SectionsDirectory, initpath: string) {
     super(server, data, initpath);
     this._loadData(data);
   }

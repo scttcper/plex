@@ -199,7 +199,7 @@ export class PlexServer {
       url,
       headers: requestHeaders,
       timeout: timeout ?? TIMEOUT,
-      cookieJar: this.session,
+      // cookieJar: this.session,
       username,
       password,
       retry: 0,

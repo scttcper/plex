@@ -1,0 +1,56 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: circleci/node:12
+      - image: plexinc/pms-docker
+    steps:
+      - checkout
+      - run:
+          name: npm-install
+          command: npm ci
+      - run:
+          name: claim-server
+          command: npm run claim-server
+      - run:
+          name: add-media
+          command: npm run add-media
+      - run:
+          name: copy
+          command: docker cp plex ./media plex:/data
+      - run:
+          name: test
+          command: npm run test:ci
+          environment:
+            JEST_JUNIT_OUTPUT_DIR: './reports'
+            JEST_JUNIT_OUTPUT_NAME: 'test-results.xml'
+      - store_test_results:
+          path: ./reports
+      - run:
+          name: lint
+          command: npm run lint
+      - run:
+          name: codecov
+          command: bash <(curl -s https://codecov.io/bash)
+  release:
+    docker:
+      - image: circleci/node:12
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npm run build
+      - run: npm run semantic-release
+
+workflows:
+  version: 2
+  test_and_release:
+    # Run the test jobs first, then the release only when all the test jobs are successful
+    jobs:
+      - test
+      - release:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - test

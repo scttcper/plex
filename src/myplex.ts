@@ -7,6 +7,7 @@ import pAny from 'p-any';
 import { TIMEOUT, BASE_HEADERS } from './config';
 import { UserResponse, ResourcesResponse, Connection } from './myplexInterfaces';
 import { PlexServer } from './server';
+import { promisify } from 'util';
 
 const log = debug('plex');
 
@@ -91,9 +92,11 @@ export class MyPlexAccount {
     public username?: string,
     private readonly password?: string,
     public token?: string,
-    readonly session = new CookieJar(),
+    readonly session: any = new CookieJar(),
     private readonly timeout = TIMEOUT,
-  ) {}
+    private baseUrl: string | null = null,
+  ) {
+  }
 
   /**
    * Returns a new :class:`~server.PlexServer` or :class:`~client.PlexClient` object.
@@ -131,7 +134,7 @@ export class MyPlexAccount {
 
   async resources(): Promise<MyPlexResource[]> {
     const data = await this.query<ResourcesResponse[]>(MyPlexResource.key);
-    return data.map(device => new MyPlexResource(device));
+    return data.map(device => new MyPlexResource(device, this.baseUrl));
   }
 
   /**
@@ -163,7 +166,7 @@ export class MyPlexAccount {
       url: new URL(url),
       headers: requestHeaders,
       timeout: timeout ?? TIMEOUT,
-      cookieJar: this.session,
+      // cookieJar: this.session,
       username,
       password,
       retry: 0,
@@ -293,7 +296,7 @@ export class MyPlexResource {
   /** Unknown (possibly True if the resource has synced content?) */
   synced!: boolean;
 
-  constructor(data: ResourcesResponse) {
+  constructor(data: ResourcesResponse, private baseUrl: string | null = null) {
     this._loadData(data);
   }
 
@@ -319,6 +322,10 @@ export class MyPlexResource {
       attemptUrls = [...https, ...http];
     } else {
       attemptUrls = ssl ? https : http;
+    }
+
+    if (this.baseUrl) {
+      attemptUrls.push(this.baseUrl);
     }
 
     // TODO: switch between PlexServer and PlexClient

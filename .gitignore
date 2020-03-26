@@ -38,4 +38,5 @@ dist
 yarn.lock
 
 # my garbage
-src/test.ts
+src/run.ts
+media/**/**.mp4
