@@ -15,7 +15,7 @@ async function main() {
   const page = await browser.newPage();
   await page.waitFor(5000);
   await page.setViewport({ width: 900, height: 1000 });
-  await page.goto('http://localhost:32400/web');
+  await page.goto('http://plex:32400/web');
   // await page.waitForNavigation();
   await page.waitForRequest(request => request.url() === 'https://app.plex.tv/auth/');
   await page.waitFor(5000);
