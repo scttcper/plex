@@ -1,7 +1,5 @@
 version: 2.1
 executorType: docker
-containerInfo:
-  - image: circleci/node:12-browsers
 jobs:
   test:
     docker:
@@ -10,16 +8,25 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Install Docker Compose
-          command: |
-            set -x
-            curl -L https://github.com/docker/compose/releases/download/1.25.4/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
-            chmod +x /usr/local/bin/docker-compose
+          name: Install Docker client
+          command: apk add docker-cli
       - run:
           name: Start container and verify it's working
           command: |
             set -x
-            docker-compose up -d
+            docker run -d \
+              --name plex \
+              -p 32400:32400/tcp \
+              -p 3005:3005/tcp \
+              -p 8324:8324/tcp \
+              -p 32469:32469/tcp \
+              -p 1900:1900/udp \
+              -p 32410:32410/udp \
+              -p 32412:32412/udp \
+              -p 32413:32413/udp \
+              -p 32414:32414/udp \
+              -h ci-plex \
+              plexinc/pms-docker
             # docker-compose will start 1 container, the one with service will be named `plex`
             # we start another container with curl in the same network as `plex`, this way we have
             # all exposed ports from `plex` available on `localhost` in this new container
