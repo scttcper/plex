@@ -13,6 +13,7 @@ async function clear(page, selector): Promise<void> {
 async function main() {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
+  await page.waitFor(5000);
   await page.setViewport({ width: 900, height: 1000 });
   await page.goto('http://localhost:32400/web');
   // await page.waitForNavigation();

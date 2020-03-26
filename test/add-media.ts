@@ -71,13 +71,20 @@ export async function prepareTvDir(): Promise<void> {
 }
 
 export async function createAll(): Promise<void> {
-  // await downloadVideoFile();
-  // await prepareMovieDir();
-  // await prepareTvDir();
+  await downloadVideoFile();
+  await prepareMovieDir();
+  await prepareTvDir();
   const server = await createClient();
   const library = await server.library();
-  // await library.add('Movies', 'movie', 'com.plexapp.agents.imdb', 'Plex Movie Scanner', '/data/movies');
+  await library.add('Movies', 'movie', 'com.plexapp.agents.imdb', 'Plex Movie Scanner', '/data/movies');
   await library.add('TV Shows', 'show', 'com.plexapp.agents.thetvdb', 'Plex Series Scanner', '/data/shows');
 }
 
-createAll();
+if (!module.parent) {
+  createAll()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
+}
