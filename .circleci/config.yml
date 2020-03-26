@@ -1,5 +1,4 @@
 version: 2.1
-executorType: docker
 jobs:
   test:
     docker:
