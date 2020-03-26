@@ -6,8 +6,9 @@ export async function addMedia(): Promise<void> {
   await delay(10000);
   const server = await createClient();
   const library = await server.library();
-  await library.add('Movies', 'movie', 'com.plexapp.agents.imdb', 'Plex Movie Scanner', '/data/movies');
   await library.add('TV Shows', 'show', 'com.plexapp.agents.thetvdb', 'Plex Series Scanner', '/data/shows');
+  await delay(10000);
+  await library.add('Movies', 'movie', 'com.plexapp.agents.imdb', 'Plex Movie Scanner', '/data/movies');
   await delay(10000);
 }
 
