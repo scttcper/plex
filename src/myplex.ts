@@ -355,7 +355,7 @@ export class MyPlexResource {
     this.presence = data.presence;
     this.product = data.product;
     this.productVersion = data.productVersion;
-    this.connections = data.connections.map(connection => new ResourceConnection(connection));
+    this.connections = data.connections?.map(connection => new ResourceConnection(connection)) ?? [];
   }
 }
 
