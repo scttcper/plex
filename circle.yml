@@ -3,9 +3,27 @@ jobs:
   test:
     docker:
       - image: circleci/node:12-browsers
-      - image: plexinc/pms-docker
     steps:
       - checkout
+      - run:
+          name: Install Docker client
+          command: apk add docker-cli
+      - run:
+          name: Install Docker Compose
+          command: |
+            set -x
+            curl -L https://github.com/docker/compose/releases/download/1.25.4/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+      - run:
+          name: Start container and verify it's working
+          command: |
+            set -x
+            docker-compose up -d
+            # docker-compose will start 1 container, the one with service will be named `plex`
+            # we start another container with curl in the same network as `plex`, this way we have
+            # all exposed ports from `plex` available on `localhost` in this new container
+            docker run --network container:plex \
+              appropriate/curl --retry 10 --retry-delay 1 --retry-connrefused http://localhost:32400
       - run:
           name: npm-install
           command: npm ci

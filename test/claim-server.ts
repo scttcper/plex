@@ -10,7 +10,7 @@ async function clear(page, selector): Promise<void> {
 }
 
 // handle setup and association of a plex server to a user account
-(async () => {
+async function main() {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   await page.setViewport({ width: 900, height: 1000 });
@@ -19,7 +19,7 @@ async function clear(page, selector): Promise<void> {
   await page.waitForRequest(request => request.url() === 'https://app.plex.tv/auth/');
   await page.waitFor(5000);
   const elementHandle = await page.$('iframe');
-  const frame = await elementHandle?.contentFrame() as puppeteer.Frame;
+  const frame = (await elementHandle?.contentFrame()) as puppeteer.Frame;
   console.log('clicking');
   await frame.click('[data-qa-id="signIn--email"]');
   await frame.waitFor(1000);
@@ -28,6 +28,7 @@ async function clear(page, selector): Promise<void> {
   await frame.click('[type="submit"]');
   await page.waitForNavigation();
   await page.waitForSelector('.next-btn');
+  await page.waitFor(5000);
   console.log('clicking');
   await page.click('.next-btn');
   console.log('close modal');
@@ -61,4 +62,13 @@ async function clear(page, selector): Promise<void> {
   });
   await frame.waitFor(2000);
   await browser.close();
-})();
+}
+
+if (!module.parent) {
+  main()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
+}

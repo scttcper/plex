@@ -14,5 +14,7 @@ module.exports = {
     'max-params': 0,
     '@typescript-eslint/prefer-readonly': 0,
     '@typescript-eslint/prefer-readonly-parameter-types': 0,
+    '@typescript-eslint/no-unsafe-member-access': 0,
+    '@typescript-eslint/no-unsafe-call': 0,
   },
 };
