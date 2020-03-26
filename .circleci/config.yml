@@ -14,8 +14,11 @@ jobs:
             # docker-compose will start 2 containers, the one with service will be named `contacts`
             # we start another container with curl in the same network as `contacts`, this way we have
             # all exposed ports from `contacts` available on `localhost` in this new container
-            docker run --network container:plex \
-              appropriate/curl --retry 10 --retry-delay 1 --retry-connrefused http://localhost:32400/
+            curl \
+              --retry 5 \
+              --retry-delay 5 \
+              --retry-max-time 40 \
+              'http://localhost:3200/web'
       - run:
           name: npm-install
           command: npm ci
