@@ -11,11 +11,11 @@ jobs:
           name: npm-install
           command: npm ci
       - run:
-          name: claim-server
-          command: npm run claim-server
-      - run:
           name: add-media
           command: npm run add-media
+      - run:
+          name: claim-server
+          command: npm run claim-server
       - run:
           name: copy
           command: docker cp ./media plex:/data
