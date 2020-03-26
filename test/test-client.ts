@@ -14,7 +14,9 @@ export async function createClient(): Promise<PlexServer> {
     undefined,
     'http://localhost:32400',
   ).connect();
-  const plex = await account.resource(servername);
-  const server = await plex.connect();
+  const resources = await account.resources();
+  const sortedResources = resources.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const plex = sortedResources[0];
+  const server = plex.connect();
   return server;
 }

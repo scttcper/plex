@@ -1,21 +1,13 @@
 import puppeteer from 'puppeteer';
-import { username, password, servername } from './test-client';
-
-async function clear(page, selector): Promise<void> {
-  await page.evaluate(selector => {
-    // @ts-ignore
-    // eslint-disable-next-line no-undef
-    document.querySelector(selector).value = '';
-  }, selector);
-}
+import { username, password } from './test-client';
 
 // handle setup and association of a plex server to a user account
 async function main() {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
   await page.waitFor(5000);
   await page.setViewport({ width: 900, height: 1000 });
-  await page.goto('http://plex:32400/web');
+  await page.goto('http://localhost:32400/web');
   // await page.waitForNavigation();
   await page.waitForRequest(request => request.url() === 'https://app.plex.tv/auth/');
   await page.waitFor(5000);
@@ -28,10 +20,8 @@ async function main() {
   await frame.type('#password', password);
   await frame.click('[type="submit"]');
   await page.waitForNavigation();
-  await page.goto('http://plex:32400/web');
-  await page.waitForNavigation();
-  await page.waitForSelector('.next-btn');
   await page.waitFor(5000);
+  await page.waitForSelector('.next-btn');
   console.log('clicking');
   await page.click('.next-btn');
   console.log('close modal');
@@ -39,14 +29,13 @@ async function main() {
   await page.waitForSelector('[data-uid="id-18"]');
   await page.click('[data-uid="id-18"]');
   await page.waitForSelector('#FriendlyName');
-  await clear(page, '#FriendlyName');
-  await page.type('#FriendlyName', servername);
-  console.log('add-section');
+  await page.waitFor(5000);
   await page.evaluate(() => {
     // @ts-ignore
     // eslint-disable-next-line no-undef
     document.querySelector('[type="submit"]').click();
   });
+  console.log('add-section');
   await page.waitForSelector('.add-section-btn');
   await frame.waitFor(2000);
   console.log('btn-primary');
@@ -64,7 +53,7 @@ async function main() {
     document.querySelector('.btn-primary').click();
   });
   await frame.waitFor(2000);
-  await browser.close();
+  // await browser.close();
 }
 
 if (!module.parent) {

@@ -3,8 +3,7 @@ jobs:
   test:
     docker:
       - image: circleci/node:12-browsers
-      - image: plexinc/pms-docker
-        name: plex
+      - image: scttcper/plex-with-media
     steps:
       - checkout
       - run:
@@ -16,9 +15,6 @@ jobs:
       - run:
           name: add-media
           command: npm run add-media
-      - run:
-          name: copy
-          command: docker cp ./media plex:/data
       - run:
           name: test
           command: npm run test:ci
