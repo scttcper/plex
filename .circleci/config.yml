@@ -18,7 +18,7 @@ jobs:
               --retry 5 \
               --retry-delay 5 \
               --retry-max-time 40 \
-              'http://localhost:3200/web'
+              'http://localhost:32400/'
       - run:
           name: npm-install
           command: npm ci
