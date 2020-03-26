@@ -10,6 +10,9 @@ jobs:
           name: npm-install
           command: npm ci
       - run:
+          name: garbage
+          command: docker ps
+      - run:
           name: claim-server
           command: npm run claim-server
       - run:
