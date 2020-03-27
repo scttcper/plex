@@ -50,8 +50,10 @@ workflows:
   test_and_release:
     # Run the test jobs first, then the release only when all the test jobs are successful
     jobs:
-      - test
       - cleanup
+      - test:
+          requires:
+            - cleanup
       - release:
           filters:
             branches:
