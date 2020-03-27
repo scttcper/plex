@@ -25,7 +25,8 @@
     "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverage",
     "semantic-release": "semantic-release",
     "claim-server": "ts-node test/claim-server.ts",
-    "add-media": "ts-node test/add-media.ts"
+    "add-media": "ts-node test/add-media.ts",
+    "test-cleanup": "ts-node test/test-cleanup.ts"
   },
   "dependencies": {
     "debug": "^4.1.1",

@@ -1,5 +1,5 @@
 import got from 'got';
-import { URL } from 'url';
+import { URL, URLSearchParams } from 'url';
 import debug from 'debug';
 import { CookieJar } from 'tough-cookie';
 import pAny from 'p-any';
@@ -8,6 +8,7 @@ import { TIMEOUT, BASE_HEADERS } from './config';
 import { UserResponse, ResourcesResponse, Connection } from './myplexInterfaces';
 import { PlexServer } from './server';
 import { promisify } from 'util';
+import { PlexObject } from './base';
 
 const log = debug('plex');
 
@@ -95,8 +96,7 @@ export class MyPlexAccount {
     readonly session: any = new CookieJar(),
     private readonly timeout = TIMEOUT,
     private baseUrl: string | null = null,
-  ) {
-  }
+  ) {}
 
   /**
    * Returns a new :class:`~server.PlexServer` or :class:`~client.PlexClient` object.
@@ -134,7 +134,7 @@ export class MyPlexAccount {
 
   async resources(): Promise<MyPlexResource[]> {
     const data = await this.query<ResourcesResponse[]>(MyPlexResource.key);
-    return data.map(device => new MyPlexResource(device, this.baseUrl));
+    return data.map(device => new MyPlexResource(this, device, this.baseUrl));
   }
 
   /**
@@ -186,7 +186,7 @@ export class MyPlexAccount {
     return response.token;
   }
 
-  private _headers(): Record<string, string> {
+  _headers(): Record<string, string> {
     const headers = {
       ...BASE_HEADERS,
       'Content-type': 'application/json',
@@ -296,7 +296,11 @@ export class MyPlexResource {
   /** Unknown (possibly True if the resource has synced content?) */
   synced!: boolean;
 
-  constructor(data: ResourcesResponse, private baseUrl: string | null = null) {
+  constructor(
+    public readonly account: MyPlexAccount,
+    data: ResourcesResponse,
+    private baseUrl: string | null = null,
+  ) {
     this._loadData(data);
   }
 
@@ -339,6 +343,12 @@ export class MyPlexResource {
     return result;
   }
 
+  /** Remove this device from your account */
+  async delete(): Promise<void> {
+    const key = `https://plex.tv/api/servers/${this.clientIdentifier}?X-Plex-Client-Identifier=${BASE_HEADERS['X-Plex-Client-Identifier']}&X-Plex-Token=${this.accessToken}`;
+    await got.delete(key, { retry: 0 });
+  }
+
   private _loadData(data: ResourcesResponse): void {
     this.name = data.name;
     this.accessToken = data.accessToken ?? '';
@@ -355,7 +365,8 @@ export class MyPlexResource {
     this.presence = data.presence;
     this.product = data.product;
     this.productVersion = data.productVersion;
-    this.connections = data.connections?.map(connection => new ResourceConnection(connection)) ?? [];
+    this.connections =
+      data.connections?.map(connection => new ResourceConnection(connection)) ?? [];
   }
 }
 

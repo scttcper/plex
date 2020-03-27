@@ -29,6 +29,13 @@ jobs:
       - run:
           name: codecov
           command: bash <(curl -s https://codecov.io/bash)
+  cleanup:
+    docker:
+      - image: circleci/node:12-browsers
+    steps:
+      - checkout:
+      - run: npm ci
+      - run: npm run test-cleanup
   release:
     docker:
       - image: circleci/node:12
@@ -44,6 +51,7 @@ workflows:
     # Run the test jobs first, then the release only when all the test jobs are successful
     jobs:
       - test
+      - cleanup
       - release:
           filters:
             branches:
