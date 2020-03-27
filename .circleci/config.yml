@@ -33,7 +33,7 @@ jobs:
     docker:
       - image: circleci/node:12-browsers
     steps:
-      - checkout:
+      - checkout
       - run: npm ci
       - run: npm run test-cleanup
   release:
