@@ -1,2 +1,6 @@
 FROM plexinc/pms-docker
-COPY --chown=plex . /data
+run mkdir /data/movies
+run mkdir /data/shows
+COPY --chown=plex ./movies /data/movies
+COPY --chown=plex ./shows /data/shows
+RUN chown -R plex:users /data

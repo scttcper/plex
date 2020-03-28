@@ -9,7 +9,7 @@ import { MediaContainer } from './util';
 import { PlexObject } from './base';
 import { Movie, VideoType } from './video';
 import { Class } from 'type-fest';
-import { URLSearchParams, URL } from 'url';
+import { URLSearchParams } from 'url';
 
 // export type Section = MovieSection | ShowSection;
 export type Section = MovieSection;
