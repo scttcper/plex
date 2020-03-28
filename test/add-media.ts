@@ -9,7 +9,7 @@ export async function addMedia(): Promise<void> {
   await library.add('TV Shows', 'show', 'com.plexapp.agents.thetvdb', 'Plex Series Scanner', '/data/shows');
   await delay(5000);
   await library.add('Movies', 'movie', 'com.plexapp.agents.imdb', 'Plex Movie Scanner', '/data/movies');
-  await delay(10000);
+  await delay(45000);
 }
 
 if (!module.parent) {
