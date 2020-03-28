@@ -7,8 +7,9 @@ export async function addMedia(): Promise<void> {
   const server = await createClient();
   const library = await server.library();
   await library.add('Movies', 'movie', 'com.plexapp.agents.imdb', 'Plex Movie Scanner', '/data/movies');
-  await library.add('TV Shows', 'show', 'com.plexapp.agents.thetvdb', 'Plex Series Scanner', '/data/shows');
-  await delay(60 * 1000 * 4);
+  // tv shows not working in circleci for some reason
+  // await library.add('TV Shows', 'show', 'com.plexapp.agents.thetvdb', 'Plex Series Scanner', '/data/shows');
+  await delay(60 * 1000 * 2);
 }
 
 if (!module.parent) {
