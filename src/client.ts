@@ -1,4 +1,3 @@
-import { CookieJar } from 'tough-cookie';
 import { TIMEOUT } from './config';
 import got from 'got';
 import { URL, URLSearchParams } from 'url';
@@ -60,10 +59,6 @@ export class PlexClient {
    * Token used to access this client
    */
   _token: string | null = null;
-  /**
-   * tough-cookie Session  of plex client
-   */
-  _session!: any;
   TAG = 'Player';
   key = '/resources';
 
@@ -76,7 +71,6 @@ export class PlexClient {
       }
     }
 
-    this._session = options.session ?? new CookieJar();
     this._baseurl = options.baseurl ?? 'http://localhost:32400';
   }
 

@@ -10,6 +10,7 @@ import { PlexObject } from './base';
 import { Movie, VideoType } from './video';
 import { Class } from 'type-fest';
 import { URLSearchParams } from 'url';
+import { fetchItem } from './baseFunctionality';
 
 // export type Section = MovieSection | ShowSection;
 export type Section = MovieSection;
@@ -292,7 +293,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async get(title: string): Promise<SectionVideoType> {
     const key = `/library/sections/${this.key}/all?title=${title}`;
-    const data = await this.fetchItem(key, { title__iexact: title });
+    const data = await fetchItem(this.server, key, { title__iexact: title });
     return new this.VIDEO_TYPE(this.server, data, key);
   }
 
@@ -302,15 +303,32 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async analyze(): Promise<void> {
     const key = `/library/sections/${this.key}/analyze`;
-    this.server.query(key, 'post');
+    await this.server.query(key, 'post');
   }
+
+  /**
+   * If a section has items in the Trash, use this option to empty the Trash
+   */
+  async emptyTrash(): Promise<void> {
+    const key = `/library/sections/${this.key}/emptyTrash`;
+    await this.server.query(key, 'put');
+  }
+
+  /**
+   * Get Play History for this library Section for the owner.
+   * @param maxresults (int): Only return the specified number of results (optional).
+   * @param mindate (datetime): Min datetime to return results from.
+   */
+  // async history(maxresults=9999999, mindate?: Date): Promise<any> {
+  //   return this.server.history(maxresults=maxresults, mindate=mindate, librarySectionID=self.key, accountID=1)
+  // }
 
   /**
    * Scan this section for new media.
    */
   async update(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh`;
-    this.server.query(key);
+    await this.server.query(key);
   }
 
   /**
@@ -318,7 +336,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async cancelUpdate(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh`;
-    this.server.query(key, 'delete');
+    await this.server.query(key, 'delete');
   }
 
   /**
@@ -327,7 +345,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async refresh(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh?force=1`;
-    this.server.query(key);
+    await this.server.query(key);
   }
 
   /**
@@ -336,7 +354,32 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async deleteMediaPreviews(): Promise<void> {
     const key = `/library/sections/${this.key}/indexes`;
-    this.server.query(key, 'delete');
+    await this.server.query(key, 'delete');
+  }
+
+  /** Delete a library section. */
+  async delete(): Promise<void> {
+    const key = `/library/sections/${this.key}`;
+    await this.server.query(key, 'delete');
+  }
+
+  /**
+   * Edit a library
+   * @param kwargs object of settings to edit
+   */
+  async edit(kwargs: Record<string, string>): Promise<MovieSection> {
+    const params = new URLSearchParams(kwargs);
+    const part = `/library/sections/${this.key}?${params.toString()}`;
+    await this.server.query(part, 'put');
+    const library = await this.server.library();
+    const sections = await library.sections();
+    for (const section of sections) {
+      if (section.key === this.key) {
+        return section;
+      }
+    }
+
+    throw new Error('Couldn\'t update section');
   }
 
   protected _loadData(data: SectionsDirectory): void {

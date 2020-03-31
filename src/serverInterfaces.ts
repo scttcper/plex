@@ -62,3 +62,29 @@ export interface Directory {
   key: string;
   title: string;
 }
+
+export interface HistoryMediaContainer {
+  size: number;
+  totalSize: number;
+  offset: number;
+  Metadata: HistoryMetadatum[];
+}
+
+export interface HistoryMetadatum {
+  key: string;
+  parentKey?: string;
+  grandparentKey?: string;
+  title: string;
+  grandparentTitle?: string;
+  type: string;
+  thumb: string;
+  parentThumb?: string;
+  grandparentThumb?: string;
+  grandparentArt?: string;
+  index?: number;
+  parentIndex?: number;
+  originallyAvailableAt?: Date;
+  viewedAt: number;
+  accountID: number;
+  deviceID: number;
+}

@@ -1,4 +1,5 @@
 import { PlexObject } from './base';
+import { fetchItems } from './baseFunctionality';
 
 /**
  * Base class for media tags used for filtering and searching your library
@@ -23,7 +24,7 @@ abstract class MediaTag extends PlexObject {
       throw new Error(`Key is not defined for this tag: ${this.tag}`);
     }
 
-    return this.fetchItems(this.key);
+    return fetchItems(this.server, this.key);
   }
 
   protected _loadData(data: any): void {

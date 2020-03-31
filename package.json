@@ -3,6 +3,9 @@
   "version": "0.0.0-placeholder",
   "description": "plex api client in typescript",
   "author": "Scott Cooper <scttcper@gmail.com>",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "repository": "typectrl/plex",
   "main": "./dist/index.js",
@@ -29,19 +32,18 @@
     "test-cleanup": "ts-node test/test-cleanup.ts"
   },
   "dependencies": {
+    "@ctrl/mac-address": "^1.0.2",
     "debug": "^4.1.1",
     "getmac": "^5.1.0",
     "got": "^10.7.0",
-    "macaddr": "0.0.1",
     "p-any": "^3.0.0",
-    "tough-cookie": "3.0.1",
     "type-fest": "^0.12.0",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
     "@types/jest": "25.1.4",
     "@types/lodash": "4.14.149",
-    "@types/node": "13.9.2",
+    "@types/node": "13.9.5",
     "@types/puppeteer": "^2.0.1",
     "@types/tough-cookie": "2.3.6",
     "@types/xml2js": "0.4.5",
@@ -51,13 +53,13 @@
     "eslint": "6.8.0",
     "eslint-config-xo-space": "0.24.0",
     "eslint-config-xo-typescript": "0.27.0",
-    "eslint-plugin-import": "2.20.1",
-    "jest": "25.1.0",
+    "eslint-plugin-import": "2.20.2",
+    "jest": "25.2.4",
     "jest-junit": "10.0.0",
     "lodash": "4.17.15",
     "puppeteer": "2.1.1",
     "semantic-release": "17.0.4",
-    "ts-jest": "25.2.1",
+    "ts-jest": "25.3.0",
     "ts-node": "8.8.1",
     "typescript": "3.8.3"
   },

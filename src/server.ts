@@ -1,13 +1,13 @@
 import got from 'got';
 import { URL, URLSearchParams } from 'url';
 import debug from 'debug';
-import { CookieJar } from 'tough-cookie';
 
-import { TIMEOUT, BASE_HEADERS } from './config';
-import { ServerRootResponse } from './serverInterfaces';
+import { TIMEOUT, BASE_HEADERS, X_PLEX_CONTAINER_SIZE } from './config';
+import { ServerRootResponse, HistoryMediaContainer, HistoryMetadatum } from './serverInterfaces';
 import { Library } from './library';
 import { MediaContainer } from './util';
 import { LibraryRootResponse } from './libraryInterfaces';
+import { fetchItems } from './baseFunctionality';
 
 const log = debug('plex');
 
@@ -131,12 +131,7 @@ export class PlexServer {
   pushNotifications!: boolean;
   _library?: Library;
 
-  constructor(
-    public readonly baseurl,
-    public readonly token,
-    public readonly session = new CookieJar(),
-    public readonly timeout,
-  ) {}
+  constructor(public readonly baseurl, public readonly token, public readonly timeout) {}
 
   async connect(): Promise<void> {
     const data = await this.query<MediaContainer<ServerRootResponse>>(
@@ -198,13 +193,73 @@ export class PlexServer {
       url,
       headers: requestHeaders,
       timeout: timeout ?? TIMEOUT,
-      // cookieJar: this.session,
       username,
       password,
       retry: 0,
     }).json<T>();
 
     return response;
+  }
+
+  /**
+   * Returns a list of media items from watched history. If there are many results, they will
+   * be fetched from the server in batches of X_PLEX_CONTAINER_SIZE amounts. If you're only
+   * looking for the first <num> results, it would be wise to set the maxresults option to that
+   * amount so this functions doesn't iterate over all results on the server.
+   * @param maxresults Only return the specified number of results (optional).
+   * @param mindate Min datetime to return results from. This really helps speed up the result listing. For example: datetime.now() - timedelta(days=7)
+   * @param ratingKey request history for a specific ratingKey item.
+   * @param accountId request history for a specific account ID.
+   * @param librarySectionId request history for a specific library section ID.
+   */
+  async history(
+    maxresults = 9999999,
+    mindate?: Date,
+    ratingKey?: number | string,
+    accountId?: number | string,
+    librarySectionId?: number | string,
+  ): Promise<HistoryMetadatum[]> {
+    const args: Record<string, string> = { sort: 'viewedAt:desc' };
+    if (ratingKey !== undefined) {
+      args.metadataItemID = ratingKey.toString();
+    }
+
+    if (accountId !== undefined) {
+      args.accountID = accountId.toString();
+    }
+
+    if (librarySectionId !== undefined) {
+      args.librarySectionID = librarySectionId.toString();
+    }
+
+    if (mindate !== undefined) {
+      args['viewedAt>'] = mindate.getTime().toString();
+    }
+
+    args['X-Plex-Container-Start'] = '0';
+    args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxresults).toString();
+
+    let results: HistoryMetadatum[] = [];
+    let key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
+    let raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
+    const totalResults = raw.MediaContainer.totalSize;
+    results = results.concat(raw.MediaContainer.Metadata);
+    while (
+      results.length <= totalResults &&
+      X_PLEX_CONTAINER_SIZE === raw.MediaContainer.size &&
+      maxresults > results.length
+    ) {
+      args['X-Plex-Container-Start'] = (
+        Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
+      ).toString();
+      console.log(args['X-Plex-Container-Start']);
+      key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
+      // eslint-disable-next-line no-await-in-loop
+      raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
+      results = results.concat(raw.MediaContainer.Metadata);
+    }
+
+    return results;
   }
 
   /**

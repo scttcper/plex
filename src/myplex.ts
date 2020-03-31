@@ -1,7 +1,6 @@
 import got from 'got';
 import { URL, URLSearchParams } from 'url';
 import debug from 'debug';
-import { CookieJar } from 'tough-cookie';
 import pAny from 'p-any';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
@@ -93,7 +92,6 @@ export class MyPlexAccount {
     public username?: string,
     private readonly password?: string,
     public token?: string,
-    readonly session: any = new CookieJar(),
     private readonly timeout = TIMEOUT,
     private baseUrl: string | null = null,
   ) {}
@@ -166,7 +164,6 @@ export class MyPlexAccount {
       url: new URL(url),
       headers: requestHeaders,
       timeout: timeout ?? TIMEOUT,
-      // cookieJar: this.session,
       username,
       password,
       retry: 0,
@@ -251,7 +248,7 @@ export async function connect(
   token: string,
   timeout: number,
 ): Promise<PlexServer> {
-  const device = cls(url, token, undefined, timeout);
+  const device = cls(url, token, timeout);
   await device.connect();
   return device;
 }
