@@ -4,6 +4,8 @@ import {
   SectionsResponse,
   SectionsDirectory,
   Location,
+  MediaItem,
+  MediaItems,
 } from './libraryInterfaces';
 import { MediaContainer } from './util';
 import { PlexObject } from './base';
@@ -293,7 +295,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async get(title: string): Promise<SectionVideoType> {
     const key = `/library/sections/${this.key}/all?title=${title}`;
-    const data = await fetchItem(this.server, key, { title__iexact: title });
+    const data = await fetchItem<MediaItems>(this.server, key, { title__iexact: title });
     return new this.VIDEO_TYPE(this.server, data, key);
   }
 

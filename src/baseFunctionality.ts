@@ -36,10 +36,11 @@ export async function fetchItem(
   ekey: string | number,
   options?: Record<string, string | number>,
   cls?: any,
-): Promise<MediaItem> {
+): Promise<any> {
   const key = typeof ekey === 'number' ? `/library/metadata/${ekey.toString()}` : ekey;
-  const response = await server.query<MediaContainer<MediaItems>>(key);
-  const elems = response.MediaContainer.Metadata;
+  const response = await server.query<MediaContainer<any>>(key);
+  const containerKey = cls?.TAG ?? 'Metadata';
+  const elems = response.MediaContainer[containerKey] ?? [];
   for (const elem of elems) {
     if (checkAttrs(elem, options)) {
       return elem;
@@ -59,10 +60,11 @@ export async function fetchItems(
   ekey: string,
   options?: Record<string, string | number>,
   cls?: any,
-): Promise<any> {
-  const data = await server.query(ekey);
-  console.log(JSON.stringify(data));
-  const items = findItems(data, options, cls);
+): Promise<any[]> {
+  const response = await server.query<MediaContainer<any>>(ekey);
+  const containerKey = cls?.TAG ?? 'Metadata';
+  const elems = response.MediaContainer[containerKey] ?? [];
+  const items = findItems(elems, options, cls);
   return items;
 }
 
@@ -90,7 +92,7 @@ export function findItems(data: any[], options: Record<string, string | number> 
   return items;
 }
 
-function checkAttrs(elem: MediaItem, obj: Record<string, string | number> = {}): boolean {
+function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
     const [key, op, operator] = getAttrOperator(attr);

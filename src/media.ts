@@ -19,13 +19,13 @@ abstract class MediaTag extends PlexObject {
   abstract TAG: string;
   abstract FILTER: string;
 
-  async items(): Promise<any[]> {
-    if (!this.key) {
-      throw new Error(`Key is not defined for this tag: ${this.tag}`);
-    }
+  // async items(): Promise<any[]> {
+  //   if (!this.key) {
+  //     throw new Error(`Key is not defined for this tag: ${this.tag}`);
+  //   }
 
-    return fetchItems(this.server, this.key);
-  }
+  //   return fetchItems(this.server, this.key);
+  // }
 
   protected _loadData(data: any): void {
     this.key = data.key;
@@ -89,4 +89,23 @@ export class Chapter extends MediaTag {
 export class Collection extends MediaTag {
   TAG = 'Collection' as const;
   FILTER = 'collection' as const;
+}
+
+export class Optimized extends PlexObject {
+  TAG = 'Item';
+  id!: string;
+  composite!: any;
+  title!: any;
+  type!: any;
+  target!: any;
+  targetTagID!: any;
+
+  protected _loadData(data: any) {
+    this.id = data.id;
+    this.composite = data.composite;
+    this.title = data.title;
+    this.type = data.type;
+    this.target = data.target;
+    this.targetTagID = data.targetTagID;
+  }
 }

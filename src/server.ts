@@ -3,11 +3,12 @@ import { URL, URLSearchParams } from 'url';
 import debug from 'debug';
 
 import { TIMEOUT, BASE_HEADERS, X_PLEX_CONTAINER_SIZE } from './config';
-import { ServerRootResponse, HistoryMediaContainer, HistoryMetadatum } from './serverInterfaces';
+import { ServerRootResponse, HistoryMediaContainer, HistoryMetadatum, PlaylistMediaContainer } from './serverInterfaces';
 import { Library } from './library';
-import { MediaContainer } from './util';
+import { MediaContainer, SEARCHTYPES } from './util';
 import { LibraryRootResponse } from './libraryInterfaces';
-import { fetchItems } from './baseFunctionality';
+import { fetchItems, fetchItem } from './baseFunctionality';
+import { Optimized } from './media';
 
 const log = debug('plex');
 
@@ -164,6 +165,37 @@ export class PlexServer {
   }
 
   /**
+   * Returns a list of media items or filter categories from the resulting
+   * `Hub Search <https://www.plex.tv/blog/seek-plex-shall-find-leveling-web-app/>`_
+   * against all items in your Plex library. This searches genres, actors, directors,
+   * playlists, as well as all the obvious media titles. It performs spell-checking
+   * against your search terms (because KUROSAWA is hard to spell). It also provides
+   * contextual search results. So for example, if you search for 'Pernice', it’ll
+   * return 'Pernice Brothers' as the artist result, but we’ll also go ahead and
+   * return your most-listened to albums and tracks from the artist. If you type
+   * 'Arnold' you’ll get a result for the actor, but also the most recently added
+   * movies he’s in.
+   * @param query Query to use when searching your library.
+   * @param mediatype Optionally limit your search to the specified media type.
+   * @param limit Optionally limit to the specified number of results per Hub.
+   */
+  async search(query: string, mediatype?: keyof typeof SEARCHTYPES, limit?: number): Promise<any> {
+    const params: Record<string, string> = { query };
+
+    if (mediatype) {
+      params.section = SEARCHTYPES[mediatype].toString();
+    }
+
+    if (limit) {
+      params.limit = limit.toString();
+    }
+
+    const key = '/hubs/search?' + new URLSearchParams(params).toString();
+    const hubs = await fetchItems(this, key, undefined);
+    return hubs.map(hub => hub.items);
+  }
+
+  /**
    * Main method used to handle HTTPS requests to the Plex server. This method helps
    * by encoding the response to utf-8 and parsing the returned XML into and
    * ElementTree object. Returns None if no data exists in the response.
@@ -260,6 +292,21 @@ export class PlexServer {
     }
 
     return results;
+  }
+
+  /**
+   * Returns a list of all :class:`~plexapi.playlist.Playlist` objects saved on the server.
+   * TODO: return playlist objects
+   */
+  async playlists(): Promise<MediaContainer<PlaylistMediaContainer>> {
+    // TODO: Add sort and type options?
+    // /playlists/all?type=15&sort=titleSort%3Aasc&playlistType=video&smart=0
+    return this.query('/playlists');
+  }
+
+  async optimizedItems(): Promise<Optimized> {
+    const backgroundProcessing = await fetchItem<PlaylistMediaContainer>(this, '/playlists?type=42');
+    return fetchItems(this, backgroundProcessing.key, undefined, Optimized);
   }
 
   /**

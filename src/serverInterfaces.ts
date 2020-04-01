@@ -88,3 +88,19 @@ export interface HistoryMetadatum {
   accountID: number;
   deviceID: number;
 }
+
+export interface PlaylistMediaContainer {
+  size: number;
+  Metadata: PlaylistMetadata[];
+}
+
+export interface PlaylistMetadata {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  type: string;
+  title: string;
+  summary: string;
+  playlistType: string;
+  addedAt: number;
+}
