@@ -10,7 +10,6 @@ export async function createAccount(): Promise<MyPlexAccount> {
     password,
     undefined,
     undefined,
-    undefined,
     'http://localhost:32400',
   ).connect();
   return account;
