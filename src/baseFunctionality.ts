@@ -1,6 +1,5 @@
 import { PlexServer } from './server';
 import { MediaContainer } from './util';
-import { MediaItems, MediaItem } from './libraryInterfaces';
 
 const OPERATORS = {
   exact: (v: string | number, q: string | number) => v === q,
@@ -55,16 +54,16 @@ export async function fetchItem(
  * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
  * on how this is used.
  */
-export async function fetchItems(
+export async function fetchItems<T = any>(
   server: PlexServer,
   ekey: string,
   options?: Record<string, string | number>,
-  cls?: any,
-): Promise<any[]> {
+  Cls?: any,
+): Promise<T[]> {
   const response = await server.query<MediaContainer<any>>(ekey);
-  const containerKey = cls?.TAG ?? 'Metadata';
+  const containerKey: string = Cls?.TAG ?? 'Metadata';
   const elems = response.MediaContainer[containerKey] ?? [];
-  const items = findItems(elems, options, cls);
+  const items = findItems(elems, options, Cls, server);
   return items;
 }
 
@@ -73,19 +72,24 @@ export async function fetchItems(
  * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
  * on how this is used.
  */
-export function findItems(data: any[], options: Record<string, string | number> = {}, cls?: any): any[] {
-  if (cls?.TAG && !('tag' in options)) {
-    options.etag = cls.TAG;
-  }
+export function findItems(
+  data: any[],
+  options: Record<string, string | number> = {},
+  Cls?: any,
+  server?: PlexServer,
+): any[] {
+  // if (Cls?.TAG && !('tag' in options)) {
+  //   options.etag = Cls.TAG;
+  // }
 
-  if (cls?.TYPE && !('type' in options)) {
-    options.type = cls.TYPE;
-  }
+  // if (Cls?.TYPE && !('type' in options)) {
+  //   options.type = Cls.TYPE;
+  // }
 
   const items: any[] = [];
   for (const elem of data) {
     if (checkAttrs(elem, options)) {
-      items.push(elem);
+      items.push(Cls === undefined ? elem : new Cls(server, elem));
     }
   }
 
@@ -95,6 +99,7 @@ export function findItems(data: any[], options: Record<string, string | number> 
 function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [key, op, operator] = getAttrOperator(attr);
     const value = elem[key] as string;
     attrsFound[key] = operator(value, query);
@@ -103,7 +108,9 @@ function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): bool
   return Object.values(attrsFound).every(x => x);
 }
 
-function getAttrOperator(attr: string): [string, keyof typeof OPERATORS, (a: any, b: any) => boolean] {
+function getAttrOperator(
+  attr: string,
+): [string, keyof typeof OPERATORS, (a: any, b: any) => boolean] {
   // OPERATORS
   for (const [op, operator] of Object.entries(OPERATORS)) {
     if (attr.endsWith(`__${op}`)) {

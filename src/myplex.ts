@@ -1,15 +1,10 @@
 import got from 'got';
-import { URL, URLSearchParams } from 'url';
-import debug from 'debug';
+import { URL } from 'url';
 import pAny from 'p-any';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
 import { UserResponse, ResourcesResponse, Connection } from './myplexInterfaces';
 import { PlexServer } from './server';
-import { promisify } from 'util';
-import { PlexObject } from './base';
-
-const log = debug('plex');
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -105,13 +100,13 @@ export class MyPlexAccount {
    */
   async connect(): Promise<MyPlexAccount> {
     if (!this.token) {
-      log('Logging in with username', { username: this.username });
+      // log('Logging in with username', { username: this.username });
       const data = await this._signin(this.username, this.password, this.timeout);
       this._loadData(data);
       return this;
     }
 
-    log('Logging in with token');
+    // log('Logging in with token');
     const data = await this.query<UserResponse>(MyPlexAccount.key);
     this._loadData(data);
     return this;

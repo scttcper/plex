@@ -1,16 +1,13 @@
 import got from 'got';
 import { URL, URLSearchParams } from 'url';
-import debug from 'debug';
 
 import { TIMEOUT, BASE_HEADERS, X_PLEX_CONTAINER_SIZE } from './config';
 import { ServerRootResponse, HistoryMediaContainer, HistoryMetadatum, PlaylistMediaContainer } from './serverInterfaces';
-import { Library } from './library';
+import { Library, Hub } from './library';
 import { MediaContainer, SEARCHTYPES } from './util';
 import { LibraryRootResponse } from './libraryInterfaces';
 import { fetchItems, fetchItem } from './baseFunctionality';
 import { Optimized } from './media';
-
-const log = debug('plex');
 
 /**
  * This is the main entry point to interacting with a Plex server. It allows you to
@@ -179,7 +176,7 @@ export class PlexServer {
    * @param mediatype Optionally limit your search to the specified media type.
    * @param limit Optionally limit to the specified number of results per Hub.
    */
-  async search(query: string, mediatype?: keyof typeof SEARCHTYPES, limit?: number): Promise<any> {
+  async search(query: string, mediatype?: keyof typeof SEARCHTYPES, limit?: number): Promise<Hub[]> {
     const params: Record<string, string> = { query };
 
     if (mediatype) {
@@ -191,8 +188,8 @@ export class PlexServer {
     }
 
     const key = '/hubs/search?' + new URLSearchParams(params).toString();
-    const hubs = await fetchItems(this, key, undefined);
-    return hubs.map(hub => hub.items);
+    const hubs = await fetchItems<Hub>(this, key, undefined, Hub);
+    return hubs;
   }
 
   /**
@@ -304,9 +301,11 @@ export class PlexServer {
     return this.query('/playlists');
   }
 
-  async optimizedItems(): Promise<Optimized> {
-    const backgroundProcessing = await fetchItem<PlaylistMediaContainer>(this, '/playlists?type=42');
-    return fetchItems(this, backgroundProcessing.key, undefined, Optimized);
+  /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
+  async optimizedItems(): Promise<Optimized[]> {
+    const backgroundProcessing = await fetchItem(this, '/playlists?type=42');
+    const items = await fetchItems<Optimized>(this, backgroundProcessing.key, undefined, Optimized);
+    return items;
   }
 
   /**

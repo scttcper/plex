@@ -55,6 +55,7 @@ export class PlexClient {
    * HTTP address of the client
    */
   _baseurl: string | null = null;
+  _initpath?: string;
   /**
    * Token used to access this client
    */
@@ -74,12 +75,46 @@ export class PlexClient {
     this._baseurl = options.baseurl ?? 'http://localhost:32400';
   }
 
-  /**
-   * Alias of reload as any subsequent requests to this client will be made directly to the device even if the object attributes were initially populated from a PlexServer.
-   */
-  async connect(timeout?: number): Promise<void> {
-    const data = await this.query(this.key, undefined, undefined, timeout);
-  }
+  // TODO: lol
+  // /**
+  //  * any subsequent requests to this client will be made directly to the device even if the object attributes were initially populated from a PlexServer.
+  //  */
+  // async reload(timeout?: number): Promise<void> {
+  //   if (!this.key) {
+  //     throw new Error('Cannot reload an object not built from a URL.');
+  //   }
+
+  //   this._initpath = this.key;
+  //   const data = await this.query(this.key, undefined, undefined, timeout);
+  //   this._loadData(data);
+  // }
+
+  // _loadData(data: any) {
+  //   console.log({ data });
+  //   // this.deviceClass = data.attrib.get('deviceClass')
+  //   // this.machineIdentifier = data.attrib.get('machineIdentifier')
+  //   // this.product = data.attrib.get('product')
+  //   // this.protocol = data.attrib.get('protocol')
+  //   // this.protocolCapabilities = data.attrib.get('protocolCapabilities', '').split(',')
+  //   // this.protocolVersion = data.attrib.get('protocolVersion')
+  //   // this.platform = data.attrib.get('platform')
+  //   // this.platformVersion = data.attrib.get('platformVersion')
+  //   // this.title = data.attrib.get('title') or data.attrib.get('name')
+  //   // # Active session details
+  //   // # Since protocolCapabilities is missing from /sessions we cant really control this player without
+  //   // # creating a client manually.
+  //   // # Add this in next breaking release.
+  //   // # if this._initpath == 'status/sessions':
+  //   // this.device = data.attrib.get('device')         # session
+  //   // this.model = data.attrib.get('model')           # session
+  //   // this.state = data.attrib.get('state')           # session
+  //   // this.vendor = data.attrib.get('vendor')         # session
+  //   // this.version = data.attrib.get('version')       # session
+  //   // this.local = utils.cast(bool, data.attrib.get('local', 0))
+  //   // this.address = data.attrib.get('address')        # session
+  //   // this.remotePublicAddress = data.attrib.get('remotePublicAddress')
+  //   // this.userID = data.attrib.get('userID')
+  // }
 
   /**
    * Main method used to handle HTTPS requests to the Plex client. This method helps

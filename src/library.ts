@@ -5,7 +5,6 @@ import {
   SectionsDirectory,
   Location,
   MediaItem,
-  MediaItems,
 } from './libraryInterfaces';
 import { MediaContainer } from './util';
 import { PlexObject } from './base';
@@ -13,6 +12,7 @@ import { Movie, VideoType } from './video';
 import { Class } from 'type-fest';
 import { URLSearchParams } from 'url';
 import { fetchItem } from './baseFunctionality';
+import { SearchResult } from './serverSearchResults';
 
 // export type Section = MovieSection | ShowSection;
 export type Section = MovieSection;
@@ -295,7 +295,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async get(title: string): Promise<SectionVideoType> {
     const key = `/library/sections/${this.key}/all?title=${title}`;
-    const data = await fetchItem<MediaItems>(this.server, key, { title__iexact: title });
+    const data = await fetchItem(this.server, key, { title__iexact: title }) as MediaItem;
     return new this.VIDEO_TYPE(this.server, data, key);
   }
 
@@ -491,3 +491,25 @@ export class MovieSection extends LibrarySection<Movie> {
 //   static CONTENT_TYPE = 'video';
 //   SECTION = Show;
 // }
+
+/** Represents a single Hub (or category) in the PlexServer search */
+export class Hub extends PlexObject {
+  static TAG = 'Hub';
+
+  hubIdentifier!: string;
+  size!: number;
+  more!: boolean;
+  title!: string;
+  type!: string;
+  Directory: SearchResult['Directory'];
+  Metadata: SearchResult['Metadata'];
+
+  _loadData(data: SearchResult) {
+    this.hubIdentifier = data.hubIdentifier;
+    this.size = data.size;
+    this.title = data.title;
+    this.type = data.type;
+    this.Directory = data.Directory;
+    this.Metadata = data.Metadata;
+  }
+}

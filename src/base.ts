@@ -49,9 +49,7 @@ export abstract class PartialPlexObject extends PlexObject {
     this._loadFullData(innerData);
   }
 
-  async section(): Promise<any> {
-
-  }
+  // async section(): Promise<any> {}
 
   get isFullObject(): boolean {
     return !this.key || this.key === this.initpath;
