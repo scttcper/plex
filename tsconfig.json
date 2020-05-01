@@ -11,7 +11,7 @@
     "noUnusedLocals": false,
     "declaration": true,
     "sourceMap": true,
-    "inlineSources": true,
+    "skipLibCheck": true,
     "outDir": "dist"
   }
 }

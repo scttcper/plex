@@ -7,7 +7,7 @@ const OPERATORS = {
   contains: (v: string, q: string) => q.includes(v),
   icontains: (v: string, q) => q.toLowerCase().includes(v.toLowerCase()),
   ne: (v: string, q: string) => v !== q,
-  in: (v: string, q) => v in q,
+  in: (v: string, q: any) => v in q,
   gt: (v: number, q: number) => v > q,
   gte: (v: number, q: number) => v >= q,
   lt: (v: number, q: number) => v < q,

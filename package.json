@@ -32,33 +32,32 @@
     "test-cleanup": "ts-node test/test-cleanup.ts"
   },
   "dependencies": {
-    "@ctrl/mac-address": "^1.0.2",
-    "getmac": "^5.1.0",
-    "got": "^10.7.0",
+    "@ctrl/mac-address": "^2.0.1",
+    "got": "^11.0.3",
     "p-any": "^3.0.0",
-    "type-fest": "^0.12.0",
+    "type-fest": "^0.13.1",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
-    "@types/jest": "25.1.5",
-    "@types/lodash": "4.14.149",
-    "@types/node": "13.11.0",
+    "@types/jest": "25.2.1",
+    "@types/lodash": "4.14.150",
+    "@types/node": "13.13.4",
     "@types/puppeteer": "^2.0.1",
     "@types/xml2js": "0.4.5",
-    "@typescript-eslint/eslint-plugin": "2.26.0",
-    "@typescript-eslint/parser": "2.26.0",
+    "@typescript-eslint/eslint-plugin": "2.30.0",
+    "@typescript-eslint/parser": "2.30.0",
     "del-cli": "3.0.0",
     "eslint": "6.8.0",
     "eslint-config-xo-space": "0.24.0",
-    "eslint-config-xo-typescript": "0.27.0",
+    "eslint-config-xo-typescript": "0.28.0",
     "eslint-plugin-import": "2.20.2",
-    "jest": "25.2.6",
+    "jest": "25.5.3",
     "jest-junit": "10.0.0",
     "lodash": "4.17.15",
-    "puppeteer": "2.1.1",
-    "semantic-release": "17.0.4",
-    "ts-jest": "25.3.0",
-    "ts-node": "8.8.1",
+    "puppeteer": "3.0.2",
+    "semantic-release": "17.0.7",
+    "ts-jest": "25.4.0",
+    "ts-node": "8.9.1",
     "typescript": "3.8.3"
   },
   "jest": {
@@ -69,6 +68,6 @@
     "branch": "master"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=10"
   }
 }

@@ -1,6 +1,5 @@
 import os from 'os';
-import { default as getmac } from 'getmac';
-import { parse as parseMac } from '@ctrl/mac-address';
+import { parseMAC, getMAC } from '@ctrl/mac-address';
 
 // TODO: Load User Defined Config
 // const DEFAULT_CONFIG_PATH = os.path.expanduser('~/.config/plexapi/config.ini');
@@ -22,8 +21,8 @@ export const X_PLEX_PRODUCT = PROJECT;
 export const X_PLEX_VERSION = VERSION;
 export const X_PLEX_DEVICE = X_PLEX_PLATFORM;
 export const X_PLEX_DEVICE_NAME = os.hostname();
-const mac = getmac();
-const base16Mac: string = parseMac(mac).toLong().toString(16);
+const mac = getMAC();
+const base16Mac: string = parseMAC(mac).toLong().toString(16);
 export const X_PLEX_IDENTIFIER = `0x${base16Mac}`;
 export const BASE_HEADERS = {
   'X-Plex-Platform': X_PLEX_PLATFORM,
