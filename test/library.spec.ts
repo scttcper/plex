@@ -1,3 +1,5 @@
+import { describe, expect, it } from '@jest/globals';
+
 import { createClient } from './test-client';
 
 describe('Library', () => {

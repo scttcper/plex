@@ -32,7 +32,7 @@ export interface UserResponse {
   adsConsentSetAt: null;
   adsConsentReminderAt: null;
   queueEmail: string;
-  queueUid: object;
+  queueUid: Record<string, unknown>;
 }
 
 export interface Profile {

@@ -1,6 +1,8 @@
 import { createClient } from './test-client';
 
-const delay = async (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = async (ms: number) => new Promise(resolve => {
+  setTimeout(resolve, ms);
+});
 
 export async function addMedia(): Promise<void> {
   await delay(10000);

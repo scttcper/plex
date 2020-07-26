@@ -31,7 +31,7 @@ async function main() {
   await page.waitForSelector('#FriendlyName');
   await page.waitFor(5000);
   await page.evaluate(() => {
-    // @ts-ignore
+    // @ts-expect-error
     // eslint-disable-next-line no-undef
     document.querySelector('[type="submit"]').click();
   });
@@ -40,7 +40,7 @@ async function main() {
   await frame.waitFor(2000);
   console.log('btn-primary');
   await page.evaluate(() => {
-    // @ts-ignore
+    // @ts-expect-error
     // eslint-disable-next-line no-undef
     document.querySelector('.btn-primary').click();
   });
@@ -48,7 +48,7 @@ async function main() {
   await frame.waitFor(2000);
   console.log('btn-primary');
   await page.evaluate(() => {
-    // @ts-ignore
+    // @ts-expect-error
     // eslint-disable-next-line no-undef
     document.querySelector('.btn-primary').click();
   });

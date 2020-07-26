@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: circleci/node:12-browsers
+      - image: circleci/node:14-browsers
       - image: scttcper/plex-with-media
     steps:
       - checkout
@@ -31,19 +31,18 @@ jobs:
           command: bash <(curl -s https://codecov.io/bash)
   cleanup:
     docker:
-      - image: circleci/node:12-browsers
+      - image: circleci/node:14-browsers
     steps:
       - checkout
       - run: npm ci
       - run: npm run test-cleanup
   release:
     docker:
-      - image: circleci/node:12
+      - image: circleci/node:14
     steps:
       - checkout
       - run: npm ci
-      - run: npm run build
-      - run: npm run semantic-release
+      - run: npx semantic-release
 
 workflows:
   version: 2

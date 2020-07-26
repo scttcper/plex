@@ -88,7 +88,7 @@ export class MyPlexAccount {
     private readonly password?: string,
     public token?: string,
     private readonly timeout = TIMEOUT,
-    private baseUrl: string | null = null,
+    private readonly baseUrl: string | null = null,
   ) {}
 
   /**
@@ -291,7 +291,7 @@ export class MyPlexResource {
   constructor(
     public readonly account: MyPlexAccount,
     data: ResourcesResponse,
-    private baseUrl: string | null = null,
+    private readonly baseUrl: string | null = null,
   ) {
     this._loadData(data);
   }
