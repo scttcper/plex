@@ -7,7 +7,7 @@ export interface PlexOptions {
   /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */
   server?: any;
   /** (ElementTree): Response from PlexServer used to build this object (optional). */
-  data?: string;
+  data?: any;
   /** (str): Path used to generate data. */
   initpath?: string;
   /** (str): HTTP URL to connect dirrectly to this client. */
@@ -89,32 +89,32 @@ export class PlexClient {
   //   this._loadData(data);
   // }
 
-  // _loadData(data: any) {
-  //   console.log({ data });
-  //   // this.deviceClass = data.attrib.get('deviceClass')
-  //   // this.machineIdentifier = data.attrib.get('machineIdentifier')
-  //   // this.product = data.attrib.get('product')
-  //   // this.protocol = data.attrib.get('protocol')
-  //   // this.protocolCapabilities = data.attrib.get('protocolCapabilities', '').split(',')
-  //   // this.protocolVersion = data.attrib.get('protocolVersion')
-  //   // this.platform = data.attrib.get('platform')
-  //   // this.platformVersion = data.attrib.get('platformVersion')
-  //   // this.title = data.attrib.get('title') or data.attrib.get('name')
-  //   // # Active session details
-  //   // # Since protocolCapabilities is missing from /sessions we cant really control this player without
-  //   // # creating a client manually.
-  //   // # Add this in next breaking release.
-  //   // # if this._initpath == 'status/sessions':
-  //   // this.device = data.attrib.get('device')         # session
-  //   // this.model = data.attrib.get('model')           # session
-  //   // this.state = data.attrib.get('state')           # session
-  //   // this.vendor = data.attrib.get('vendor')         # session
-  //   // this.version = data.attrib.get('version')       # session
-  //   // this.local = utils.cast(bool, data.attrib.get('local', 0))
-  //   // this.address = data.attrib.get('address')        # session
-  //   // this.remotePublicAddress = data.attrib.get('remotePublicAddress')
-  //   // this.userID = data.attrib.get('userID')
-  // }
+  _loadData(data: any) {
+    console.log({ data });
+    // this.deviceClass = data.attrib.get('deviceClass')
+    // this.machineIdentifier = data.attrib.get('machineIdentifier')
+    // this.product = data.attrib.get('product')
+    // this.protocol = data.attrib.get('protocol')
+    // this.protocolCapabilities = data.attrib.get('protocolCapabilities', '').split(',')
+    // this.protocolVersion = data.attrib.get('protocolVersion')
+    // this.platform = data.attrib.get('platform')
+    // this.platformVersion = data.attrib.get('platformVersion')
+    // this.title = data.attrib.get('title') or data.attrib.get('name')
+    // # Active session details
+    // # Since protocolCapabilities is missing from /sessions we cant really control this player without
+    // # creating a client manually.
+    // # Add this in next breaking release.
+    // # if this._initpath == 'status/sessions':
+    // this.device = data.attrib.get('device')         # session
+    // this.model = data.attrib.get('model')           # session
+    // this.state = data.attrib.get('state')           # session
+    // this.vendor = data.attrib.get('vendor')         # session
+    // this.version = data.attrib.get('version')       # session
+    // this.local = utils.cast(bool, data.attrib.get('local', 0))
+    // this.address = data.attrib.get('address')        # session
+    // this.remotePublicAddress = data.attrib.get('remotePublicAddress')
+    // this.userID = data.attrib.get('userID')
+  }
 
   /**
    * Main method used to handle HTTPS requests to the Plex client. This method helps

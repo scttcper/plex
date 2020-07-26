@@ -110,3 +110,27 @@ export enum Protocol {
   HTTP = 'http',
   HTTPS = 'https',
 }
+
+export interface Device {
+  $: {
+    id: string;
+    name: string;
+    publicAddress: string;
+    product: string;
+    productVersion: string;
+    platform: string;
+    platformVersion: string;
+    device: string;
+    model: string;
+    vendor: string;
+    provides: string;
+    clientIdentifier: string;
+    version: string;
+    token: string;
+    createdAt: string;
+    lastSeenAt: string;
+    screenResolution: string;
+    screenDensity: string;
+  };
+  Connection?: Array<{ $: { uri: string } }>;
+}

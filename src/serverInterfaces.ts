@@ -104,3 +104,22 @@ export interface PlaylistMetadata {
   playlistType: string;
   addedAt: number;
 }
+
+export interface ConnectionInfo {
+  size: number;
+  Server: ServerConnectionInfo[];
+}
+
+export interface ServerConnectionInfo {
+  name: string;
+  host: string;
+  address: string;
+  port?: number;
+  machineIdentifier: string;
+  version: string;
+  protocol: string;
+  product: string;
+  deviceClass: string;
+  protocolVersion: string;
+  protocolCapabilities: string;
+}

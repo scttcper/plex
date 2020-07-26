@@ -27,20 +27,47 @@ abstract class Video extends Playable {
   /** 'artist', 'album', or 'track'. */
   type!: string;
   /** Datetime this item was updated. */
-  updatedAt!: Date;
+  updatedAt?: Date;
   /** Count of times this item was accessed. */
-  viewCount!: number;
+  viewCount?: number;
 
   constructor(public server: PlexServer, data: MediaItem, initpath: string) {
     super(server, data, initpath);
   }
 
+  /**
+   * Mark video as watched.
+   */
+  async markWatched(): Promise<void> {
+    const key = `/:/scrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`;
+    this.server.query(key);
+    this.reload();
+  }
+
+  /**
+   * Mark video as unwatched.
+   */
+  async markUnwatched(): Promise<void> {
+    const key = `/:/unscrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`;
+    this.server.query(key);
+    this.reload();
+  }
+
   protected _loadData(data: MediaItem): void {
     this.addedAt = new Date(data.addedAt * 1000);
     this.lastViewedAt = data.lastViewedAt ? new Date(data.lastViewedAt * 1000) : undefined;
+    this.updatedAt = data.lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
     this.viewCount = data.viewCount ?? 0;
+    this.title = data.title;
+    // this.ratingKey = utils.cast(int, data.ratingKey));
+    this.summary = data.summary;
+    this.thumb = data.thumb;
+    this.title = data.title;
+    this.titleSort = data.titleSort ?? this.title;
+    this.type = data.type;
+    this.viewCount = data.viewCount;
   }
 }
 
@@ -122,9 +149,10 @@ export class Movie extends Video {
     this.userRating = data.userRating;
     this.viewOffset = data.viewOffset ?? 0;
     this.year = data.year;
-    this.directors = data.Director.map(data => new Director(this.server, data));
-    this.countries = data.Country.map(data => new Country(this.server, data));
-    this.writers = data.Writer.map(data => new Writer(this.server, data));
+    this.librarySectionID = data.librarySectionID;
+    this.directors = data.Director?.map(data => new Director(this.server, data)) ?? [];
+    this.countries = data.Country?.map(data => new Country(this.server, data)) ?? [];
+    this.writers = data.Writer?.map(data => new Writer(this.server, data)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {

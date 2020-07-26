@@ -11,7 +11,7 @@ import { PlexObject } from './base';
 import { Movie, VideoType } from './video';
 import { Class } from 'type-fest';
 import { URLSearchParams } from 'url';
-import { fetchItem } from './baseFunctionality';
+import { fetchItem, fetchItems } from './baseFunctionality';
 import { SearchResult } from './serverSearchResults';
 
 // export type Section = MovieSection | ShowSection;
@@ -37,8 +37,8 @@ export class Library {
    */
   async sections(): Promise<Section[]> {
     const key = '/library/sections';
-    const sections: Section[] = [];
     const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
+    const sections: Section[] = [];
     for (const elem of elems.MediaContainer.Directory) {
       for (const cls of [MovieSection]) {
         if (cls.TYPE === elem.type) {
@@ -297,6 +297,28 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     const key = `/library/sections/${this.key}/all?title=${title}`;
     const data = await fetchItem(this.server, key, { title__iexact: title }) as MediaItem;
     return new this.VIDEO_TYPE(this.server, data, key);
+  }
+
+  /**
+   * Searching within a library section is much more powerful. It seems certain
+   * attributes on the media objects can be targeted to filter this search down
+   * a bit, but I havent found the documentation for it.
+   *
+   * Example: "studio=Comedy%20Central" or "year=1999" "title=Kung Fu" all work. Other items
+   * such as actor=<id> seem to work, but require you already know the id of the actor.
+   * TLDR: This is untested but seems to work. Use library section search when you can.
+   * @param args Search using a number of different attributes
+   */
+  async search(args: Record<string, number | string | boolean> = {}): Promise<SectionVideoType[]> {
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(args)) {
+      params.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+
+    const key = `/library/all?${params.toString()}`;
+    const data = await fetchItems<SectionVideoType>(this.server, key, undefined, this.VIDEO_TYPE);
+    return data;
   }
 
   /**

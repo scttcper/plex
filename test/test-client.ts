@@ -1,17 +1,15 @@
-import { MyPlexAccount } from '../src/myplex';
-import { PlexServer } from '../src/server';
+import { MyPlexAccount, PlexServer } from '../src';
 
 export const username = process.env.PLEX_USERNAME as string;
 export const password = process.env.PLEX_PASSWORD as string;
 
+if (!username || !password) {
+  console.error('Test environment variables must be set.');
+  process.exit(1);
+}
+
 export async function createAccount(): Promise<MyPlexAccount> {
-  const account = await new MyPlexAccount(
-    username,
-    password,
-    undefined,
-    undefined,
-    'http://localhost:32400',
-  ).connect();
+  const account = await new MyPlexAccount('http://localhost:32400', username, password).connect();
   return account;
 }
 
@@ -20,6 +18,6 @@ export async function createClient(): Promise<PlexServer> {
   const resources = await account.resources();
   const sortedResources = resources.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const plex = sortedResources[0];
-  const server = plex.connect();
+  const server = await plex.connect(undefined, 2000);
   return server;
 }

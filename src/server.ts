@@ -2,12 +2,20 @@ import got from 'got';
 import { URL, URLSearchParams } from 'url';
 
 import { TIMEOUT, BASE_HEADERS, X_PLEX_CONTAINER_SIZE } from './config';
-import { ServerRootResponse, HistoryMediaContainer, HistoryMetadatum, PlaylistMediaContainer } from './serverInterfaces';
+import {
+  ServerRootResponse,
+  HistoryMediaContainer,
+  HistoryMetadatum,
+  PlaylistMediaContainer,
+  ConnectionInfo,
+} from './serverInterfaces';
 import { Library, Hub } from './library';
 import { MediaContainer, SEARCHTYPES } from './util';
 import { LibraryRootResponse } from './libraryInterfaces';
 import { fetchItems, fetchItem } from './baseFunctionality';
 import { Optimized } from './media';
+import { PlexClient } from './client';
+import { MyPlexAccount } from './myplex';
 
 /**
  * This is the main entry point to interacting with a Plex server. It allows you to
@@ -128,8 +136,13 @@ export class PlexServer {
   /** Unknown */
   pushNotifications!: boolean;
   _library?: Library;
+  private _myPlexAccount?: MyPlexAccount;
 
-  constructor(public readonly baseurl, public readonly token, public readonly timeout) {}
+  constructor(
+    public readonly baseurl: string,
+    public readonly token: string,
+    public readonly timeout?: number,
+  ) {}
 
   async connect(): Promise<void> {
     const data = await this.query<MediaContainer<ServerRootResponse>>(
@@ -176,7 +189,11 @@ export class PlexServer {
    * @param mediatype Optionally limit your search to the specified media type.
    * @param limit Optionally limit to the specified number of results per Hub.
    */
-  async search(query: string, mediatype?: keyof typeof SEARCHTYPES, limit?: number): Promise<Hub[]> {
+  async search(
+    query: string,
+    mediatype?: keyof typeof SEARCHTYPES,
+    limit?: number,
+  ): Promise<Hub[]> {
     const params: Record<string, string> = { query };
 
     if (mediatype) {
@@ -301,6 +318,55 @@ export class PlexServer {
     return this.query('/playlists');
   }
 
+  /**
+   * Returns a :class:`~plexapi.myplex.MyPlexAccount` object using the same
+   * token to access this server. If you are not the owner of this PlexServer
+   * you're likley to recieve an authentication error calling this.
+   */
+  myPlexAccount(): MyPlexAccount {
+    if (!this._myPlexAccount) {
+      this._myPlexAccount = new MyPlexAccount(
+        this.baseurl,
+        undefined,
+        undefined,
+        this.token,
+        this.timeout,
+        this,
+      );
+    }
+
+    return this._myPlexAccount;
+  }
+
+  // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
+  async clients(): Promise<PlexClient[]> {
+    const items: PlexClient[] = [];
+    const response = await this.query<MediaContainer<ConnectionInfo>>('/clients');
+
+    const shouldFetchPorts = response.MediaContainer.Server.some(
+      server => server.port === null || server.port === undefined,
+    );
+    let ports: Record<string, string>;
+
+    if (shouldFetchPorts) {
+      ports = await this._myPlexClientPorts();
+      console.log(ports);
+    }
+
+    for (const server of response.MediaContainer.Server) {
+      let port: number | string | undefined = server.port;
+      if (!port) {
+        // TODO: print warning about doing weird port stuff
+        port = ports!?.[server.machineIdentifier];
+      }
+
+      const baseurl = `http://${server.host}:${port}`;
+      items.push(new PlexClient({ baseurl, token: this.token, server: this, data: server }));
+    }
+
+    return items;
+  }
+
   /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
     const backgroundProcessing = await fetchItem(this, '/playlists?type=42');
@@ -312,7 +378,7 @@ export class PlexServer {
    * Build a URL string with proper token argument. Token will be appended to the URL
    * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
    */
-  private url(key, includeToken = false): URL {
+  private url(key: string, includeToken = false): URL {
     if (!this.baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }
@@ -386,5 +452,24 @@ export class PlexServer {
     this.updater = data.updater;
     this.version = data.version;
     this.voiceSearch = data.voiceSearch;
+  }
+
+  /**
+   * Sometimes the PlexServer does not properly advertise port numbers required
+   * to connect. This attemps to look up device port number from plex.tv.
+   * See python plex issue #126: Make PlexServer.clients() more user friendly.
+   */
+  private async _myPlexClientPorts(): Promise<Record<string, string>> {
+    let ports: Record<string, string> = {};
+    const account = this.myPlexAccount();
+    const devices = await account.devices();
+
+    for (const device of devices) {
+      if (device.connections?.length) {
+        ports[device.clientIdentifier] = new URL('http://172.17.0.2:32400').port;
+      }
+    }
+
+    return ports;
   }
 }

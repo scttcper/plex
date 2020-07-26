@@ -3,8 +3,11 @@ import { URL } from 'url';
 import pAny from 'p-any';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
-import { UserResponse, ResourcesResponse, Connection } from './myplexInterfaces';
+import { UserResponse, ResourcesResponse, Connection, Device } from './myplexInterfaces';
 import { PlexServer } from './server';
+import { PlexObject } from './base';
+import { parseStringPromise } from 'xml2js';
+import { MediaContainer } from './util';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -82,13 +85,15 @@ export class MyPlexAccount {
    * @param token Token used to access this client.
    * @param session Use your own session object if you want to cache the http responses from PMS
    * @param timeout timeout in seconds on initial connect to myplex
+   * @param server not often available
    */
   constructor(
+    private readonly baseUrl: string | null = null,
     public username?: string,
     private readonly password?: string,
     public token?: string,
     private readonly timeout = TIMEOUT,
-    private readonly baseUrl: string | null = null,
+    private readonly server?: PlexServer,
   ) {}
 
   /**
@@ -131,6 +136,14 @@ export class MyPlexAccount {
   }
 
   /**
+   * Returns a list of all :class:`~plexapi.myplex.MyPlexDevice` objects connected to the server.
+   */
+  async devices(): Promise<MyPlexDevice[]> {
+    const response = await this.query<MediaContainer<{ Device: Device[] }>>(MyPlexDevice.key);
+    return response.MediaContainer.Device.map(data => new MyPlexDevice(this.server!, data));
+  }
+
+  /**
    * Main method used to handle HTTPS requests to the Plex client. This method helps
    * by encoding the response to utf-8 and parsing the returned XML into and
    * ElementTree object. Returns None if no data exists in the response.
@@ -154,7 +167,7 @@ export class MyPlexAccount {
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
-    const response = await got({
+    const promise = got({
       method,
       url: new URL(url),
       headers: requestHeaders,
@@ -162,9 +175,16 @@ export class MyPlexAccount {
       username,
       password,
       retry: 0,
-    }).json<T>();
+    });
 
-    return response;
+    if (url.includes('xml')) {
+      const res = await promise;
+      const xml = await parseStringPromise(res.body);
+      return xml;
+    }
+
+    const res = await promise.json<T>();
+    return res;
   }
 
   /**
@@ -241,7 +261,7 @@ export async function connect(
   cls: (...args: ConstructorParameters<typeof PlexServer>) => PlexServer,
   url: string,
   token: string,
-  timeout: number,
+  timeout?: number,
 ): Promise<PlexServer> {
   const device = cls(url, token, timeout);
   await device.connect();
@@ -296,7 +316,7 @@ export class MyPlexResource {
     this._loadData(data);
   }
 
-  async connect(ssl: boolean | null = null, timeout?): Promise<PlexServer> {
+  async connect(ssl: boolean | null = null, timeout?: number): Promise<PlexServer> {
     const connections = [...this.connections].sort((a, b) => {
       return Number(b.local) - Number(a.local);
     });
@@ -388,5 +408,60 @@ export class ResourceConnection {
     this.uri = data.uri;
     this.local = data.local;
     this.httpuri = `http://${data.address}:${data.port}`;
+  }
+}
+
+/**
+ * This object represents resources connected to your Plex server that provide
+ * playback ability from your Plex Server, iPhone or Android clients, Plex Web,
+ * this API, etc. The raw xml for the data presented here can be found at:
+ * https://plex.tv/devices.xml
+ */
+export class MyPlexDevice extends PlexObject {
+  static TAG = 'Device';
+  static key = 'https://plex.tv/devices.xml';
+
+  name!: string;
+  publicAddress!: string;
+  product!: string;
+  productVersion!: string;
+  platform!: string;
+  platformVersion!: string;
+  device!: string;
+  model!: string;
+  vendor!: string;
+  provides!: string;
+  clientIdentifier!: string;
+  version!: string;
+  id!: string;
+  token!: string;
+  screenResolution!: string;
+  screenDensity!: string;
+  createdAt!: Date;
+  lastSeenAt!: Date;
+  /** List of connection URIs for the device. */
+  connections?: string[];
+
+  _loadData(data: Device): void {
+    this.name = data.$.name;
+    this.publicAddress = data.$.publicAddress;
+    this.product = data.$.product;
+    this.productVersion = data.$.productVersion;
+    this.platform = data.$.platform;
+    this.platformVersion = data.$.platformVersion;
+    this.device = data.$.device;
+    this.model = data.$.model;
+    this.vendor = data.$.vendor;
+    this.provides = data.$.provides;
+    this.clientIdentifier = data.$.clientIdentifier;
+    this.version = data.$.version;
+    this.id = data.$.id;
+    // this.token = logfilter.add_secret(data.token);
+    this.token = data.$.token;
+    this.screenResolution = data.$.screenResolution;
+    this.screenDensity = data.$.screenDensity;
+    this.createdAt = new Date(data.$.createdAt);
+    this.lastSeenAt = new Date(data.$.lastSeenAt);
+    this.connections = data.Connection?.map(connection => connection.$.uri);
   }
 }

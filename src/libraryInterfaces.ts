@@ -86,6 +86,7 @@ export interface MediaItem {
   type: string;
   title: string;
   titleSort?: string;
+  librarySectionID?: number;
   contentRating: string;
   summary: string;
   rating: number;
