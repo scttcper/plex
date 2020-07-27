@@ -37,6 +37,16 @@ const section = await library.section<MovieSection>('Movies');
 const results = await section.search({ title: 'Rush Hour' });
 ```
 
+Example 3: List all content containing a specific query
+```ts
+const results = await plex.search('Arnold');
+// Each hub represents a single Hub (or category) in the PlexServer search (movie, actor, etc)
+for (const hub of results) {
+  // Log first result in each category
+  console.log(hub?.Metadata?.[0]);
+}
+```
+
 ### Differences from python plex client
 JS is a different language and some methods of the api were not possible. 
 Chaining functions with requests must be awaited mostly individually. Constructors in JS don't typically make requests

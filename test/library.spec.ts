@@ -36,6 +36,13 @@ describe('Library', () => {
     expect(results[0].librarySectionID).toBe(1);
   });
 
+  it('should search for all content matching search query', async () => {
+    const results = await plex.search('Buck');
+    expect(results.length).toBeGreaterThan(1);
+    const movies = results.find(x => x.type === 'movie');
+    expect(movies?.Metadata?.[0]?.title).toBe('Big Buck Bunny');
+  });
+
   it('should list all clients connected to the Server.', async () => {
     const clients = await plex.clients();
     expect(clients).toHaveLength(1);
