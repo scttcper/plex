@@ -20,7 +20,7 @@ describe('Library', () => {
     const library = await plex.library();
     const section = await library.section<MovieSection>('Movies');
     const results = await section.search();
-    expect(results).toHaveLength(4);
+    expect(results.length).toBeGreaterThanOrEqual(4);
     await results[0].markWatched();
     await results[0].markUnwatched();
   });
@@ -52,7 +52,7 @@ describe('Library', () => {
 
   it('should list all clients connected to the Server.', async () => {
     const clients = await plex.clients();
-    expect(clients).toHaveLength(1);
+    expect(clients.length).toBeGreaterThanOrEqual(1);
     // TODO: implement PlexClient
   });
 });
