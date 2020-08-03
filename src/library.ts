@@ -270,7 +270,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   /** Title of this section. */
   title!: string;
   /** Type of content section represents (movie, artist, photo, show). */
-  type!: string;
+  type!: 'movie' | 'show';
   /** Datetime this library section was last updated. */
   updatedAt!: Date;
   /** Datetime this library section was created. */
@@ -419,7 +419,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     this.scanner = data.scanner;
     this.thumb = data.thumb;
     this.title = data.title;
-    this.type = data.type;
+    this.type = data.type as LibrarySection['type'];
     this.updatedAt = new Date(data.updatedAt * 1000);
     this.createdAt = new Date(data.createdAt * 1000);
     this.scannedAt = new Date(data.scannedAt * 1000);

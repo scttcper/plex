@@ -12,8 +12,8 @@ describe('Library', () => {
   it('should get all sections', async () => {
     const library = await plex.library();
     const sections = await library.sections();
-    expect(sections).toHaveLength(1);
-    expect(sections[0].type).toBe('movie');
+    expect(sections.length).toBeGreaterThanOrEqual(1);
+    expect(sections.find(section => section.type === 'movie')!.type).toBe('movie');
   });
 
   it('should get a list of unwatched movies and mark one watched', async () => {
