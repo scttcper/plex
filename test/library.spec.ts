@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from '@jest/globals';
 
-import { PlexServer, MovieSection } from '../src';
+import { PlexServer, MovieSection, ShowSection } from '../src';
 import { createClient } from './test-client';
 
 describe('Library', () => {
@@ -34,6 +34,13 @@ describe('Library', () => {
     // await results[0].reload();
     expect(results[0].title).toBe('Big Buck Bunny');
     expect(results[0].librarySectionID).toBe(1);
+  });
+
+  it('should search for tv show matching a title', async () => {
+    const library = await plex.library();
+    const section = await library.section<ShowSection>('TV Shows');
+    const results = await section.search({ title: 'Game of Thrones' });
+    expect(results[0].seasonNumber).toBe(1);
   });
 
   it('should search for all content matching search query', async () => {

@@ -4,18 +4,16 @@ import {
   SectionsResponse,
   SectionsDirectory,
   Location,
-  MediaItem,
 } from './libraryInterfaces';
 import { MediaContainer } from './util';
 import { PlexObject } from './base';
-import { Movie, VideoType } from './video';
+import { Movie, VideoType, Show } from './video';
 import { Class } from 'type-fest';
 import { URLSearchParams } from 'url';
 import { fetchItem, fetchItems } from './baseFunctionality';
 import { SearchResult } from './serverSearchResults';
 
-// export type Section = MovieSection | ShowSection;
-export type Section = MovieSection;
+export type Section = MovieSection | ShowSection;
 
 export class Library {
   static key = '/library';
@@ -40,7 +38,7 @@ export class Library {
     const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
     const sections: Section[] = [];
     for (const elem of elems.MediaContainer.Directory) {
-      for (const cls of [MovieSection]) {
+      for (const cls of [MovieSection, ShowSection]) {
         if (cls.TYPE === elem.type) {
           // eslint-disable-next-line new-cap
           const instance = new cls(this.server, elem, key);
@@ -58,7 +56,8 @@ export class Library {
       | T
       | undefined;
     if (!section) {
-      throw new Error(`Invalid library section: ${title}`);
+      const avilableSections = sections.map(s => s.title).join(', ');
+      throw new Error(`Invalid library section: ${title}. Available: ${avilableSections}`);
     }
 
     return section;
@@ -295,7 +294,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    */
   async get(title: string): Promise<SectionVideoType> {
     const key = `/library/sections/${this.key}/all?title=${title}`;
-    const data = await fetchItem(this.server, key, { title__iexact: title }) as MediaItem;
+    const data = await fetchItem(this.server, key, { title__iexact: title });
     return new this.VIDEO_TYPE(this.server, data, key);
   }
 
@@ -391,7 +390,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    * Edit a library
    * @param kwargs object of settings to edit
    */
-  async edit(kwargs: Record<string, string>): Promise<MovieSection> {
+  async edit(kwargs: Record<string, string>): Promise<Section> {
     const params = new URLSearchParams(kwargs);
     const part = `/library/sections/${this.key}?${params.toString()}`;
     await this.server.query(part, 'put');
@@ -469,50 +468,50 @@ export class MovieSection extends LibrarySection<Movie> {
   VIDEO_TYPE = Movie;
 }
 
-// export class ShowSection extends LibrarySection<any> {
-//   static ALLOWED_FILTERS = [
-//     'unwatched',
-//     'year',
-//     'genre',
-//     'contentRating',
-//     'network',
-//     'collection',
-//     'guid',
-//     'duplicate',
-//     'label',
-//     'show.title',
-//     'show.year',
-//     'show.userRating',
-//     'show.viewCount',
-//     'show.lastViewedAt',
-//     'show.actor',
-//     'show.addedAt',
-//     'episode.title',
-//     'episode.originallyAvailableAt',
-//     'episode.resolution',
-//     'episode.subtitleLanguage',
-//     'episode.unwatched',
-//     'episode.addedAt',
-//     'episode.userRating',
-//     'episode.viewCount',
-//     'episode.lastViewedAt',
-//   ];
+export class ShowSection extends LibrarySection<Show> {
+  static TYPE = 'show';
+  static ALLOWED_FILTERS = [
+    'unwatched',
+    'year',
+    'genre',
+    'contentRating',
+    'network',
+    'collection',
+    'guid',
+    'duplicate',
+    'label',
+    'show.title',
+    'show.year',
+    'show.userRating',
+    'show.viewCount',
+    'show.lastViewedAt',
+    'show.actor',
+    'show.addedAt',
+    'episode.title',
+    'episode.originallyAvailableAt',
+    'episode.resolution',
+    'episode.subtitleLanguage',
+    'episode.unwatched',
+    'episode.addedAt',
+    'episode.userRating',
+    'episode.viewCount',
+    'episode.lastViewedAt',
+  ];
 
-//   static ALLOWED_SORT = [
-//     'addedAt',
-//     'lastViewedAt',
-//     'originallyAvailableAt',
-//     'titleSort',
-//     'rating',
-//     'unwatched',
-//   ];
+  static ALLOWED_SORT = [
+    'addedAt',
+    'lastViewedAt',
+    'originallyAvailableAt',
+    'titleSort',
+    'rating',
+    'unwatched',
+  ];
 
-//   static TYPE = 'show';
-//   static TAG = 'Directory';
-//   static METADATA_TYPE = 'episode';
-//   static CONTENT_TYPE = 'video';
-//   SECTION = Show;
-// }
+  static TAG = 'Directory';
+  static METADATA_TYPE = 'episode';
+  static CONTENT_TYPE = 'video';
+  VIDEO_TYPE = Show;
+}
 
 /** Represents a single Hub (or category) in the PlexServer search */
 export class Hub extends PlexObject {

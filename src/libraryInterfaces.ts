@@ -71,10 +71,10 @@ export interface MediaItems {
   title2: string;
   viewGroup: string;
   viewMode: number;
-  Metadata: MediaItem[];
+  Metadata: MovieData[];
 }
 
-export interface MediaItem {
+export interface MovieData {
   ratingKey: string;
   userRating?: number;
   audienceRating?: number;
@@ -132,4 +132,34 @@ export interface Part {
   size: number;
   container: string;
   videoProfile: string;
+}
+
+export interface ShowData {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  studio: string;
+  type: string;
+  title: string;
+  librarySectionTitle: string;
+  librarySectionID: number;
+  librarySectionKey: string;
+  contentRating: string;
+  summary: string;
+  index: number;
+  rating: number;
+  year: number;
+  thumb: string;
+  art: string;
+  banner: string;
+  theme: string;
+  duration: number;
+  originallyAvailableAt: string;
+  leafCount: number;
+  viewedLeafCount: number;
+  childCount: number;
+  addedAt: number;
+  updatedAt: number;
+  Genre: Country[];
+  Role: Country[];
 }

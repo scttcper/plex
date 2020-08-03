@@ -1,3 +1,62 @@
+// TODO
+export interface FullShowResponse {
+  size: number;
+  allowSync: boolean;
+  art: string;
+  banner: string;
+  identifier: string;
+  key: string;
+  librarySectionID: number;
+  librarySectionTitle: string;
+  librarySectionUUID: string;
+  mediaTagPrefix: string;
+  mediaTagVersion: number;
+  nocache: boolean;
+  parentIndex: number;
+  parentTitle: string;
+  parentYear: number;
+  summary: string;
+  theme: string;
+  thumb: string;
+  title1: string;
+  title2: string;
+  viewGroup: string;
+  viewMode: number;
+  Directory: ShowDirectory[];
+  Metadata: FullTvMetadata[];
+}
+
+export interface ShowDirectory {
+  leafCount: number;
+  thumb: string;
+  viewedLeafCount: number;
+  key: string;
+  title: string;
+}
+
+export interface FullTvMetadata {
+  ratingKey: string;
+  key: string;
+  parentRatingKey: string;
+  guid: string;
+  parentGuid: string;
+  type: string;
+  title: string;
+  parentKey: string;
+  parentTitle: string;
+  summary: string;
+  index: number;
+  parentIndex: number;
+  thumb: string;
+  art: string;
+  parentThumb: string;
+  parentTheme: string;
+  leafCount: number;
+  viewedLeafCount: number;
+  addedAt: number;
+  updatedAt: number;
+}
+
 export interface FullMovieResponse {
   size: number;
   allowSync: boolean;
