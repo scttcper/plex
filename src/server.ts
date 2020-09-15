@@ -349,11 +349,13 @@ export class PlexServer {
   // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
   async clients(): Promise<PlexClient[]> {
     const items: PlexClient[] = [];
-    const response = await this.query<MediaContainer<ConnectionInfo> | undefined>('/clients');
+    const response = await this.query<MediaContainer<ConnectionInfo | undefined>>('/clients');
 
-    if (response === undefined) {
+    if (response.MediaContainer?.Server === undefined) {
       return [];
     }
+
+    console.log({ response });
 
     const shouldFetchPorts = response.MediaContainer.Server.some(
       server => server.port === null || server.port === undefined,

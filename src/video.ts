@@ -3,7 +3,9 @@ import { fetchItems } from './baseFunctionality';
 import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
 import { Director, Country, Writer, Chapter, Collection, Genre, Role } from './media';
-import { FullMovieResponse, ChapterSource } from './video.types';
+import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
+import { Preferences } from './settings';
+import { MediaContainer } from './util';
 
 abstract class Video extends Playable {
   /** API URL (/library/metadata/<ratingkey>) */
@@ -32,7 +34,7 @@ abstract class Video extends Playable {
   /** Count of times this item was accessed. */
   viewCount?: number;
 
-  constructor(public server: PlexServer, data: MovieData, initpath: string) {
+  constructor(public server: PlexServer, data: MovieData | EpisodeMetadata, initpath: string) {
     super(server, data, initpath);
   }
 
@@ -54,9 +56,11 @@ abstract class Video extends Playable {
     this.reload();
   }
 
-  protected _loadData(data: MovieData | ShowData): void {
+  protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
     this.addedAt = new Date(data.addedAt * 1000);
-    this.lastViewedAt = (data as MovieData).lastViewedAt ? new Date((data as MovieData).lastViewedAt! * 1000) : undefined;
+    this.lastViewedAt = (data as MovieData).lastViewedAt ?
+      new Date((data as MovieData).lastViewedAt! * 1000) :
+      undefined;
     this.updatedAt = (data as MovieData).lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
@@ -77,7 +81,9 @@ export type VideoType = Movie | Show;
  * Represents a single Movie.
  */
 export class Movie extends Video {
-  static include = '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeConcerts=1&includePreferences=1';
+  static include =
+  '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeConcerts=1&includePreferences=1';
+
   TAG = 'Video';
   TYPE = 'movie';
   METADATA_TYPE = 'movie';
@@ -160,7 +166,9 @@ export class Movie extends Video {
     this._loadData(metadata);
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
-    this.collections = metadata.Collection?.map(collection => new Collection(this.server, collection));
+    this.collections = metadata.Collection?.map(
+      collection => new Collection(this.server, collection),
+    );
     // this.cha
   }
 }
@@ -169,7 +177,9 @@ export class Movie extends Video {
  * Represents a single Show (including all seasons and episodes).
  */
 export class Show extends Video {
-  static include = '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
+  static include =
+  '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
+
   TAG = 'Directory';
   TYPE = 'show';
   METADATA_TYPE = 'episode';
@@ -213,14 +223,39 @@ export class Show extends Video {
   /** <:class:`~plexapi.media.Similar`>): List of Similar objects. */
   // similar: List;
 
+  /**
+   * Alias of {@link Show.roles}
+   */
+  get actors(): Role[] {
+    return this.roles;
+  }
+
   /** @returns True if this show is fully watched. */
   get isWatched(): boolean {
     return this.viewedLeafCount === this.leafCount;
   }
 
+  // async preferences(): Promise<Preferences[]> {
+  //   const data = await this.server.query<MediaContainer<ShowPreferences>>(this._details_key as string);
+  //   // return data.MediaContainer;
+  //   // for (item in data.iter('Preferences')) {
+  //   //   for (elem in item) {
+  //   //     items.append(settings.Preferences(data = elem, server = self._server));
+  //   //   }
+  //   // }
+
+  //   // return items;
+  // }
+
   async seasons(query?: Record<string, string | number>): Promise<Season[]> {
     const key = `/library/metadata/${this.ratingKey}/children?excludeAllLeaves=1`;
     return fetchItems(this.server, key, query, Season);
+  }
+
+  async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
+    const key = `/library/metadata/${this.ratingKey}/allLeaves`;
+    const episodes = await fetchItems(this.server, key, query);
+    return episodes.map(episode => new Episode(this.server, episode, key));
   }
 
   protected _loadData(data: ShowData): void {
@@ -288,7 +323,8 @@ export class Season extends Video {
    */
   async episodes(query?: Record<string, string | number>) {
     const key = `/library/metadata/${this.ratingKey}/children`;
-    return fetchItems(this.server, key, query);
+    const episodes = await fetchItems<EpisodeMetadata>(this.server, key, query);
+    return episodes.map(episode => new Episode(this.server, episode, key));
   }
 
   protected _loadData(data: ShowData): void {
@@ -300,7 +336,35 @@ export class Season extends Video {
     this.viewedLeafCount = data.viewedLeafCount;
   }
 
-  protected _loadFullData(): void {
+  protected _loadFullData(data: any): void {
+    // TODO
+  }
+}
+
+class Episode extends Video {
+  static include =
+  '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
+
+  static TAG = 'Video';
+  TYPE = 'episode';
+  METADATA_TYPE = 'episode';
+
+  /**
+   * Name of this Episode
+   */
+  title!: string;
+
+  protected _loadData(data: EpisodeMetadata): void {
+    super._loadData(data);
+    this._details_key = this.key + Episode.include;
+    this.key = this.key.replace('/children', '');
+    this.title = data.title;
+    // this.index = data.index;
+    // this.leafCount = data.leafCount;
+    // this.viewedLeafCount = data.viewedLeafCount;
+  }
+
+  protected _loadFullData(data: any): void {
     // TODO
   }
 }
