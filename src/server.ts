@@ -8,10 +8,10 @@ import {
   HistoryMetadatum,
   PlaylistMediaContainer,
   ConnectionInfo,
-} from './serverInterfaces';
+} from './server.types';
 import { Library, Hub } from './library';
 import { MediaContainer, SEARCHTYPES } from './util';
-import { LibraryRootResponse } from './libraryInterfaces';
+import { LibraryRootResponse } from './library.types';
 import { fetchItems, fetchItem } from './baseFunctionality';
 import { Optimized } from './media';
 import { PlexClient } from './client';
@@ -152,6 +152,14 @@ export class PlexServer {
       this.timeout,
     );
     this._loadData(data.MediaContainer);
+
+    // Attempt to prevent token from being logged accidentally
+    if (this.token) {
+      Object.defineProperty(this, 'token', {
+        enumerable: false,
+        value: this.token,
+      });
+    }
   }
 
   /**
@@ -341,7 +349,11 @@ export class PlexServer {
   // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
   async clients(): Promise<PlexClient[]> {
     const items: PlexClient[] = [];
-    const response = await this.query<MediaContainer<ConnectionInfo>>('/clients');
+    const response = await this.query<MediaContainer<ConnectionInfo> | undefined>('/clients');
+
+    if (response === undefined) {
+      return [];
+    }
 
     const shouldFetchPorts = response.MediaContainer.Server.some(
       server => server.port === null || server.port === undefined,

@@ -1,4 +1,4 @@
-import { ChapterSource } from './videoInterfaces';
+import { ChapterSource } from './video.types';
 
 export interface LibraryRootResponse {
   size: number;
@@ -105,14 +105,14 @@ export interface MovieData {
   primaryExtraKey: string;
   ratingImage: string;
   Media: Media[];
-  Genre: Country[];
-  Director: Country[];
-  Writer: Country[];
-  Country: Country[];
-  Role: Country[];
+  Genre: MediaTag[];
+  Director: MediaTag[];
+  Writer: MediaTag[];
+  Country: MediaTag[];
+  Role: MediaTag[];
 }
 
-export interface Country {
+export interface MediaTag {
   tag: string;
 }
 
@@ -160,6 +160,6 @@ export interface ShowData {
   childCount: number;
   addedAt: number;
   updatedAt: number;
-  Genre: Country[];
-  Role: Country[];
+  Genre: MediaTag[];
+  Role: MediaTag[];
 }

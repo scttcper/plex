@@ -3,7 +3,7 @@ import { URL } from 'url';
 import pAny from 'p-any';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
-import { UserResponse, ResourcesResponse, Connection, Device } from './myplexInterfaces';
+import { UserResponse, ResourcesResponse, Connection, Device } from './myplex.types';
 import { PlexServer } from './server';
 import { PlexObject } from './base';
 import { parseStringPromise } from 'xml2js';
@@ -94,7 +94,21 @@ export class MyPlexAccount {
     public token?: string,
     private readonly timeout = TIMEOUT,
     private readonly server?: PlexServer,
-  ) {}
+  ) {
+    if (this.token) {
+      Object.defineProperty(this, 'token', {
+        enumerable: false,
+        value: this.token,
+      });
+    }
+
+    if (this.password) {
+      Object.defineProperty(this, 'password', {
+        enumerable: false,
+        value: this.password,
+      });
+    }
+  }
 
   /**
    * Returns a new :class:`~server.PlexServer` or :class:`~client.PlexClient` object.
@@ -227,7 +241,11 @@ export class MyPlexAccount {
   }
 
   private _loadData(user: UserResponse): void {
-    this.token = user.authToken;
+    // Attempt to prevent token from being logged accidentally
+    Object.defineProperty(this, 'token', {
+      enumerable: false,
+      value: user.authToken,
+    });
     this.authenticationToken = this.token;
     this.certificateVersion = Number(user.certificateVersion);
     this.email = user.email;
@@ -457,7 +475,11 @@ export class MyPlexDevice extends PlexObject {
     this.version = data.$.version;
     this.id = data.$.id;
     // this.token = logfilter.add_secret(data.token);
-    this.token = data.$.token;
+    // Attempt to prevent token from being logged accidentally
+    Object.defineProperty(this, 'token', {
+      enumerable: false,
+      value: data.$.token,
+    });
     this.screenResolution = data.$.screenResolution;
     this.screenDensity = data.$.screenDensity;
     this.createdAt = new Date(data.$.createdAt);

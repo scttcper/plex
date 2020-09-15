@@ -23,7 +23,7 @@
     "lint:fix": "eslint --fix --ext .js,.ts, . --format codeframe",
     "prepare": "npm run build",
     "build": "tsc -p tsconfig.build.json",
-    "test": "jest --runInBand --detectOpenHandles",
+    "test": "jest --runInBand",
     "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverage",
     "claim-server": "ts-node test/claim-server.ts",
     "add-media": "ts-node test/add-media.ts",
@@ -31,29 +31,37 @@
   },
   "dependencies": {
     "@ctrl/mac-address": "^2.1.0",
-    "got": "^11.5.1",
+    "got": "^11.6.2",
     "p-any": "^3.0.0",
     "type-fest": "^0.16.0",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
-    "@ctrl/eslint-config": "1.0.4",
-    "@types/lodash": "4.14.158",
-    "@types/node": "14.0.27",
-    "@types/puppeteer": "3.0.1",
+    "@babel/plugin-transform-modules-commonjs": "7.10.4",
+    "@babel/preset-typescript": "7.10.4",
+    "@ctrl/eslint-config": "1.1.1",
+    "@types/lodash": "4.14.161",
+    "@types/node": "14.10.1",
+    "@types/puppeteer": "3.0.2",
     "@types/xml2js": "0.4.5",
-    "@jest/globals": "26.2.0",
-    "jest": "26.2.2",
+    "@jest/globals": "26.4.2",
+    "jest": "26.4.2",
     "jest-junit": "11.1.0",
-    "lodash": "4.17.19",
-    "puppeteer": "5.2.1",
-    "ts-jest": "26.1.4",
-    "ts-node": "8.10.2",
-    "typescript": "3.9.7"
+    "lodash": "4.17.20",
+    "puppeteer": "5.3.0",
+    "ts-node": "9.0.0",
+    "typescript": "4.0.2"
   },
   "jest": {
-    "preset": "ts-jest",
     "testEnvironment": "node"
+  },
+  "babel": {
+    "presets": [
+      "@babel/preset-typescript"
+    ],
+    "plugins": [
+      "@babel/plugin-transform-modules-commonjs"
+    ]
   },
   "release": {
     "branch": "master"

@@ -4,7 +4,7 @@ import {
   SectionsResponse,
   SectionsDirectory,
   Location,
-} from './libraryInterfaces';
+} from './library.types';
 import { MediaContainer } from './util';
 import { PlexObject } from './base';
 import { Movie, VideoType, Show } from './video';

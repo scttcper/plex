@@ -1,8 +1,9 @@
 import { Playable } from './base';
-import { MovieData, ShowData } from './libraryInterfaces';
+import { fetchItems } from './baseFunctionality';
+import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
-import { Director, Country, Writer, Chapter, Collection } from './media';
-import { FullMovieResponse, ChapterSource, FullShowResponse } from './videoInterfaces';
+import { Director, Country, Writer, Chapter, Collection, Genre, Role } from './media';
+import { FullMovieResponse, ChapterSource } from './video.types';
 
 abstract class Video extends Playable {
   /** API URL (/library/metadata/<ratingkey>) */
@@ -193,28 +194,33 @@ export class Show extends Video {
   leafCount!: number;
   /** List of locations paths. */
   locations?: string[];
-  /** ): Datetime show was released. */
+  /** Datetime show was released. */
   originallyAvailableAt!: Date;
-  /** ): Show rating (7.9; 9.8; 8.1). */
+  /** Show rating (7.9; 9.8; 8.1). */
   rating!: number;
-  /** ): Studio that created show (Di Bonaventura Pictures; 21 Laps Entertainment). */
+  /** Studio that created show (Di Bonaventura Pictures; 21 Laps Entertainment). */
   studio!: string;
-  /** ): Key to theme resource (/library/metadata/<ratingkey>/theme/<themeid>) */
+  /** Key to theme resource (/library/metadata/<ratingkey>/theme/<themeid>) */
   theme!: string;
-  /** ): Unknown. */
+  /** Unknown. */
   viewedLeafCount!: number;
-  /** ): Year the show was released. */
+  /** Year the show was released. */
   year!: number;
-  /** <:class:`~plexapi.media.Genre`>): List of genre objects. */
-  // genres: List;
-  /** <:class:`~plexapi.media.Role`>): List of role objects. */
-  // roles: List;
+  /** List of genre objects. */
+  genres!: Genre[];
+  /** List of role objects. */
+  roles!: Role[];
   /** <:class:`~plexapi.media.Similar`>): List of Similar objects. */
   // similar: List;
 
-  /** Returns season number */
-  get seasonNumber(): number {
-    return this.index;
+  /** @returns True if this show is fully watched. */
+  get isWatched(): boolean {
+    return this.viewedLeafCount === this.leafCount;
+  }
+
+  async seasons(query?: Record<string, string | number>): Promise<Season[]> {
+    const key = `/library/metadata/${this.ratingKey}/children?excludeAllLeaves=1`;
+    return fetchItems(this.server, key, query, Season);
   }
 
   protected _loadData(data: ShowData): void {
@@ -236,15 +242,65 @@ export class Show extends Video {
     this.theme = data.theme;
     this.viewedLeafCount = data.viewedLeafCount;
     this.year = data.year;
+    this.genres = data.Genre?.map(genre => new Genre(this.server, genre)) ?? [];
+    this.roles = data.Role?.map(role => new Role(this.server, role)) ?? [];
   }
 
-  protected _loadFullData(data: FullShowResponse): void {
-    console.log(JSON.stringify(data));
-    // this.locations = data.Directory.map();self.listAttrs(data, 'path', etag = 'Location');
-    // const metadata = data.Metadata[0];
-    // this._loadData(data);
-    // this.librarySectionID = metadata.librarySectionID;
-    // this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
-    // this.collections = metadata.Collection?.map(collection => new Collection(this.server, collection));
+  protected _loadFullData(): void {
+    this.key = this._details_key as string;
+    // TODO
+  }
+}
+
+/**
+ * Represents a single Show Season (including all episodes).
+ */
+export class Season extends Video {
+  TAG = 'Directory';
+  TYPE = 'season';
+  METADATA_TYPE = 'episode';
+
+  /** Season number */
+  index!: number;
+  /** Number of episodes in season. */
+  leafCount!: number;
+  /** Key to this season */
+  parentKey!: string;
+  /** Rating key of the show this season belongs to */
+  parentRatingKey!: string;
+  /** Show title */
+  parentTitle!: string;
+  /** Number of watched episodes in season */
+  viewedLeafCount!: number;
+
+  /** Returns season number */
+  get seasonNumber(): number {
+    return this.index;
+  }
+
+  /** Returns season number */
+  get isWatched(): boolean {
+    return this.viewedLeafCount === this.leafCount;
+  }
+
+  /**
+   * @returns a list of :class:`~plexapi.video.Episode` objects.
+   */
+  async episodes(query?: Record<string, string | number>) {
+    const key = `/library/metadata/${this.ratingKey}/children`;
+    return fetchItems(this.server, key, query);
+  }
+
+  protected _loadData(data: ShowData): void {
+    super._loadData(data);
+    this._details_key = this.key + Show.include;
+    this.key = this.key.replace('/children', '');
+    this.index = data.index;
+    this.leafCount = data.leafCount;
+    this.viewedLeafCount = data.viewedLeafCount;
+  }
+
+  protected _loadFullData(): void {
+    // TODO
   }
 }

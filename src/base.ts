@@ -51,6 +51,12 @@ export abstract class PartialPlexObject extends PlexObject {
 
   // async section(): Promise<any> {}
 
+  /**
+   * Retruns True if this is already a full object. A full object means all attributes
+   * were populated from the api path representing only this item. For example, the
+   * search result for a movie often only contain a portion of the attributes a full
+   * object (main url) for that movie contain.
+   */
   get isFullObject(): boolean {
     return !this.key || this.key === this.initpath;
   }
