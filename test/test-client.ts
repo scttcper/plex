@@ -10,7 +10,12 @@ if (!username || !password) {
 }
 
 export async function createAccount(): Promise<MyPlexAccount> {
-  const account = await new MyPlexAccount('http://localhost:32400', username, password, token).connect();
+  const account = await new MyPlexAccount(
+    'http://localhost:32400',
+    username,
+    password,
+    token,
+  ).connect();
   return account;
 }
 

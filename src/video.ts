@@ -1,5 +1,7 @@
+import { URL } from 'url';
+
 import { Playable } from './base';
-import { fetchItems } from './baseFunctionality';
+import { fetchItem, fetchItems, findItems } from './baseFunctionality';
 import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
 import { Director, Country, Writer, Chapter, Collection, Genre, Role } from './media';
@@ -39,6 +41,26 @@ abstract class Video extends Playable {
   }
 
   /**
+   * Returns True if this video is watched.
+   */
+  get isWatched(): boolean {
+    if (this.viewCount === undefined) {
+      return false;
+    }
+
+    return this.viewCount > 0;
+  }
+
+  /**
+   * Return the first first thumbnail url starting on
+   * the most specific thumbnail for that item.
+   */
+  get thumbUrl(): URL {
+    const thumb = this.thumb ?? (this as any).parentThumb ?? (this as any).granparentThumb;
+    return this.server.url(thumb);
+  }
+
+  /**
    * Mark video as watched.
    */
   async markWatched(): Promise<void> {
@@ -58,9 +80,9 @@ abstract class Video extends Playable {
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
     this.addedAt = new Date(data.addedAt * 1000);
-    this.lastViewedAt = (data as MovieData).lastViewedAt ?
-      new Date((data as MovieData).lastViewedAt! * 1000) :
-      undefined;
+    this.lastViewedAt = (data as MovieData).lastViewedAt
+      ? new Date((data as MovieData).lastViewedAt! * 1000)
+      : undefined;
     this.updatedAt = (data as MovieData).lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
@@ -82,7 +104,7 @@ export type VideoType = Movie | Show;
  */
 export class Movie extends Video {
   static include =
-  '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeConcerts=1&includePreferences=1';
+    '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeConcerts=1&includePreferences=1';
 
   TAG = 'Video';
   TYPE = 'movie';
@@ -164,6 +186,7 @@ export class Movie extends Video {
   protected _loadFullData(data: FullMovieResponse): void {
     const metadata = data.Metadata[0];
     this._loadData(metadata);
+    this.key = this._details_key as string;
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
     this.collections = metadata.Collection?.map(
@@ -178,7 +201,7 @@ export class Movie extends Video {
  */
 export class Show extends Video {
   static include =
-  '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
+    '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
 
   TAG = 'Directory';
   TYPE = 'show';
@@ -281,9 +304,9 @@ export class Show extends Video {
     this.roles = data.Role?.map(role => new Role(this.server, role)) ?? [];
   }
 
-  protected _loadFullData(): void {
+  protected _loadFullData(data: ShowData): void {
+    this._loadData(data);
     this.key = this._details_key as string;
-    // TODO
   }
 }
 
@@ -336,14 +359,15 @@ export class Season extends Video {
     this.viewedLeafCount = data.viewedLeafCount;
   }
 
-  protected _loadFullData(data: any): void {
-    // TODO
+  protected _loadFullData(data: ShowData): void {
+    this._loadData(data);
+    this.key = this._details_key as string;
   }
 }
 
 class Episode extends Video {
   static include =
-  '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
+    '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
 
   static TAG = 'Video';
   TYPE = 'episode';
@@ -353,18 +377,129 @@ class Episode extends Video {
    * Name of this Episode
    */
   title!: string;
+  /** Key to episode artwork (/library/metadata/<ratingkey>/art/<artid>) */
+  art!: string;
+  /** Unknown (media). */
+  chapterSource?: string;
+  /** Content rating (PG-13; NR; TV-G). */
+  contentRating!: string;
+  /**  Duration of episode in milliseconds. */
+  duration!: number;
+  /** Key to this episodes :class:`~plexapi.video.Show` artwork. */
+  grandparentArt!: string;
+  /** Key to this episodes :class:`~plexapi.video.Show`. */
+  grandparentKey!: string;
+  /** Unique key for this episodes :class:`~plexapi.video.Show`. */
+  grandparentRatingKey!: string;
+  /** Key to this episodes :class:`~plexapi.video.Show` theme. */
+  grandparentTheme!: string;
+  /** Key to this episodes :class:`~plexapi.video.Show` thumb. */
+  grandparentThumb!: string;
+  /** Title of this episodes :class:`~plexapi.video.Show`. */
+  grandparentTitle!: string;
+  /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en). */
+  guid!: string;
+  /**  Episode number. */
+  index!: number;
+  /**  Datetime episode was released. */
+  originallyAvailableAt!: Date;
+  /** Season number of episode. */
+  parentIndex!: number;
+  /** Key to this episodes :class:`~plexapi.video.Season`. */
+  parentKey!: string;
+  /**  Unique key for this episodes :class:`~plexapi.video.Season`. */
+  parentRatingKey!: string;
+  /** Key to this episodes thumbnail. */
+  parentThumb!: string;
+  /** Name of this episode's season */
+  parentTitle!: string;
+  /** Movie rating (7.9; 9.8; 8.1). */
+  rating!: number;
+  /**  View offset in milliseconds. */
+  viewOffset!: number;
+  /**  Year episode was released. */
+  year!: number;
+  writers!: Writer[];
+  // directors: (List<:class:`~plexapi.media.Director`>): List of director objects.
+  // media: (List<:class:`~plexapi.media.Media`>): List of media objects.
+
+  /**
+   * Returns this episodes season number.
+   */
+  async seasonNumber(): Promise<number> {
+    if (this.parentIndex) {
+      return this.parentIndex;
+    }
+
+    const season = await this.season();
+    return season.seasonNumber;
+  }
+
+  async seasonEpisode(): Promise<string> {
+    const seasonNumber = `${await this.seasonNumber()}`.padStart(2, '0');
+    const episodeNumber = `${this.index}`.padStart(2, '0');
+    return `s${seasonNumber}e${episodeNumber}`;
+  }
+
+  async season(): Promise<Season> {
+    const data = await fetchItem(this.server, this.parentKey);
+    return new Season(this.server, data, this.parentKey);
+  }
+
+  async show(): Promise<Show> {
+    const data = await fetchItem(this.server, this.grandparentKey);
+    return new Show(this.server, data, this.grandparentKey);
+  }
+
+  // /**
+  //  * Returns True if this episode has an intro marker
+  //  */
+  // async hasIntroMarker(): Promise<any> {
+  //   if (!this.isFullObject) {
+  //     await this.reload();
+  //   }
+  //   // return any(marker.type == 'intro' for marker in self.markers)
+  // }
 
   protected _loadData(data: EpisodeMetadata): void {
     super._loadData(data);
     this._details_key = this.key + Episode.include;
     this.key = this.key.replace('/children', '');
     this.title = data.title;
-    // this.index = data.index;
-    // this.leafCount = data.leafCount;
-    // this.viewedLeafCount = data.viewedLeafCount;
+    // this._seasonNumber = null; // cached season number
+    this.art = data.art;
+    // this.chapterSource = data.chapterSource;
+    this.contentRating = data.contentRating;
+    this.duration = data.duration;
+    this.grandparentArt = data.grandparentArt;
+    this.grandparentKey = data.grandparentKey;
+    this.grandparentRatingKey = data.grandparentRatingKey;
+    this.grandparentTheme = data.grandparentTheme;
+    this.grandparentThumb = data.grandparentThumb;
+    this.grandparentTitle = data.grandparentTitle;
+    this.guid = data.guid;
+    this.index = data.index;
+    // TODO: might need to parse date ex - '2011-04-17'
+    this.originallyAvailableAt = new Date(data.originallyAvailableAt);
+    this.parentIndex = data.parentIndex;
+    this.parentKey = data.parentKey;
+    this.parentRatingKey = data.parentRatingKey;
+    this.parentThumb = data.parentThumb;
+    this.parentTitle = data.parentTitle;
+    this.rating = data.rating;
+    // this.viewOffset = data.viewOffset;
+    this.year = data.year;
+    // this.directors = data.di
+    this.writers = data.Writer?.map(writer => new Writer(this.server, writer)) ?? [];
+    // this.media = self.findItems(data, media.Media);
+    // this.labels = self.findItems(data, media.Label);
+    // this.collections = self.findItems(data, media.Collection);
+    // this.chapters = self.findItems(data, media.Chapter);
+    // this.markers = self.findItems(data, media.Marker);
   }
 
-  protected _loadFullData(data: any): void {
-    // TODO
+  protected _loadFullData(data: EpisodeMetadata): void {
+    this._loadData(data);
+    this.key = this._details_key as string;
   }
 }

@@ -95,7 +95,12 @@ export class PlexClient {
    * @param timeout
    */
   async connect(timeout?: number): Promise<void> {
-    const data = await this.query<MediaContainer<{Player: Player}>>(this.key, undefined, undefined, timeout);
+    const data = await this.query<MediaContainer<{ Player: Player }>>(
+      this.key,
+      undefined,
+      undefined,
+      timeout,
+    );
     this._loadData(data.MediaContainer.Player);
   }
 

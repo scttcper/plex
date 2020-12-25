@@ -2,15 +2,15 @@
   "compileOnSave": false,
   "compilerOptions": {
     "moduleResolution": "node",
-    "lib": ["es2018"],
-    "target": "es2018",
-    "module": "commonjs",
+    "lib": ["ES2020"],
+    "target": "ES2018",
+    "module": "CommonJS",
     "esModuleInterop": true,
     "strict": true,
     "noImplicitAny": false,
     "noUnusedLocals": false,
     "declaration": true,
-    "sourceMap": true,
+    "sourceMap": false,
     "skipLibCheck": true,
     "outDir": "dist"
   }

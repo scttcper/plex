@@ -6,6 +6,7 @@ import { createClient } from './test-client';
 
 describe('Show', () => {
   let plex: PlexServer;
+  /** Game of thrones */
   let show: Show;
   beforeAll(async () => {
     plex = await createClient();
@@ -27,16 +28,42 @@ describe('Show', () => {
     // // console.log(seasons);
   });
 
-  it('should should get a shows\'s episodes', async () => {
+  it("should get a shows's episodes", async () => {
     const episodes = await show.episodes();
     // 2 seasons of GoT
     expect(episodes.length).toBe(20);
   });
 
-  it('should should get a season\'s episodes', async () => {
+  it("should get a season's episodes", async () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();
     // Season 1 of GoT
     expect(episodes.length).toBe(10);
+  });
+
+  it("should get a episode's season and show", async () => {
+    const seasons = await show.seasons();
+    const episodes = await seasons[0].episodes();
+    const [episode] = episodes;
+    // Season 1 of GoT
+    expect((await episode.season()).key).toBe(seasons[0].key);
+    expect((await episode.show()).key).toBe(show.key);
+  });
+
+  // Markers don't seem to be available from json? Or in the test env
+  // it.skip('should determine if an episode has makers', async () => {
+  //   const seasons = await show.seasons();
+  //   const episodes = await seasons[0].episodes();
+  //   const [episode] = episodes;
+  //   // @ts-expect-error
+  //   expect(await episode.hasIntroMarker()).toBe(true);
+  // });
+
+  it('should load all episode extra data', async () => {
+    const episodes = await show.episodes();
+    const [episode] = episodes;
+    expect(episode.writers.length).toBe(2);
+    expect(episode.grandparentTitle).toBe('Game of Thrones');
+    expect(await episode.seasonNumber()).toBe(1);
   });
 });

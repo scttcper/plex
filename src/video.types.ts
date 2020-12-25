@@ -414,7 +414,7 @@ export interface EpisodeMetadata {
   addedAt: number;
   updatedAt: number;
   Media: EpisodeMedia[];
-  Writer: Array<{tag: string}>;
+  Writer?: Array<{ tag: string }>;
   titleSort?: string;
 }
 

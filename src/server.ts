@@ -355,8 +355,6 @@ export class PlexServer {
       return [];
     }
 
-    console.log({ response });
-
     const shouldFetchPorts = response.MediaContainer.Server.some(
       server => server.port === null || server.port === undefined,
     );
@@ -392,7 +390,7 @@ export class PlexServer {
    * Build a URL string with proper token argument. Token will be appended to the URL
    * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
    */
-  private url(key: string, includeToken = false): URL {
+  url(key: string, includeToken = false): URL {
     if (!this.baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }

@@ -402,7 +402,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
       }
     }
 
-    throw new Error('Couldn\'t update section');
+    throw new Error("Couldn't update section");
   }
 
   protected _loadData(data: SectionsDirectory): void {

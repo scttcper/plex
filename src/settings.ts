@@ -4,7 +4,7 @@ import { PlexObject } from './base';
  * Represents a single Plex setting
  */
 export class Setting extends PlexObject {
-/** Setting id (or name). */
+  /** Setting id (or name). */
   id!: string;
   /** Short description of what this setting is. */
   label!: string;
@@ -15,7 +15,7 @@ export class Setting extends PlexObject {
   /** Default value for this setting. */
   default!: string;
   /** Current value for this setting. */
-  value!: string|boolean|number;
+  value!: string | boolean | number;
   /** True if this is a hidden setting. */
   hidden!: boolean;
   /** True if this is an advanced setting. */
@@ -104,4 +104,3 @@ export class Preferences extends Setting {
 //     def toUrl(self):
 //         """Helper for urls"""
 //         return '%s=%s' % (this.id, this._value or this.value)
-
