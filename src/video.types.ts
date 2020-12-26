@@ -1,4 +1,3 @@
-// TODO
 export interface FullShowResponse {
   size: number;
   allowSync: boolean;

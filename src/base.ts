@@ -11,9 +11,19 @@ export abstract class PlexObject {
   /** plex relative url */
   key!: string;
   _details_key?: string;
+  /**
+   * WeakRef to the parent object that this object is built from.
+   */
+  public readonly parent?: WeakRef<any>;
 
-  constructor(public readonly server: PlexServer, data: any, protected initpath?: string) {
+  constructor(
+    public readonly server: PlexServer,
+    data: any,
+    protected initpath?: string,
+    parent?: PlexObject,
+  ) {
     this._loadData(data);
+    this.parent = parent ? new WeakRef(parent) : undefined;
   }
 
   /**
@@ -28,6 +38,11 @@ export abstract class PlexObject {
     const data = await this.server.query(key);
     const innerData = data.MediaContainer ? data.MediaContainer : data;
     this._loadData(innerData);
+  }
+
+  isChildOf(cls: any) {
+    const parent = this.parent?.deref();
+    return parent && parent.constructor === cls.constructor;
   }
 
   protected abstract _loadData(data: any): void;

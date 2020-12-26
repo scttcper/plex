@@ -213,7 +213,7 @@ export class PlexServer {
     }
 
     const key = '/hubs/search?' + new URLSearchParams(params).toString();
-    const hubs = await fetchItems<Hub>(this, key, undefined, Hub);
+    const hubs = await fetchItems<Hub>(this, key, undefined, Hub, this);
     return hubs;
   }
 
@@ -382,7 +382,13 @@ export class PlexServer {
   /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
     const backgroundProcessing = await fetchItem(this, '/playlists?type=42');
-    const items = await fetchItems<Optimized>(this, backgroundProcessing.key, undefined, Optimized);
+    const items = await fetchItems<Optimized>(
+      this,
+      backgroundProcessing.key,
+      undefined,
+      Optimized,
+      this,
+    );
     return items;
   }
 

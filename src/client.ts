@@ -57,7 +57,6 @@ export class PlexClient {
    * HTTP address of the client
    */
   _baseurl: string | null = null;
-  _initpath?: string;
   /**
    * Token used to access this client
    */

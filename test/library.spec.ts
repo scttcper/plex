@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from '@jest/globals';
 
-import { PlexServer, MovieSection, ShowSection } from '../src';
+import { PlexServer, MovieSection, ShowSection, Movie } from '../src';
 import { createClient } from './test-client';
 
 describe('Plex', () => {
@@ -21,6 +21,7 @@ describe('Plex', () => {
     const section = await library.section<MovieSection>('Movies');
     const results = await section.search();
     expect(results.length).toBeGreaterThanOrEqual(4);
+    results[0].isChildOf(Movie);
     await results[0].markWatched();
     await results[0].markUnwatched();
   });

@@ -36,8 +36,13 @@ abstract class Video extends Playable {
   /** Count of times this item was accessed. */
   viewCount?: number;
 
-  constructor(public server: PlexServer, data: MovieData | EpisodeMetadata, initpath: string) {
-    super(server, data, initpath);
+  constructor(
+    public server: PlexServer,
+    data: MovieData | EpisodeMetadata,
+    initpath: string,
+    parent: any,
+  ) {
+    super(server, data, initpath, parent);
   }
 
   /**
@@ -272,13 +277,13 @@ export class Show extends Video {
 
   async seasons(query?: Record<string, string | number>): Promise<Season[]> {
     const key = `/library/metadata/${this.ratingKey}/children?excludeAllLeaves=1`;
-    return fetchItems(this.server, key, query, Season);
+    return fetchItems(this.server, key, query, Season, this);
   }
 
   async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
     const key = `/library/metadata/${this.ratingKey}/allLeaves`;
     const episodes = await fetchItems(this.server, key, query);
-    return episodes.map(episode => new Episode(this.server, episode, key));
+    return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
 
   protected _loadData(data: ShowData): void {
@@ -347,7 +352,7 @@ export class Season extends Video {
   async episodes(query?: Record<string, string | number>) {
     const key = `/library/metadata/${this.ratingKey}/children`;
     const episodes = await fetchItems<EpisodeMetadata>(this.server, key, query);
-    return episodes.map(episode => new Episode(this.server, episode, key));
+    return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
 
   protected _loadData(data: ShowData): void {

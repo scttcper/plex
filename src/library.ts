@@ -41,7 +41,7 @@ export class Library {
       for (const cls of [MovieSection, ShowSection]) {
         if (cls.TYPE === elem.type) {
           // eslint-disable-next-line new-cap
-          const instance = new cls(this.server, elem, key);
+          const instance = new cls(this.server, elem, key, this);
           sections.push(instance);
         }
       }
@@ -283,8 +283,8 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   /**
    * @param initpath Relative path requested when retrieving specified `data`
    */
-  constructor(server: PlexServer, data: SectionsDirectory, initpath: string) {
-    super(server, data, initpath);
+  constructor(server: PlexServer, data: SectionsDirectory, initpath: string, parent: any) {
+    super(server, data, initpath, parent);
     this._loadData(data);
   }
 
@@ -316,7 +316,13 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     }
 
     const key = `/library/all?${params.toString()}`;
-    const data = await fetchItems<SectionVideoType>(this.server, key, undefined, this.VIDEO_TYPE);
+    const data = await fetchItems<SectionVideoType>(
+      this.server,
+      key,
+      undefined,
+      this.VIDEO_TYPE,
+      this,
+    );
     return data;
   }
 
