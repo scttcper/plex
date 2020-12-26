@@ -40,7 +40,7 @@ abstract class Video extends Playable {
     public server: PlexServer,
     data: MovieData | EpisodeMetadata,
     initpath: string,
-    parent: any,
+    parent?: any,
   ) {
     super(server, data, initpath, parent);
   }
@@ -183,9 +183,11 @@ export class Movie extends Video {
     this.viewOffset = data.viewOffset ?? 0;
     this.year = data.year;
     this.librarySectionID = data.librarySectionID;
-    this.directors = data.Director?.map(data => new Director(this.server, data)) ?? [];
-    this.countries = data.Country?.map(data => new Country(this.server, data)) ?? [];
-    this.writers = data.Writer?.map(data => new Writer(this.server, data)) ?? [];
+    this.directors =
+      data.Director?.map(data => new Director(this.server, data, undefined, this)) ?? [];
+    this.countries =
+      data.Country?.map(data => new Country(this.server, data, undefined, this)) ?? [];
+    this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {
@@ -195,7 +197,7 @@ export class Movie extends Video {
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
     this.collections = metadata.Collection?.map(
-      collection => new Collection(this.server, collection),
+      collection => new Collection(this.server, collection, undefined, this),
     );
     // this.cha
   }
@@ -448,12 +450,12 @@ class Episode extends Video {
 
   async season(): Promise<Season> {
     const data = await fetchItem(this.server, this.parentKey);
-    return new Season(this.server, data, this.parentKey);
+    return new Season(this.server, data, this.parentKey, this);
   }
 
   async show(): Promise<Show> {
     const data = await fetchItem(this.server, this.grandparentKey);
-    return new Show(this.server, data, this.grandparentKey);
+    return new Show(this.server, data, this.grandparentKey, this);
   }
 
   // /**
