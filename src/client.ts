@@ -1,7 +1,9 @@
-import { TIMEOUT } from './config';
 import got from 'got';
 import { URL, URLSearchParams } from 'url';
-import { parseStringPromise } from 'xml2js';
+
+import { BASE_HEADERS, TIMEOUT } from './config';
+import { MediaContainer } from './util';
+import { Player } from './client.types';
 
 export interface PlexOptions {
   /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */
@@ -55,13 +57,22 @@ export class PlexClient {
    * HTTP address of the client
    */
   _baseurl: string | null = null;
-  _initpath?: string;
   /**
    * Token used to access this client
    */
   _token: string | null = null;
   TAG = 'Player';
   key = '/resources';
+
+  deviceClass?: string;
+  machineIdentifier?: string;
+  product?: string;
+  protocol?: string;
+  protocolCapabilities?: string[];
+  protocolVersion?: string;
+  platform?: string;
+  platformVersion?: string;
+  title?: string;
 
   constructor(options: PlexOptions = {}) {
     if (options.baseurl) {
@@ -73,47 +84,42 @@ export class PlexClient {
     }
 
     this._baseurl = options.baseurl ?? 'http://localhost:32400';
+    this._token = options.token ?? null;
   }
 
-  // TODO: lol
-  // /**
-  //  * any subsequent requests to this client will be made directly to the device even if the object attributes were initially populated from a PlexServer.
-  //  */
-  // async reload(timeout?: number): Promise<void> {
-  //   if (!this.key) {
-  //     throw new Error('Cannot reload an object not built from a URL.');
-  //   }
+  /**
+   * Alias of reload as any subsequent requests to this client will be
+   * made directly to the device even if the object attributes were initially
+   * populated from a PlexServer.
+   * @param timeout
+   */
+  async connect(timeout?: number): Promise<void> {
+    const data = await this.query<MediaContainer<{ Player: Player }>>(
+      this.key,
+      undefined,
+      undefined,
+      timeout,
+    );
+    this._loadData(data.MediaContainer.Player);
+  }
 
-  //   this._initpath = this.key;
-  //   const data = await this.query(this.key, undefined, undefined, timeout);
-  //   this._loadData(data);
-  // }
+  /**
+   * @alias PlexClient.connect
+   */
+  async reload() {
+    return this.connect();
+  }
 
-  _loadData(data: any) {
-    console.log({ data });
-    // this.deviceClass = data.attrib.get('deviceClass')
-    // this.machineIdentifier = data.attrib.get('machineIdentifier')
-    // this.product = data.attrib.get('product')
-    // this.protocol = data.attrib.get('protocol')
-    // this.protocolCapabilities = data.attrib.get('protocolCapabilities', '').split(',')
-    // this.protocolVersion = data.attrib.get('protocolVersion')
-    // this.platform = data.attrib.get('platform')
-    // this.platformVersion = data.attrib.get('platformVersion')
-    // this.title = data.attrib.get('title') or data.attrib.get('name')
-    // # Active session details
-    // # Since protocolCapabilities is missing from /sessions we cant really control this player without
-    // # creating a client manually.
-    // # Add this in next breaking release.
-    // # if this._initpath == 'status/sessions':
-    // this.device = data.attrib.get('device')         # session
-    // this.model = data.attrib.get('model')           # session
-    // this.state = data.attrib.get('state')           # session
-    // this.vendor = data.attrib.get('vendor')         # session
-    // this.version = data.attrib.get('version')       # session
-    // this.local = utils.cast(bool, data.attrib.get('local', 0))
-    // this.address = data.attrib.get('address')        # session
-    // this.remotePublicAddress = data.attrib.get('remotePublicAddress')
-    // this.userID = data.attrib.get('userID')
+  _loadData(data: Player) {
+    this.deviceClass = data.deviceClass;
+    this.machineIdentifier = data.machineIdentifier;
+    this.product = data.product;
+    this.protocol = data.protocol;
+    this.protocolCapabilities = data.protocolCapabilities.split(',');
+    this.protocolVersion = data.protocolVersion;
+    this.platform = data.platform;
+    this.platformVersion = data.platformVersion;
+    this.title = data.title;
   }
 
   /**
@@ -126,21 +132,22 @@ export class PlexClient {
    * @param headers
    * @param timeout
    */
-  async query(
+  async query<T>(
     path: string,
     method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
-    headers?: any,
+    headers?: Record<string, string>,
     timeout?: number,
-  ): Promise<any> {
+  ): Promise<T> {
+    const headersObj = this.headers(headers);
     const response = await got({
       method,
       url: this.url(path),
       timeout: timeout ?? TIMEOUT,
+      headers: headersObj,
       retry: 0,
-    });
+    }).json<T>();
 
-    const xml = await parseStringPromise(response.body);
-    return xml;
+    return response;
   }
 
   /**
@@ -163,5 +170,20 @@ export class PlexClient {
     }
 
     return url;
+  }
+
+  /**
+   * Returns a dict of all default headers for Client requests.
+   */
+  private headers(headers: Record<string, string> = {}) {
+    const headersObj: Record<string, string> = {
+      ...BASE_HEADERS,
+      ...headers,
+    };
+    if (this._token) {
+      headersObj['X-Plex-Token'] = this._token;
+    }
+
+    return headersObj;
   }
 }

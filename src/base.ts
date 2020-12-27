@@ -11,9 +11,19 @@ export abstract class PlexObject {
   /** plex relative url */
   key!: string;
   _details_key?: string;
+  /**
+   * WeakRef to the parent object that this object is built from.
+   */
+  public readonly parent?: WeakRef<any>;
 
-  constructor(public readonly server: PlexServer, data: any, protected initpath?: string) {
+  constructor(
+    public readonly server: PlexServer,
+    data: any,
+    protected initpath?: string,
+    parent?: PlexObject,
+  ) {
     this._loadData(data);
+    this.parent = parent ? new WeakRef(parent) : undefined;
   }
 
   /**
@@ -28,6 +38,11 @@ export abstract class PlexObject {
     const data = await this.server.query(key);
     const innerData = data.MediaContainer ? data.MediaContainer : data;
     this._loadData(innerData);
+  }
+
+  isChildOf(cls: any) {
+    const parent = this.parent?.deref();
+    return parent && parent.constructor === cls.constructor;
   }
 
   protected abstract _loadData(data: any): void;
@@ -51,6 +66,12 @@ export abstract class PartialPlexObject extends PlexObject {
 
   // async section(): Promise<any> {}
 
+  /**
+   * Retruns True if this is already a full object. A full object means all attributes
+   * were populated from the api path representing only this item. For example, the
+   * search result for a movie often only contain a portion of the attributes a full
+   * object (main url) for that movie contain.
+   */
   get isFullObject(): boolean {
     return !this.key || this.key === this.initpath;
   }

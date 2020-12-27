@@ -59,11 +59,12 @@ export async function fetchItems<T = any>(
   ekey: string,
   options?: Record<string, string | number>,
   Cls?: any,
+  parent?: any,
 ): Promise<T[]> {
   const response = await server.query<MediaContainer<any>>(ekey);
   const containerKey: string = Cls?.TAG ?? 'Metadata';
   const elems = response.MediaContainer[containerKey] ?? [];
-  const items = findItems(elems, options, Cls, server);
+  const items = findItems(elems, options, Cls, server, parent);
   return items;
 }
 
@@ -77,6 +78,7 @@ export function findItems(
   options: Record<string, string | number> = {},
   Cls?: any,
   server?: PlexServer,
+  parent?: any,
 ): any[] {
   // if (Cls?.TAG && !('tag' in options)) {
   //   options.etag = Cls.TAG;
@@ -89,7 +91,7 @@ export function findItems(
   const items: any[] = [];
   for (const elem of data) {
     if (checkAttrs(elem, options)) {
-      items.push(Cls === undefined ? elem : new Cls(server, elem));
+      items.push(Cls === undefined ? elem : new Cls(server, elem, undefined, parent));
     }
   }
 
@@ -99,8 +101,7 @@ export function findItems(
 function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [key, op, operator] = getAttrOperator(attr);
+    const [key, , operator] = getAttrOperator(attr);
     const value = elem[key] as string;
     attrsFound[key] = operator(value, query);
   }

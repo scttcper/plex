@@ -2,6 +2,7 @@ import { MyPlexAccount, PlexServer } from '../src';
 
 export const username = process.env.PLEX_USERNAME as string;
 export const password = process.env.PLEX_PASSWORD as string;
+export const token = process.env.PLEX_TOKEN;
 
 if (!username || !password) {
   console.error('Test environment variables must be set.');
@@ -9,7 +10,12 @@ if (!username || !password) {
 }
 
 export async function createAccount(): Promise<MyPlexAccount> {
-  const account = await new MyPlexAccount('http://localhost:32400', username, password).connect();
+  const account = await new MyPlexAccount(
+    'http://localhost:32400',
+    username,
+    password,
+    token,
+  ).connect();
   return account;
 }
 

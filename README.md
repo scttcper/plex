@@ -20,24 +20,24 @@ const plex = await resource.connect();
 const library = await plex.library();
 ```
 
-Example 1: List all unwatched movies.
+###### Example 1: List all unwatched movies.
 ```ts
 import { MovieSection } from '@ctrl/plex';
 
 // Pass MovieSection generic because the section title doesn't imply a section type.
 const section = await library.section<MovieSection>('Movies');
 // Get an array of Movie objects
-const results = await section.search();
+const results = await section.search({ unwatched: true });
 ```
 
-Example 2: Search for a list of movies containing a title
+###### Example 2: Search for a list of movies containing a title
 ```ts
 const library = await plex.library();
 const section = await library.section<MovieSection>('Movies');
 const results = await section.search({ title: 'Rush Hour' });
 ```
 
-Example 3: List all content containing a specific query
+###### Example 3: List all content containing a specific query
 ```ts
 const results = await plex.search('Arnold');
 // Each hub represents a single Hub (or category) in the PlexServer search (movie, actor, etc)

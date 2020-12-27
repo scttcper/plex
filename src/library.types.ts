@@ -1,4 +1,4 @@
-import { ChapterSource } from './videoInterfaces';
+import { ChapterSource } from './video.types';
 
 export interface LibraryRootResponse {
   size: number;
@@ -71,10 +71,10 @@ export interface MediaItems {
   title2: string;
   viewGroup: string;
   viewMode: number;
-  Metadata: MediaItem[];
+  Metadata: MovieData[];
 }
 
-export interface MediaItem {
+export interface MovieData {
   ratingKey: string;
   userRating?: number;
   audienceRating?: number;
@@ -105,14 +105,14 @@ export interface MediaItem {
   primaryExtraKey: string;
   ratingImage: string;
   Media: Media[];
-  Genre: Country[];
-  Director: Country[];
-  Writer: Country[];
-  Country: Country[];
-  Role: Country[];
+  Genre: MediaTag[];
+  Director: MediaTag[];
+  Writer: MediaTag[];
+  Country: MediaTag[];
+  Role: MediaTag[];
 }
 
-export interface Country {
+export interface MediaTag {
   tag: string;
 }
 
@@ -132,4 +132,34 @@ export interface Part {
   size: number;
   container: string;
   videoProfile: string;
+}
+
+export interface ShowData {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  studio: string;
+  type: string;
+  title: string;
+  librarySectionTitle: string;
+  librarySectionID: number;
+  librarySectionKey: string;
+  contentRating: string;
+  summary: string;
+  index: number;
+  rating: number;
+  year: number;
+  thumb: string;
+  art: string;
+  banner: string;
+  theme: string;
+  duration: number;
+  originallyAvailableAt: string;
+  leafCount: number;
+  viewedLeafCount: number;
+  childCount: number;
+  addedAt: number;
+  updatedAt: number;
+  Genre: MediaTag[];
+  Role: MediaTag[];
 }

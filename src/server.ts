@@ -8,10 +8,10 @@ import {
   HistoryMetadatum,
   PlaylistMediaContainer,
   ConnectionInfo,
-} from './serverInterfaces';
+} from './server.types';
 import { Library, Hub } from './library';
 import { MediaContainer, SEARCHTYPES } from './util';
-import { LibraryRootResponse } from './libraryInterfaces';
+import { LibraryRootResponse } from './library.types';
 import { fetchItems, fetchItem } from './baseFunctionality';
 import { Optimized } from './media';
 import { PlexClient } from './client';
@@ -152,6 +152,14 @@ export class PlexServer {
       this.timeout,
     );
     this._loadData(data.MediaContainer);
+
+    // Attempt to prevent token from being logged accidentally
+    if (this.token) {
+      Object.defineProperty(this, 'token', {
+        enumerable: false,
+        value: this.token,
+      });
+    }
   }
 
   /**
@@ -205,7 +213,7 @@ export class PlexServer {
     }
 
     const key = '/hubs/search?' + new URLSearchParams(params).toString();
-    const hubs = await fetchItems<Hub>(this, key, undefined, Hub);
+    const hubs = await fetchItems<Hub>(this, key, undefined, Hub, this);
     return hubs;
   }
 
@@ -298,7 +306,6 @@ export class PlexServer {
       args['X-Plex-Container-Start'] = (
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
-      console.log(args['X-Plex-Container-Start']);
       key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
       // eslint-disable-next-line no-await-in-loop
       raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
@@ -341,7 +348,11 @@ export class PlexServer {
   // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
   async clients(): Promise<PlexClient[]> {
     const items: PlexClient[] = [];
-    const response = await this.query<MediaContainer<ConnectionInfo>>('/clients');
+    const response = await this.query<MediaContainer<ConnectionInfo | undefined>>('/clients');
+
+    if (response.MediaContainer?.Server === undefined) {
+      return [];
+    }
 
     const shouldFetchPorts = response.MediaContainer.Server.some(
       server => server.port === null || server.port === undefined,
@@ -350,7 +361,6 @@ export class PlexServer {
 
     if (shouldFetchPorts) {
       ports = await this._myPlexClientPorts();
-      console.log(ports);
     }
 
     for (const server of response.MediaContainer.Server) {
@@ -370,7 +380,13 @@ export class PlexServer {
   /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
     const backgroundProcessing = await fetchItem(this, '/playlists?type=42');
-    const items = await fetchItems<Optimized>(this, backgroundProcessing.key, undefined, Optimized);
+    const items = await fetchItems<Optimized>(
+      this,
+      backgroundProcessing.key,
+      undefined,
+      Optimized,
+      this,
+    );
     return items;
   }
 
@@ -378,7 +394,7 @@ export class PlexServer {
    * Build a URL string with proper token argument. Token will be appended to the URL
    * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
    */
-  private url(key: string, includeToken = false): URL {
+  url(key: string, includeToken = false): URL {
     if (!this.baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }

@@ -1,3 +1,61 @@
+export interface FullShowResponse {
+  size: number;
+  allowSync: boolean;
+  art: string;
+  banner: string;
+  identifier: string;
+  key: string;
+  librarySectionID: number;
+  librarySectionTitle: string;
+  librarySectionUUID: string;
+  mediaTagPrefix: string;
+  mediaTagVersion: number;
+  nocache: boolean;
+  parentIndex: number;
+  parentTitle: string;
+  parentYear: number;
+  summary: string;
+  theme: string;
+  thumb: string;
+  title1: string;
+  title2: string;
+  viewGroup: string;
+  viewMode: number;
+  Directory: ShowDirectory[];
+  Metadata: FullTvMetadata[];
+}
+
+export interface ShowDirectory {
+  leafCount: number;
+  thumb: string;
+  viewedLeafCount: number;
+  key: string;
+  title: string;
+}
+
+export interface FullTvMetadata {
+  ratingKey: string;
+  key: string;
+  parentRatingKey: string;
+  guid: string;
+  parentGuid: string;
+  type: string;
+  title: string;
+  parentKey: string;
+  parentTitle: string;
+  summary: string;
+  index: number;
+  parentIndex: number;
+  thumb: string;
+  art: string;
+  parentThumb: string;
+  parentTheme: string;
+  leafCount: number;
+  viewedLeafCount: number;
+  addedAt: number;
+  updatedAt: number;
+}
+
 export interface FullMovieResponse {
   size: number;
   allowSync: boolean;
@@ -101,31 +159,7 @@ export interface PurpleMedia {
   videoResolution: string;
   container: string;
   premium: boolean;
-  Part: PurplePart[];
-}
-
-export interface PurplePart {
-  id: number;
-  duration: number;
-  container: string;
-  key: string;
-  optimizedForStreaming: boolean;
-  Stream: PurpleStream[];
-}
-
-export interface PurpleStream {
-  id: number;
-  streamType: number;
-  codec: string;
-  index: number;
-  bitrate?: number;
-  height?: number;
-  width?: number;
-  displayTitle: string;
-  selected?: boolean;
-  channels?: number;
-  language?: string;
-  languageCode?: string;
+  Part: MediaPartData[];
 }
 
 export interface Field {
@@ -298,4 +332,114 @@ export enum ChapterSource {
   Agent = 'agent',
   Media = 'media',
   Mixed = 'mixed',
+}
+
+export interface ShowAllLeaves {
+  size: number;
+  allowSync: boolean;
+  art: string;
+  banner: string;
+  identifier: string;
+  key: string;
+  librarySectionID: number;
+  librarySectionTitle: string;
+  librarySectionUUID: string;
+  mediaTagPrefix: string;
+  mediaTagVersion: number;
+  mixedParents: boolean;
+  nocache: boolean;
+  parentIndex: number;
+  parentTitle: string;
+  parentYear: number;
+  theme: string;
+  title1: string;
+  title2: string;
+  viewGroup: string;
+  viewMode: number;
+  Metadata: EpisodeMetadata[];
+}
+
+export interface EpisodeMetadata {
+  ratingKey: string;
+  key: string;
+  parentRatingKey: string;
+  grandparentRatingKey: string;
+  guid: string;
+  studio: string;
+  type: string;
+  title: string;
+  grandparentKey: string;
+  parentKey: string;
+  grandparentTitle: string;
+  parentTitle: string;
+  contentRating: string;
+  summary: string;
+  index: number;
+  parentIndex: number;
+  rating: number;
+  year: number;
+  thumb: string;
+  art: string;
+  parentThumb: string;
+  grandparentThumb: string;
+  grandparentArt: string;
+  grandparentTheme: string;
+  duration: number;
+  originallyAvailableAt: Date;
+  addedAt: number;
+  updatedAt: number;
+  Media: MediaData[];
+  Writer?: Array<{ tag: string }>;
+  titleSort?: string;
+}
+
+export interface MediaData {
+  id: number;
+  duration: number;
+  title?: string;
+  bitrate: number;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  audioChannels: number;
+  audioCodec: string;
+  videoCodec: string;
+  videoResolution: string;
+  container: string;
+  videoFrameRate: string;
+  optimizedForStreaming: boolean;
+  audioProfile: string;
+  has64bitOffsets: boolean;
+  videoProfile: string;
+  Part: MediaPartData[];
+}
+
+export interface MediaPartData {
+  id: number;
+  key: string;
+  audioProfile: string;
+  container: string;
+  duration: number;
+  file: string;
+  has64bitOffsets: boolean;
+  optimizedForStreaming: boolean;
+  size: number;
+  videoProfile: string;
+  exists?: boolean;
+  Stream?: MediaPartStreamData[];
+}
+
+export interface MediaPartStreamData {
+  id: number;
+  streamType: number;
+  codec: string;
+  index: number;
+  bitrate?: number;
+  height?: number;
+  width?: number;
+  displayTitle: string;
+  selected?: boolean;
+  channels?: number;
+  language?: string;
+  languageCode?: string;
 }
