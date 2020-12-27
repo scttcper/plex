@@ -3,7 +3,7 @@ import { describe, expect, it, beforeAll } from '@jest/globals';
 import { PlexServer, MovieSection, ShowSection, Movie } from '../src';
 import { createClient } from './test-client';
 
-describe('Plex', () => {
+describe('Library', () => {
   let plex: PlexServer;
   beforeAll(async () => {
     plex = await createClient();
@@ -14,6 +14,15 @@ describe('Plex', () => {
     const sections = await library.sections();
     expect(sections.length).toBeGreaterThanOrEqual(1);
     expect(sections.find(section => section.type === 'movie')!.type).toBe('movie');
+  });
+
+  it('should search for all unwatched movies', async () => {
+    const library = await plex.library();
+    const section = await library.section<MovieSection>('Movies');
+    const results = await section.search({ unwatched: true });
+    expect(results).toHaveLength(4);
+    expect(results[0].title).toBe('Big Buck Bunny');
+    expect(results[0].librarySectionID).toBe(1);
   });
 
   it('should get a list of unwatched movies and mark one watched', async () => {
@@ -31,15 +40,6 @@ describe('Plex', () => {
     const section = await library.section<MovieSection>('Movies');
     const results = await section.search({ title: 'Bunny' });
     expect(results).toHaveLength(1);
-    expect(results[0].title).toBe('Big Buck Bunny');
-    expect(results[0].librarySectionID).toBe(1);
-  });
-
-  it('should list all unwatched movies', async () => {
-    const library = await plex.library();
-    const section = await library.section<MovieSection>('Movies');
-    const results = await section.search({ unwatched: true });
-    expect(results).toHaveLength(4);
     expect(results[0].title).toBe('Big Buck Bunny');
     expect(results[0].librarySectionID).toBe(1);
   });
