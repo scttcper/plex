@@ -454,7 +454,7 @@ class Episode extends Video {
   }
 
   locations(): string[] {
-    const parts = (this.media?.map(x => x.Part) ?? []).flat();
+    const parts = (this.media?.map(media => media.parts) ?? []).flat();
     return parts.map(part => part.file);
   }
 
