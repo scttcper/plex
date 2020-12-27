@@ -21,7 +21,7 @@ async function main() {
   const frame = (await elementHandle?.contentFrame()) as puppeteer.Frame;
   console.log('clicking');
   await frame.click('[data-qa-id="signIn--email"]');
-  await page.waitForSelector('#email');
+  await frame.waitForSelector('#email');
   await frame.type('#email', username);
   await frame.type('#password', password);
   await frame.click('[type="submit"]');
@@ -56,7 +56,7 @@ async function main() {
     document.querySelector('.btn-primary').click();
   });
   await delay(2000);
-  // await browser.close();
+  await browser.close();
 }
 
 if (!module.parent) {
