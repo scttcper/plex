@@ -101,8 +101,7 @@ export function findItems(
 function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [key, op, operator] = getAttrOperator(attr);
+    const [key, , operator] = getAttrOperator(attr);
     const value = elem[key] as string;
     attrsFound[key] = operator(value, query);
   }

@@ -306,7 +306,6 @@ export class PlexServer {
       args['X-Plex-Container-Start'] = (
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
-      console.log(args['X-Plex-Container-Start']);
       key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
       // eslint-disable-next-line no-await-in-loop
       raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
@@ -362,7 +361,6 @@ export class PlexServer {
 
     if (shouldFetchPorts) {
       ports = await this._myPlexClientPorts();
-      console.log(ports);
     }
 
     for (const server of response.MediaContainer.Server) {

@@ -434,5 +434,18 @@ export interface EpisodeMedia {
   audioProfile: string;
   has64bitOffsets: boolean;
   videoProfile: string;
-  Part: any[];
+  Part: EpisodePart[];
+}
+
+export interface EpisodePart {
+  id: number;
+  key: string;
+  duration: number;
+  file: string;
+  size: number;
+  audioProfile: string;
+  container: string;
+  has64bitOffsets: boolean;
+  optimizedForStreaming: boolean;
+  videoProfile: string;
 }

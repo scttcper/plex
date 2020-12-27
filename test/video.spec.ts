@@ -66,4 +66,10 @@ describe('Show', () => {
     expect(episode.grandparentTitle).toBe('Game of Thrones');
     expect(await episode.seasonNumber()).toBe(1);
   });
+
+  it('should get show locations', async () => {
+    const episodes = await show.episodes();
+    const [episode] = episodes;
+    expect(episode.locations()).toEqual(['/data/shows/Game of Thrones/S01E01.mp4']);
+  });
 });

@@ -1,18 +1,15 @@
 import { URL } from 'url';
 
 import { Playable } from './base';
-import { fetchItem, fetchItems, findItems } from './baseFunctionality';
+import { fetchItem, fetchItems } from './baseFunctionality';
 import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
 import { Director, Country, Writer, Chapter, Collection, Genre, Role } from './media';
-import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
-import { Preferences } from './settings';
-import { MediaContainer } from './util';
+import { FullMovieResponse, ChapterSource, EpisodeMetadata, EpisodeMedia } from './video.types';
 
 abstract class Video extends Playable {
   /** API URL (/library/metadata/<ratingkey>) */
   key!: string;
-  ing;
   /** Datetime this item was added to the library. */
   addedAt!: Date;
   /** Datetime item was last accessed. */
@@ -232,8 +229,6 @@ export class Show extends Video {
   index!: number;
   /** Unknown. */
   leafCount!: number;
-  /** List of locations paths. */
-  locations?: string[];
   /** Datetime show was released. */
   originallyAvailableAt!: Date;
   /** Show rating (7.9; 9.8; 8.1). */
@@ -428,7 +423,7 @@ class Episode extends Video {
   year!: number;
   writers!: Writer[];
   // directors: (List<:class:`~plexapi.media.Director`>): List of director objects.
-  // media: (List<:class:`~plexapi.media.Media`>): List of media objects.
+  media?: EpisodeMedia[];
 
   /**
    * Returns this episodes season number.
@@ -456,6 +451,11 @@ class Episode extends Video {
   async show(): Promise<Show> {
     const data = await fetchItem(this.server, this.grandparentKey);
     return new Show(this.server, data, this.grandparentKey, this);
+  }
+
+  locations(): string[] {
+    const parts = (this.media?.map(x => x.Part) ?? []).flat();
+    return parts.map(part => part.file);
   }
 
   // /**
@@ -498,7 +498,7 @@ class Episode extends Video {
     this.year = data.year;
     // this.directors = data.di
     this.writers = data.Writer?.map(writer => new Writer(this.server, writer)) ?? [];
-    // this.media = self.findItems(data, media.Media);
+    this.media = data.Media;
     // this.labels = self.findItems(data, media.Label);
     // this.collections = self.findItems(data, media.Collection);
     // this.chapters = self.findItems(data, media.Chapter);

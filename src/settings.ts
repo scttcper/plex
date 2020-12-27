@@ -26,7 +26,6 @@ export class Setting extends PlexObject {
   enumValues: any[] | any;
 
   _loadData(data) {
-    console.log(data);
     // this._setValue = None
     this.id = data.id;
     this.label = data.label;

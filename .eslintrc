@@ -5,6 +5,7 @@
   },
   "extends": ["@ctrl/eslint-config"],
   "rules": {
-    "max-params": 0
+    "max-params": 0,
+    "no-warning-comments": 0
   }
 }
