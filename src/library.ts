@@ -312,7 +312,16 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     const params = new URLSearchParams();
 
     for (const [key, value] of Object.entries(args)) {
-      params.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+      let strValue: string;
+      if (typeof value === 'string') {
+        strValue = value;
+      } else if (typeof value === 'boolean') {
+        strValue = value ? '1' : '0';
+      } else {
+        strValue = JSON.stringify(value);
+      }
+
+      params.append(key, strValue);
     }
 
     const key = `/library/all?${params.toString()}`;
