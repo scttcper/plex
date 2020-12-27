@@ -159,31 +159,7 @@ export interface PurpleMedia {
   videoResolution: string;
   container: string;
   premium: boolean;
-  Part: PurplePart[];
-}
-
-export interface PurplePart {
-  id: number;
-  duration: number;
-  container: string;
-  key: string;
-  optimizedForStreaming: boolean;
-  Stream: PurpleStream[];
-}
-
-export interface PurpleStream {
-  id: number;
-  streamType: number;
-  codec: string;
-  index: number;
-  bitrate?: number;
-  height?: number;
-  width?: number;
-  displayTitle: string;
-  selected?: boolean;
-  channels?: number;
-  language?: string;
-  languageCode?: string;
+  Part: MediaPartData[];
 }
 
 export interface Field {
@@ -412,14 +388,15 @@ export interface EpisodeMetadata {
   originallyAvailableAt: Date;
   addedAt: number;
   updatedAt: number;
-  Media: EpisodeMedia[];
+  Media: MediaData[];
   Writer?: Array<{ tag: string }>;
   titleSort?: string;
 }
 
-export interface EpisodeMedia {
+export interface MediaData {
   id: number;
   duration: number;
+  title?: string;
   bitrate: number;
   width: number;
   height: number;
@@ -430,22 +407,39 @@ export interface EpisodeMedia {
   videoResolution: string;
   container: string;
   videoFrameRate: string;
-  optimizedForStreaming: number;
+  optimizedForStreaming: boolean;
   audioProfile: string;
   has64bitOffsets: boolean;
   videoProfile: string;
-  Part: EpisodePart[];
+  Part: MediaPartData[];
 }
 
-export interface EpisodePart {
+export interface MediaPartData {
   id: number;
   key: string;
-  duration: number;
-  file: string;
-  size: number;
   audioProfile: string;
   container: string;
+  duration: number;
+  file: string;
   has64bitOffsets: boolean;
   optimizedForStreaming: boolean;
+  size: number;
   videoProfile: string;
+  exists?: boolean;
+  Stream?: MediaPartStreamData[];
+}
+
+export interface MediaPartStreamData {
+  id: number;
+  streamType: number;
+  codec: string;
+  index: number;
+  bitrate?: number;
+  height?: number;
+  width?: number;
+  displayTitle: string;
+  selected?: boolean;
+  channels?: number;
+  language?: string;
+  languageCode?: string;
 }

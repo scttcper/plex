@@ -1,4 +1,5 @@
 import { PlexObject } from './base';
+import { MediaData, MediaPartData, MediaPartStreamData } from './video.types';
 
 /**
  * Base class for media tags used for filtering and searching your library
@@ -31,6 +32,119 @@ abstract class MediaTag extends PlexObject {
     this.id = data.id;
     this.role = data.role;
     this.tag = data.tag;
+  }
+}
+
+export class Media extends PlexObject {
+  static TAG = 'Media' as const;
+  aspectRatio!: number;
+  /**
+   * Number of audio channels for this video (ex: 6)
+   */
+  audioChannels!: number;
+  /**
+   * Audio codec used within the video (ex: ac3)
+   */
+  audioCodec!: string;
+  /**
+   * Bitrate of the video (ex: 1624)
+   */
+  bitrate!: number;
+  /**
+   * Length of the video in milliseconds (ex: 6990483)
+   */
+  duration!: number;
+  /**
+   * Height of the video in pixels (ex: 256)
+   */
+  height!: number;
+  /**
+   * Plex ID of this media item
+   */
+  id!: number;
+  /**
+   * True if video has 64 bit offsets
+   */
+  has64bitOffsets!: boolean;
+  optimizedForStreaming!: boolean;
+  title?: string;
+  videoCodec!: string;
+  videoFrameRate!: string;
+  videoProfile!: string;
+  /** Width of the video in pixels */
+  width!: number;
+  parts!: MediaPart[];
+
+  _loadData(data: MediaData) {
+    this.aspectRatio = data.aspectRatio;
+    this.audioChannels = data.audioChannels;
+    this.audioCodec = data.audioCodec;
+    this.bitrate = data.bitrate;
+    this.duration = data.duration;
+    this.height = data.height;
+    this.id = data.id;
+    this.has64bitOffsets = data.has64bitOffsets;
+    this.optimizedForStreaming = data.optimizedForStreaming;
+    this.title = data.title;
+    this.videoCodec = data.videoCodec;
+    this.videoFrameRate = data.videoFrameRate;
+    this.videoProfile = data.videoProfile;
+    this.width = data.width;
+    this.parts = data.Part.map(part => new MediaPart(this.server, part, undefined, this));
+  }
+}
+
+export class MediaPart extends PlexObject {
+  static TAG = 'Part' as const;
+
+  container!: string;
+  duration!: number;
+  file!: string;
+  id!: number;
+  indexes!: string;
+  key!: string;
+  size!: number;
+  optimizedForStreaming!: boolean;
+  syncItemId!: string;
+  syncState!: string;
+  videoProfile!: string;
+  streams!: MediaPartStream[];
+  exists?: boolean;
+
+  _loadData(data: MediaPartData) {
+    this.container = data.container;
+    this.duration = data.duration;
+    this.file = data.file;
+    this.id = data.id;
+    this.key = data.key;
+    this.size = data.size;
+    this.optimizedForStreaming = data.optimizedForStreaming;
+    this.videoProfile = data.videoProfile;
+    this.exists = data.exists;
+    this.streams =
+      data.Stream?.map(stream => new MediaPartStream(this.server, stream, undefined, this)) ?? [];
+  }
+}
+
+export class MediaPartStream extends PlexObject {
+  static TAG = 'Stream' as const;
+
+  id!: number;
+  codec!: string;
+  index!: number;
+  language?: string;
+  languageCode?: string;
+  selected?: boolean;
+  streamType?: number;
+
+  _loadData(data: MediaPartStreamData) {
+    this.id = data.id;
+    this.codec = data.codec;
+    this.index = data.index;
+    this.language = data.language;
+    this.languageCode = data.languageCode;
+    this.selected = data.selected;
+    this.streamType = data.streamType;
   }
 }
 

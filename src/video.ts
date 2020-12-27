@@ -4,8 +4,8 @@ import { Playable } from './base';
 import { fetchItem, fetchItems } from './baseFunctionality';
 import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
-import { Director, Country, Writer, Chapter, Collection, Genre, Role } from './media';
-import { FullMovieResponse, ChapterSource, EpisodeMetadata, EpisodeMedia } from './video.types';
+import { Director, Country, Writer, Chapter, Collection, Genre, Role, Media } from './media';
+import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
 
 abstract class Video extends Playable {
   /** API URL (/library/metadata/<ratingkey>) */
@@ -423,7 +423,7 @@ class Episode extends Video {
   year!: number;
   writers!: Writer[];
   // directors: (List<:class:`~plexapi.media.Director`>): List of director objects.
-  media?: EpisodeMedia[];
+  media?: Media[];
 
   /**
    * Returns this episodes season number.
@@ -497,8 +497,9 @@ class Episode extends Video {
     // this.viewOffset = data.viewOffset;
     this.year = data.year;
     // this.directors = data.di
-    this.writers = data.Writer?.map(writer => new Writer(this.server, writer)) ?? [];
-    this.media = data.Media;
+    this.writers =
+      data.Writer?.map(writer => new Writer(this.server, writer, undefined, this)) ?? [];
+    this.media = data.Media.map(media => new Media(this.server, media, undefined, this));
     // this.labels = self.findItems(data, media.Label);
     // this.collections = self.findItems(data, media.Collection);
     // this.chapters = self.findItems(data, media.Chapter);
