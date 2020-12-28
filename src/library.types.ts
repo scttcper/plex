@@ -1,4 +1,4 @@
-import { ChapterSource } from './video.types';
+import { ChapterSource, MediaTagData } from './video.types';
 
 export interface LibraryRootResponse {
   size: number;
@@ -109,7 +109,10 @@ export interface MovieData {
   Director: MediaTag[];
   Writer: MediaTag[];
   Country: MediaTag[];
-  Role: MediaTag[];
+  Collection?: MediaTagData[];
+  Role?: MediaTag[];
+  Similar?: MediaTagData[];
+  Producer?: MediaTagData[];
 }
 
 export interface MediaTag {
