@@ -1,5 +1,5 @@
 import { PlexObject } from './base';
-import { MediaData, MediaPartData, MediaPartStreamData } from './video.types';
+import { ChapterData, MediaData, MediaPartData, MediaPartStreamData } from './video.types';
 
 /**
  * Base class for media tags used for filtering and searching your library
@@ -188,12 +188,32 @@ export class Director extends MediaTag {
   FILTER = 'director' as const;
 }
 
+export class Similar extends MediaTag {
+  static TAG = 'Similar' as const;
+  FILTER = 'similar' as const;
+}
+
+export class Producer extends MediaTag {
+  static TAG = 'Producer' as const;
+  FILTER = 'producer' as const;
+}
+
 /**
  * Represents a single Chapter media tag.
  */
 export class Chapter extends MediaTag {
   static TAG = 'Chapter' as const;
   FILTER = 'chapter' as const;
+
+  startTimeOffset!: number;
+  endTimeOffset!: number;
+  thumb?: string;
+
+  protected _loadData(data: ChapterData) {
+    this.startTimeOffset = data.startTimeOffset;
+    this.endTimeOffset = data.endTimeOffset;
+    this.thumb = data.thumb;
+  }
 }
 
 /**

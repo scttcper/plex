@@ -4,7 +4,18 @@ import { Playable } from './base';
 import { fetchItem, fetchItems } from './baseFunctionality';
 import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
-import { Director, Country, Writer, Chapter, Collection, Genre, Role, Media } from './media';
+import {
+  Director,
+  Country,
+  Writer,
+  Chapter,
+  Collection,
+  Genre,
+  Role,
+  Media,
+  Similar,
+  Producer,
+} from './media';
 import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
 
 abstract class Video extends Playable {
@@ -151,13 +162,13 @@ export class Movie extends Video {
   countries!: Country[];
   writers!: Writer[];
   chapters?: Chapter[];
-  collections?: Collection[];
+  collections!: Collection[];
   // fields (List<:class:`~plexapi.media.Field`>): List of field objects.
-  // genres (List<:class:`~plexapi.media.Genre`>): List of genre objects.
+  genres!: Genre[];
   // media (List<:class:`~plexapi.media.Media`>): List of media objects.
-  // producers (List<:class:`~plexapi.media.Producer`>): List of producers objects.
-  // roles (List<:class:`~plexapi.media.Role`>): List of role objects.
-  // similar (List<:class:`~plexapi.media.Similar`>): List of Similar objects.
+  producers!: Producer[];
+  roles!: Role[];
+  similar!: Similar[];
 
   protected _loadData(data: MovieData): void {
     super._loadData(data);
@@ -185,6 +196,13 @@ export class Movie extends Video {
     this.countries =
       data.Country?.map(data => new Country(this.server, data, undefined, this)) ?? [];
     this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
+    this.collections =
+      data.Collection?.map(data => new Collection(this.server, data, undefined, this)) ?? [];
+    this.roles = data.Role?.map(data => new Role(this.server, data, undefined, this)) ?? [];
+    this.similar = data.Similar?.map(data => new Similar(this.server, data, undefined, this)) ?? [];
+    this.genres = data.Genre?.map(data => new Genre(this.server, data, undefined, this)) ?? [];
+    this.producers =
+      data.Producer?.map(data => new Producer(this.server, data, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {
@@ -193,10 +211,10 @@ export class Movie extends Video {
     this.key = this._details_key as string;
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
-    this.collections = metadata.Collection?.map(
-      collection => new Collection(this.server, collection, undefined, this),
-    );
-    // this.cha
+    this.collections =
+      metadata.Collection?.map(
+        collection => new Collection(this.server, collection, undefined, this),
+      ) ?? [];
   }
 }
 
@@ -418,12 +436,14 @@ class Episode extends Video {
   /** Movie rating (7.9; 9.8; 8.1). */
   rating!: number;
   /**  View offset in milliseconds. */
-  viewOffset!: number;
+  viewOffset?: number;
   /**  Year episode was released. */
   year!: number;
   writers!: Writer[];
-  // directors: (List<:class:`~plexapi.media.Director`>): List of director objects.
-  media?: Media[];
+  directors!: Director[];
+  media!: Media[];
+  collections!: Collection[];
+  chapters!: Chapter[];
 
   /**
    * Returns this episodes season number.
@@ -473,9 +493,8 @@ class Episode extends Video {
     this._details_key = this.key + Episode.include;
     this.key = this.key.replace('/children', '');
     this.title = data.title;
-    // this._seasonNumber = null; // cached season number
     this.art = data.art;
-    // this.chapterSource = data.chapterSource;
+    this.chapterSource = data.chapterSource;
     this.contentRating = data.contentRating;
     this.duration = data.duration;
     this.grandparentArt = data.grandparentArt;
@@ -494,20 +513,23 @@ class Episode extends Video {
     this.parentThumb = data.parentThumb;
     this.parentTitle = data.parentTitle;
     this.rating = data.rating;
-    // this.viewOffset = data.viewOffset;
+    this.viewOffset = data.viewOffset;
     this.year = data.year;
-    // this.directors = data.di
+    this.directors =
+      data.Director?.map(director => new Director(this.server, director, undefined, this)) ?? [];
     this.writers =
       data.Writer?.map(writer => new Writer(this.server, writer, undefined, this)) ?? [];
-    this.media = data.Media.map(media => new Media(this.server, media, undefined, this));
-    // this.labels = self.findItems(data, media.Label);
-    // this.collections = self.findItems(data, media.Collection);
-    // this.chapters = self.findItems(data, media.Chapter);
-    // this.markers = self.findItems(data, media.Marker);
+    this.media = data.Media?.map(media => new Media(this.server, media, undefined, this));
+    this.collections =
+      data.Collection?.map(
+        collection => new Collection(this.server, collection, undefined, this),
+      ) ?? [];
+    this.chapters =
+      data.Chapter?.map(chapter => new Chapter(this.server, chapter, undefined, this)) ?? [];
   }
 
-  protected _loadFullData(data: EpisodeMetadata): void {
-    this._loadData(data);
+  protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {
+    this._loadData(data.Metadata[0]);
     this.key = this._details_key as string;
   }
 }

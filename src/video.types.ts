@@ -103,18 +103,19 @@ export interface TitleMetadatum {
   Country: MediaTagData[];
   Role: Role[];
   Similar?: MediaTagData[];
-  Chapter?: Chapter[];
+  Chapter?: ChapterData[];
   Collection?: MediaTagData[];
   Field?: Field[];
   Extras: Extras;
   Related: Related;
 }
 
-export interface Chapter extends MediaTagData {
+export interface ChapterData extends MediaTagData {
   index: number;
   startTimeOffset: number;
   endTimeOffset: number;
   thumb?: string;
+  filter?: string;
 }
 
 export interface MediaTagData {
@@ -283,7 +284,7 @@ export interface RelatedMetadata {
   Country: MediaTagData[];
   Role: Role[];
   Similar?: MediaTagData[];
-  Chapter?: Chapter[];
+  Chapter?: ChapterData[];
   Field?: Field[];
   viewCount?: number;
   lastViewedAt?: number;
@@ -360,37 +361,42 @@ export interface ShowAllLeaves {
 }
 
 export interface EpisodeMetadata {
-  ratingKey: string;
   key: string;
-  parentRatingKey: string;
-  grandparentRatingKey: string;
-  guid: string;
-  studio: string;
-  type: string;
-  title: string;
-  grandparentKey: string;
-  parentKey: string;
-  grandparentTitle: string;
-  parentTitle: string;
-  contentRating: string;
-  summary: string;
   index: number;
-  parentIndex: number;
-  rating: number;
-  year: number;
-  thumb: string;
-  art: string;
-  parentThumb: string;
-  grandparentThumb: string;
-  grandparentArt: string;
-  grandparentTheme: string;
-  duration: number;
-  originallyAvailableAt: Date;
   addedAt: number;
+  art: string;
+  chapterSource: string;
+  contentRating: string;
+  duration: number;
+  grandparentArt: string;
+  grandparentKey: string;
+  grandparentRatingKey: string;
+  grandparentTheme: string;
+  grandparentThumb: string;
+  grandparentTitle: string;
+  guid: string;
+  originallyAvailableAt: Date;
+  parentIndex: number;
+  parentKey: string;
+  parentRatingKey: string;
+  parentThumb: string;
+  parentTitle: string;
+  rating: number;
+  ratingKey: string;
+  studio: string;
+  summary: string;
+  thumb: string;
+  title: string;
+  type: string;
   updatedAt: number;
+  viewOffset?: number;
+  year: number;
+  titleSort?: string;
   Media: MediaData[];
   Writer?: Array<{ tag: string }>;
-  titleSort?: string;
+  Director?: Array<{ tag: string }>;
+  Chapter?: ChapterData[];
+  Collection?: MediaTagData[];
 }
 
 export interface MediaData {

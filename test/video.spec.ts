@@ -41,6 +41,12 @@ describe('Show', () => {
     expect(episodes.length).toBe(10);
   });
 
+  it("should get an episode's full data", async () => {
+    const [season] = await show.seasons();
+    const [episode] = await season.episodes();
+    await episode.reload();
+  });
+
   it("should get a episode's season and show", async () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();
