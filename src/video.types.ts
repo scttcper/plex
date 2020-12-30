@@ -403,6 +403,7 @@ export interface EpisodeMetadata {
   Director?: Array<{ tag: string }>;
   Chapter?: ChapterData[];
   Collection?: MediaTagData[];
+  Marker?: MarkerData[];
 }
 
 export interface MediaData {

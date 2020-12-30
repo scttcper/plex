@@ -490,7 +490,7 @@ class Episode extends Video {
   /**
    * Returns True if this episode has an intro marker
    */
-  async hasIntroMarker(): Promise<any> {
+  async hasIntroMarker(): Promise<boolean> {
     if (!this.isFullObject) {
       await this.reload();
     }
@@ -535,6 +535,8 @@ class Episode extends Video {
       ) ?? [];
     this.chapters =
       data.Chapter?.map(chapter => new Chapter(this.server, chapter, undefined, this)) ?? [];
+    this.markers =
+      data.Marker?.map(marker => new Marker(this.server, marker, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {

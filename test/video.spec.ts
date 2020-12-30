@@ -44,16 +44,16 @@ describe('Show', () => {
     // Season 1 of GoT
     expect((await episode.season()).key).toBe(seasons[0].key);
     expect((await episode.show()).key).toBe(show.key);
+    expect(episode.isWatched).toBe(false);
   });
 
   // Markers don't seem to be available from json? Or in the test env
-  // it.skip('should determine if an episode has makers', async () => {
-  //   const seasons = await show.seasons();
-  //   const episodes = await seasons[0].episodes();
-  //   const [episode] = episodes;
-  //   // @ts-expect-error
-  //   expect(await episode.hasIntroMarker()).toBe(true);
-  // });
+  it('should determine if an episode has makers', async () => {
+    const seasons = await show.seasons();
+    const episodes = await seasons[0].episodes();
+    const [episode] = episodes;
+    expect(await episode.hasIntroMarker()).toBe(false);
+  });
 
   it('should load all episode extra data', async () => {
     const episodes = await show.episodes();
