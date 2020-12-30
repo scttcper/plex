@@ -553,18 +553,14 @@ class Episode extends Video {
     this.viewOffset = data.viewOffset;
     this.year = data.year;
     this.directors =
-      data.Director?.map(director => new Director(this.server, director, undefined, this)) ?? [];
-    this.writers =
-      data.Writer?.map(writer => new Writer(this.server, writer, undefined, this)) ?? [];
-    this.media = data.Media?.map(media => new Media(this.server, media, undefined, this));
+      data.Director?.map(data => new Director(this.server, data, undefined, this)) ?? [];
+    this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
+    this.media = data.Media?.map(data => new Media(this.server, data, undefined, this));
     this.collections =
-      data.Collection?.map(
-        collection => new Collection(this.server, collection, undefined, this),
-      ) ?? [];
+      data.Collection?.map(data => new Collection(this.server, data, undefined, this)) ?? [];
     this.chapters =
-      data.Chapter?.map(chapter => new Chapter(this.server, chapter, undefined, this)) ?? [];
-    this.markers =
-      data.Marker?.map(marker => new Marker(this.server, marker, undefined, this)) ?? [];
+      data.Chapter?.map(data => new Chapter(this.server, data, undefined, this)) ?? [];
+    this.markers = data.Marker?.map(data => new Marker(this.server, data, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {

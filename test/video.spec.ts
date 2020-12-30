@@ -1,17 +1,18 @@
 import { describe, it, beforeAll, expect } from '@jest/globals';
 
-import { PlexServer, ShowSection, MovieSection, Show, Movie } from '../src';
+import { PlexServer, ShowSection, MovieSection, Show, Movie, Hub, Folder } from '../src';
 import { createClient } from './test-client';
 
 describe('Shows', () => {
   let plex: PlexServer;
   /** Game of thrones */
   let show: Show;
+  let showSection: ShowSection;
   beforeAll(async () => {
     plex = await createClient();
     const library = await plex.library();
-    const section = await library.section<ShowSection>('TV Shows');
-    const results = await section.search({ title: 'Game of Thrones' });
+    showSection = await library.section<ShowSection>('TV Shows');
+    const results = await showSection.search({ title: 'Game of Thrones' });
     show = results[0];
   });
 
@@ -66,6 +67,18 @@ describe('Shows', () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
     expect(episode.locations()).toEqual(['/data/shows/Game of Thrones/S01E01.mp4']);
+  });
+
+  it('should get show hubs', async () => {
+    const hubs = await showSection.hubs();
+    expect(hubs.length).toBe(5);
+    expect(hubs[0].type).toBe('episode');
+  });
+
+  it('should get show folders', async () => {
+    const folders = await showSection.folders();
+    expect(folders.length).toBe(2);
+    expect(folders[0].title).toBeDefined();
   });
 });
 

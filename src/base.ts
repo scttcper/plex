@@ -45,9 +45,9 @@ export abstract class PlexObject {
     this._loadData(innerData);
   }
 
-  isChildOf(cls: any) {
+  isChildOf(cls: any): boolean {
     const parent = this.parent?.deref();
-    return parent && parent.constructor === cls.constructor;
+    return (parent && parent.constructor === cls.constructor) || false;
   }
 
   protected _buildDetailsKey(args: Record<string, boolean | number> = {}) {

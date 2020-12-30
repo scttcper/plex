@@ -248,6 +248,26 @@ export class Library {
     return results;
   }
 
+  /**
+   * If a library has items in the Library Trash, use this option to empty the Trash.
+   */
+  async emptyTrash() {
+    const sections = await this.sections();
+    for (const section of sections) {
+      // eslint-disable-next-line no-await-in-loop
+      await section.emptyTrash();
+    }
+  }
+
+  /**
+   * The Optimize option cleans up the server database from unused or fragmented data.
+   * For example, if you have deleted or added an entire library or many items in a
+   * library, you may like to optimize the database.
+   */
+  async optimize() {
+    await this.server.query('/library/optimize?async=1', 'put');
+  }
+
   protected _loadData(data: LibraryRootResponse): void {
     this.identifier = data.identifier;
     this.mediaTagPrefix = data.mediaTagPrefix;
@@ -449,6 +469,20 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     throw new Error("Couldn't update section");
   }
 
+  async hubs(): Promise<Hub[]> {
+    const key = `/hubs/sections/${this.key}`;
+    const hubs = await fetchItems<Hub>(this.server, key, undefined, Hub, this);
+    return hubs;
+  }
+
+  /**
+   * Returns a list of available Folders for this library section.
+   */
+  async folders(): Promise<Folder[]> {
+    const key = `/library/sections/${this.key}/folder`;
+    return fetchItems<Folder>(this.server, key, undefined, Folder);
+  }
+
   protected _loadData(data: SectionsDirectory): void {
     this.uuid = data.uuid;
     this.key = data.key;
@@ -562,8 +596,8 @@ export class Hub extends PlexObject {
   static TAG = 'Hub';
 
   hubIdentifier!: string;
+  /** Number of items found. */
   size!: number;
-  more!: boolean;
   title!: string;
   type!: string;
   Directory: SearchResult['Directory'];
@@ -576,5 +610,30 @@ export class Hub extends PlexObject {
     this.type = data.type;
     this.Directory = data.Directory;
     this.Metadata = data.Metadata;
+  }
+}
+
+/**
+ * Represents a Folder inside a library.
+ */
+export class Folder extends PlexObject {
+  key!: string;
+  title!: string;
+
+  _loadData(data: any) {
+    this.key = data.key;
+    this.title = data.title;
+  }
+
+  /**
+   * Returns a list of available Folders for this folder.
+   * Continue down subfolders until a mediaType is found.
+   */
+  async subfolders() {
+    if (this.key.startsWith('/library/metadata')) {
+      return fetchItems<Folder>(this.server, this.key);
+    }
+
+    return fetchItems<Folder>(this.server, this.key, undefined, Folder);
   }
 }
