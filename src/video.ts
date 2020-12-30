@@ -116,9 +116,6 @@ export type VideoType = Movie | Show;
  * Represents a single Movie.
  */
 export class Movie extends Video {
-  static include =
-    '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeConcerts=1&includePreferences=1';
-
   TAG = 'Video';
   TYPE = 'movie';
   METADATA_TYPE = 'movie';
@@ -172,7 +169,6 @@ export class Movie extends Video {
 
   protected _loadData(data: MovieData): void {
     super._loadData(data);
-    this._details_key = this.key + Movie.include;
     this.art = data.art;
     this.audienceRating = data.audienceRating;
     this.audienceRatingImage = data.audienceRatingImage;
@@ -208,7 +204,6 @@ export class Movie extends Video {
   protected _loadFullData(data: FullMovieResponse): void {
     const metadata = data.Metadata[0];
     this._loadData(metadata);
-    this.key = this._details_key as string;
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
     this.collections =
@@ -222,9 +217,6 @@ export class Movie extends Video {
  * Represents a single Show (including all seasons and episodes).
  */
 export class Show extends Video {
-  static include =
-    '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
-
   TAG = 'Directory';
   TYPE = 'show';
   METADATA_TYPE = 'episode';
@@ -303,7 +295,6 @@ export class Show extends Video {
 
   protected _loadData(data: ShowData): void {
     super._loadData(data);
-    this._details_key = this.key + Show.include;
     this.key = this.key.replace('/children', '');
     this.art = data.art;
     this.banner = data.banner;
@@ -326,7 +317,6 @@ export class Show extends Video {
 
   protected _loadFullData(data: ShowData): void {
     this._loadData(data);
-    this.key = this._details_key as string;
   }
 }
 
@@ -372,7 +362,6 @@ export class Season extends Video {
 
   protected _loadData(data: ShowData): void {
     super._loadData(data);
-    this._details_key = this.key + Show.include;
     this.key = this.key.replace('/children', '');
     this.index = data.index;
     this.leafCount = data.leafCount;
@@ -381,13 +370,31 @@ export class Season extends Video {
 
   protected _loadFullData(data: ShowData): void {
     this._loadData(data);
-    this.key = this._details_key as string;
   }
 }
 
 class Episode extends Video {
-  static include =
-    '?checkFiles=1&includeExtras=1&includeRelated=1&includeOnDeck=1&includeChapters=1&includePopularLeaves=1&includeMarkers=1&includeConcerts=1&includePreferences=1';
+  static include = {
+    checkFiles: 1,
+    includeAllConcerts: 1,
+    includeBandwidths: 1,
+    includeChapters: 1,
+    includeChildren: 1,
+    includeConcerts: 1,
+    includeExternalMedia: 1,
+    includeExtras: 1,
+    includeFields: 'thumbBlurHash,artBlurHash',
+    includeGeolocation: 1,
+    includeLoudnessRamps: 1,
+    includeMarkers: 1,
+    includeOnDeck: 1,
+    includePopularLeaves: 1,
+    includePreferences: 1,
+    includeRelated: 1,
+    includeRelatedCount: 1,
+    includeReviews: 1,
+    includeStations: 1,
+  };
 
   static TAG = 'Video';
   TYPE = 'episode';
@@ -485,12 +492,12 @@ class Episode extends Video {
   //   if (!this.isFullObject) {
   //     await this.reload();
   //   }
-  //   // return any(marker.type == 'intro' for marker in self.markers)
+
+  //   return this.markers.som;
   // }
 
   protected _loadData(data: EpisodeMetadata): void {
     super._loadData(data);
-    this._details_key = this.key + Episode.include;
     this.key = this.key.replace('/children', '');
     this.title = data.title;
     this.art = data.art;
@@ -530,6 +537,5 @@ class Episode extends Video {
 
   protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {
     this._loadData(data.Metadata[0]);
-    this.key = this._details_key as string;
   }
 }

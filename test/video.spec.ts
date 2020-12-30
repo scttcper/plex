@@ -44,7 +44,9 @@ describe('Show', () => {
   it("should get an episode's full data", async () => {
     const [season] = await show.seasons();
     const [episode] = await season.episodes();
+    expect(episode.isFullObject).toBeFalsy();
     await episode.reload();
+    expect(episode.isFullObject).toBeTruthy();
   });
 
   it("should get a episode's season and show", async () => {
