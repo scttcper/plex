@@ -156,7 +156,7 @@ export class PlexClient {
    * @param key
    * @param includeToken
    */
-  url(key, includeToken = false): URL {
+  url(key: string, includeToken = false): URL {
     if (!this._baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }

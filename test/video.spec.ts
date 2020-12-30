@@ -1,10 +1,9 @@
 import { describe, it, beforeAll, expect } from '@jest/globals';
 
-import { PlexServer, ShowSection } from '../src';
-import { Show } from '../src/video';
+import { PlexServer, ShowSection, MovieSection, Show, Movie } from '../src';
 import { createClient } from './test-client';
 
-describe('Show', () => {
+describe('Shows', () => {
   let plex: PlexServer;
   /** Game of thrones */
   let show: Show;
@@ -67,5 +66,26 @@ describe('Show', () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
     expect(episode.locations()).toEqual(['/data/shows/Game of Thrones/S01E01.mp4']);
+  });
+});
+
+describe('Movies', () => {
+  let plex: PlexServer;
+  /** Big buck bunny */
+  let movie: Movie;
+  beforeAll(async () => {
+    plex = await createClient();
+    const library = await plex.library();
+    const section = await library.section<MovieSection>('Movies');
+    const results = await section.search({ title: 'Bunny' });
+    movie = results[0];
+  });
+
+  it('should reutrn roles as actors', () => {
+    expect(movie.actors).toEqual(movie.roles);
+  });
+
+  it('should get movie locations', async () => {
+    expect(await movie.locations()).toEqual(['/data/movies/Big Buck Bunny (2008).mp4']);
   });
 });

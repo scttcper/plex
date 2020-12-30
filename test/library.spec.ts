@@ -58,6 +58,19 @@ describe('Library', () => {
     expect(movies?.Metadata?.[0]?.title).toBe('Big Buck Bunny');
   });
 
+  it('should list all items in all sections', async () => {
+    const library = await plex.library();
+    const items = await library.all();
+    expect(items.length).toBe(6);
+  });
+
+  it('should list all movies in movie section', async () => {
+    const library = await plex.library();
+    const section = await library.section<MovieSection>('Movies');
+    const items = await section.all();
+    expect(items.length).toBe(4);
+  });
+
   // TODO: Not sure yet why this fails
   it.skip('should list all clients connected to the Server.', async () => {
     const clients = await plex.clients();

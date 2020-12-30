@@ -44,6 +44,8 @@ abstract class Video extends Playable {
   updatedAt?: Date;
   /** Count of times this item was accessed. */
   viewCount?: number;
+  art?: string;
+  grandparentArt?: string;
 
   constructor(
     public server: PlexServer,
@@ -71,7 +73,12 @@ abstract class Video extends Playable {
    */
   get thumbUrl(): URL {
     const thumb = this.thumb ?? (this as any).parentThumb ?? (this as any).granparentThumb;
-    return this.server.url(thumb);
+    return this.server.url(thumb, true);
+  }
+
+  get artUrl(): URL {
+    const art = this.art ?? this.grandparentArt;
+    return this.server.url(art!, true);
   }
 
   /**
@@ -79,8 +86,8 @@ abstract class Video extends Playable {
    */
   async markWatched(): Promise<void> {
     const key = `/:/scrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`;
-    this.server.query(key);
-    this.reload();
+    await this.server.query(key);
+    await this.reload();
   }
 
   /**
@@ -88,8 +95,14 @@ abstract class Video extends Playable {
    */
   async markUnwatched(): Promise<void> {
     const key = `/:/unscrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`;
-    this.server.query(key);
-    this.reload();
+    await this.server.query(key);
+    await this.reload();
+  }
+
+  async rate(rate: number): Promise<void> {
+    const key = `/:/rate?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&rating=${rate}`;
+    await this.server.query(key);
+    await this.reload();
   }
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
@@ -167,6 +180,20 @@ export class Movie extends Video {
   producers!: Producer[];
   roles!: Role[];
   similar!: Similar[];
+  media!: Media[];
+
+  get actors() {
+    return this.roles;
+  }
+
+  async locations(): Promise<string[]> {
+    if (!this.isFullObject) {
+      await this.reload();
+    }
+
+    const parts = (this.media?.map(media => media.parts) ?? []).flat();
+    return parts.map(part => part.file);
+  }
 
   protected _loadData(data: MovieData): void {
     super._loadData(data);
@@ -200,6 +227,7 @@ export class Movie extends Video {
     this.genres = data.Genre?.map(data => new Genre(this.server, data, undefined, this)) ?? [];
     this.producers =
       data.Producer?.map(data => new Producer(this.server, data, undefined, this)) ?? [];
+    this.media = data.Media?.map(data => new Media(this.server, data, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {

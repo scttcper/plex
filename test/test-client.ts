@@ -1,7 +1,7 @@
 import { MyPlexAccount, PlexServer } from '../src';
 
-export const username = process.env.PLEX_USERNAME as string;
-export const password = process.env.PLEX_PASSWORD as string;
+export const username = process.env.PLEX_USERNAME!;
+export const password = process.env.PLEX_PASSWORD!;
 export const token = process.env.PLEX_TOKEN;
 
 if (!username || !password) {

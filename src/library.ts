@@ -230,6 +230,24 @@ export class Library {
     return this.server.query(url, 'post');
   }
 
+  /**
+   * Returns a list of all media from all library sections.
+   * This may be a very large dataset to retrieve.
+   */
+  async all() {
+    const results: any[] = [];
+    const sections = await this.sections();
+    for (const section of sections) {
+      // eslint-disable-next-line no-await-in-loop
+      const items = await section.all();
+      for (const item of items) {
+        results.push(item);
+      }
+    }
+
+    return results;
+  }
+
   protected _loadData(data: LibraryRootResponse): void {
     this.identifier = data.identifier;
     this.mediaTagPrefix = data.mediaTagPrefix;
@@ -286,6 +304,17 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   constructor(server: PlexServer, data: SectionsDirectory, initpath: string, parent: any) {
     super(server, data, initpath, parent);
     this._loadData(data);
+  }
+
+  async all(sort = '') {
+    let sortStr = '';
+    if (sort) {
+      sortStr = `?sort=${sort}`;
+    }
+
+    const key = `/library/sections/${this.key}/all${sortStr}`;
+    const items = await fetchItems(this.server, key);
+    return items;
   }
 
   /**

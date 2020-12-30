@@ -18,7 +18,7 @@ async function main() {
   await page.waitForRequest(request => request.url() === 'https://app.plex.tv/auth/');
   await delay(5000);
   const elementHandle = await page.$('iframe');
-  const frame = (await elementHandle?.contentFrame()) as puppeteer.Frame;
+  const frame = (await elementHandle?.contentFrame())!;
   console.log('clicking');
   await frame.click('[data-qa-id="signIn--email"]');
   await frame.waitForSelector('#email');
