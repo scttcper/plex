@@ -422,6 +422,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
 
   protected _loadData(data: SectionsDirectory): void {
     this.uuid = data.uuid;
+    this.key = data.key;
     this.agent = data.agent;
     this.allowSync = data.allowSync;
     this.art = data.art;

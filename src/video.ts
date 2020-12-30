@@ -15,6 +15,7 @@ import {
   Media,
   Similar,
   Producer,
+  Marker,
 } from './media';
 import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
 
@@ -295,7 +296,7 @@ export class Show extends Video {
 
   protected _loadData(data: ShowData): void {
     super._loadData(data);
-    this.key = this.key.replace('/children', '');
+    this.key = (data.key ?? '').replace('/children', '');
     this.art = data.art;
     this.banner = data.banner;
     this.childCount = data.childCount;
@@ -362,7 +363,7 @@ export class Season extends Video {
 
   protected _loadData(data: ShowData): void {
     super._loadData(data);
-    this.key = this.key.replace('/children', '');
+    this.key = (data.key || '').replace('/children', '');
     this.index = data.index;
     this.leafCount = data.leafCount;
     this.viewedLeafCount = data.viewedLeafCount;
@@ -451,6 +452,7 @@ class Episode extends Video {
   media!: Media[];
   collections!: Collection[];
   chapters!: Chapter[];
+  markers!: Marker[];
 
   /**
    * Returns this episodes season number.
@@ -485,20 +487,20 @@ class Episode extends Video {
     return parts.map(part => part.file);
   }
 
-  // /**
-  //  * Returns True if this episode has an intro marker
-  //  */
-  // async hasIntroMarker(): Promise<any> {
-  //   if (!this.isFullObject) {
-  //     await this.reload();
-  //   }
+  /**
+   * Returns True if this episode has an intro marker
+   */
+  async hasIntroMarker(): Promise<any> {
+    if (!this.isFullObject) {
+      await this.reload();
+    }
 
-  //   return this.markers.som;
-  // }
+    return this.markers.some(marker => marker.type === 'intro');
+  }
 
   protected _loadData(data: EpisodeMetadata): void {
     super._loadData(data);
-    this.key = this.key.replace('/children', '');
+    this.key = (data.key || '').replace('/children', '');
     this.title = data.title;
     this.art = data.art;
     this.chapterSource = data.chapterSource;

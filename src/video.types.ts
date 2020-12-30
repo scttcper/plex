@@ -118,6 +118,12 @@ export interface ChapterData extends MediaTagData {
   filter?: string;
 }
 
+export interface MarkerData extends MediaTagData {
+  type: 'intro';
+  startTimeOffset: number;
+  endTimeOffset: number;
+}
+
 export interface MediaTagData {
   id?: number;
   filter?: string;

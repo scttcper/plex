@@ -16,18 +16,6 @@ describe('Show', () => {
     show = results[0];
   });
 
-  it('should get show details', async () => {
-    const library = await plex.library();
-    const section = await library.section<ShowSection>('TV Shows');
-    const results = await section.search({ title: 'Game of Thrones' });
-    const show = results[0];
-    await show.reload();
-    expect(show.key).toBe(show._details_key);
-    // console.log(show.genres);
-    // // const seasons = await show.seasons({ index: 2 });
-    // // console.log(seasons);
-  });
-
   it("should get a shows's episodes", async () => {
     const episodes = await show.episodes();
     // 2 seasons of GoT

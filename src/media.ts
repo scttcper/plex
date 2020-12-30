@@ -1,5 +1,11 @@
 import { PlexObject } from './base';
-import { ChapterData, MediaData, MediaPartData, MediaPartStreamData } from './video.types';
+import {
+  ChapterData,
+  MarkerData,
+  MediaData,
+  MediaPartData,
+  MediaPartStreamData,
+} from './video.types';
 
 /**
  * Base class for media tags used for filtering and searching your library
@@ -196,6 +202,21 @@ export class Similar extends MediaTag {
 export class Producer extends MediaTag {
   static TAG = 'Producer' as const;
   FILTER = 'producer' as const;
+}
+
+export class Marker extends MediaTag {
+  static TAG = 'Marker' as const;
+  FILTER = 'marker' as const;
+
+  type!: 'intro';
+  startTimeOffset!: number;
+  endTimeOffset!: number;
+
+  protected _loadData(data: MarkerData) {
+    this.type = data.type;
+    this.startTimeOffset = data.startTimeOffset;
+    this.endTimeOffset = data.endTimeOffset;
+  }
 }
 
 /**
