@@ -589,6 +589,30 @@ export class ShowSection extends LibrarySection<Show> {
   static METADATA_TYPE = 'episode';
   static CONTENT_TYPE = 'video';
   VIDEO_TYPE = Show;
+
+  /**
+   * Search for a show. See :func:`~plexapi.library.LibrarySection.search` for usage.
+   */
+  async searchShows(args: any) {
+    return this.search({ libtype: 'show', ...args });
+  }
+
+  // TODO: figure out how to return episode objects
+  // /**
+  //  * Search for an episode. See :func:`~plexapi.library.LibrarySection.search` for usage.
+  //  */
+  // async searchEpisodes(args: any) {
+  //   return this.search({ libtype: 'episode', ...args });
+  // }
+
+  /**
+   * Returns a list of recently added episodes from this library section.
+   *
+   * @param maxresults Max number of items to return (default 50).
+   */
+  async recentlyAdded(args: any, libtype = 'episode', maxresults = 50) {
+    return this.search({ libtype, maxresults, sort: 'episode.addedAt:desc', ...args });
+  }
 }
 
 /** Represents a single Hub (or category) in the PlexServer search */

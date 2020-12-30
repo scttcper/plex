@@ -80,6 +80,11 @@ describe('Shows', () => {
     expect(folders.length).toBe(2);
     expect(folders[0].title).toBeDefined();
   });
+
+  it('should search shows', async () => {
+    const shows = await showSection.searchShows({ title: 'Game of Thrones' });
+    expect(shows[0].title).toBe('Game of Thrones');
+  });
 });
 
 describe('Movies', () => {
