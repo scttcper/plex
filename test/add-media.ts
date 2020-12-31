@@ -22,9 +22,11 @@ export async function addMedia(): Promise<void> {
     'Plex Movie Scanner',
     '/data/movies',
   );
-  await delay(5000);
+  await delay(10000);
   const sections = await library.sections();
-  if (sections.length !== 2) {
+  const tv = sections.find(x => x.title === 'TV Shows');
+  const tvShows = await tv!.all();
+  if (sections.length !== 2 || tvShows.length !== 2) {
     throw new Error('Sections not setup');
   }
 }
