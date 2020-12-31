@@ -6,17 +6,8 @@ const delay = async (ms: number) =>
   });
 
 export async function addMedia(): Promise<void> {
-  await delay(10000);
   const server = await createClient();
   const library = await server.library();
-  await library.add(
-    'Movies',
-    'movie',
-    'com.plexapp.agents.imdb',
-    'Plex Movie Scanner',
-    '/data/movies',
-  );
-  await delay(30000);
   await library.add(
     'TV Shows',
     'show',
@@ -24,7 +15,18 @@ export async function addMedia(): Promise<void> {
     'Plex Series Scanner',
     '/data/shows',
   );
-  await delay(60 * 1000 * 2);
+  await library.add(
+    'Movies',
+    'movie',
+    'com.plexapp.agents.imdb',
+    'Plex Movie Scanner',
+    '/data/movies',
+  );
+  await delay(5000);
+  const sections = await library.sections();
+  if (sections.length !== 2) {
+    throw new Error('Sections not setup');
+  }
 }
 
 if (!module.parent) {

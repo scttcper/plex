@@ -37,9 +37,9 @@ describe('Library', () => {
     const library = await plex.library();
     const section = await library.section<MovieSection>('Movies');
     const results = await section.search({ title: 'Bunny' });
-    expect(results).toHaveLength(1);
+    expect(results.length).toBe(1);
     expect(results[0].title).toBe('Big Buck Bunny');
-    expect(results[0].librarySectionID).toBe(1);
+    expect(results[0].librarySectionID).toBeDefined();
   });
 
   it('should search for tv show matching a title', async () => {

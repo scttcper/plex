@@ -26,7 +26,7 @@ async function main() {
   await frame.type('#password', password);
   await frame.click('[type="submit"]');
   await page.waitForNavigation();
-  await delay(5000);
+  await delay(3000);
   await page.waitForSelector('.next-btn');
   console.log('clicking');
   await page.click('.next-btn');
@@ -35,7 +35,7 @@ async function main() {
   await page.waitForSelector('[data-uid="id-18"]');
   await page.click('[data-uid="id-18"]');
   await page.waitForSelector('#FriendlyName');
-  await delay(5000);
+  await delay(3000);
   await page.evaluate(() => {
     // @ts-expect-error
     document.querySelector('[type="submit"]').click();
