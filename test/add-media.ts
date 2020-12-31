@@ -20,6 +20,7 @@ export async function addMedia(): Promise<void> {
     'com.plexapp.agents.thetvdb',
     'Plex Series Scanner',
     '/data/shows',
+    'en',
   );
   await pWaitFor(
     async () => {
@@ -53,6 +54,12 @@ export async function addMedia(): Promise<void> {
     'com.plexapp.agents.imdb',
     'Plex Movie Scanner',
     '/data/movies',
+    'en',
+    {
+      'prefs[enableBIFGeneration]': '0',
+      'prefs[augmentWithProviderContent]': '0',
+      'prefs[collectionMode]': '0',
+    },
   );
   await delay(30000);
 }

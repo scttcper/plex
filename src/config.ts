@@ -34,4 +34,5 @@ export const BASE_HEADERS = {
   'X-Plex-Device-Name': X_PLEX_DEVICE_NAME,
   'X-Plex-Client-Identifier': X_PLEX_IDENTIFIER,
   'X-Plex-Sync-Version': '2',
+  'X-Plex-Language': 'en',
 } as const;

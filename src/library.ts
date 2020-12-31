@@ -217,7 +217,15 @@ export class Library {
    *       40:South Africa, 41:Spain, 42:Sweden, 43:Switzerland, 44:Taiwan, 45:Trinidad,
    *       46:United Kingdom, 47:United States, 48:Uruguay, 49:Venezuela.
    */
-  async add(name = '', type = '', agent = '', scanner = '', location = '', language = 'en') {
+  async add(
+    name: string,
+    type: string,
+    agent: string,
+    scanner: string,
+    location: string,
+    language = 'en',
+    extra: Record<string, string> = {},
+  ) {
     const search = new URLSearchParams({
       name,
       type,
@@ -225,6 +233,7 @@ export class Library {
       scanner,
       location,
       language,
+      ...extra,
     });
     const url = '/library/sections?' + search.toString();
     return this.server.query(url, 'post');
