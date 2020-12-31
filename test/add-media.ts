@@ -13,14 +13,6 @@ export async function addMedia(): Promise<void> {
   const server = await createClient();
   const library = await server.library();
   console.log('friendlyName', server.friendlyName);
-  await library.add(
-    'Movies',
-    'movie',
-    'com.plexapp.agents.imdb',
-    'Plex Movie Scanner',
-    '/data/movies',
-  );
-  await delay(10000);
 
   await library.add(
     'TV Shows',
@@ -29,20 +21,38 @@ export async function addMedia(): Promise<void> {
     'Plex Series Scanner',
     '/data/shows',
   );
-  await delay(10000);
   await pWaitFor(
     async () => {
       const showSection = await library.section<ShowSection>('TV Shows');
-      if (showSection) {
-        const shows = await showSection.all();
-        if (shows.length === 2) {
-          return true;
-        }
+      if (!showSection) {
+        return false;
+      }
+
+      if (showSection.refreshing) {
+        return false;
+      }
+
+      const shows = await showSection.all();
+      if (shows.length === 2) {
+        return true;
+      }
+
+      const thrones = await showSection.search({ title: 'Game of Thrones' });
+      if (thrones[0]) {
+        return (await thrones[0].episodes()).length === 20;
       }
 
       return false;
     },
     { interval: 2000, timeout: 60000 },
+  );
+
+  await library.add(
+    'Movies',
+    'movie',
+    'com.plexapp.agents.imdb',
+    'Plex Movie Scanner',
+    '/data/movies',
   );
   await delay(30000);
 }
