@@ -41,7 +41,7 @@
     "@babel/preset-typescript": "7.12.7",
     "@ctrl/eslint-config": "1.2.9",
     "@types/lodash": "4.14.166",
-    "@types/node": "14.14.16",
+    "@types/node": "14.14.17",
     "@types/puppeteer": "5.4.2",
     "@types/xml2js": "0.4.7",
     "@jest/globals": "26.6.2",
@@ -49,6 +49,7 @@
     "jest-junit": "12.0.0",
     "lodash": "4.17.20",
     "puppeteer": "5.5.0",
+    "p-wait-for": "3.1.0",
     "ts-node": "9.1.1",
     "typescript": "4.1.3"
   },

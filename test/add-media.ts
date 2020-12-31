@@ -1,3 +1,5 @@
+import pWaitFor from 'p-wait-for';
+
 import { createClient } from './test-client';
 
 const delay = async (ms: number) =>
@@ -6,8 +8,10 @@ const delay = async (ms: number) =>
   });
 
 export async function addMedia(): Promise<void> {
+  await delay(30000);
   const server = await createClient();
   const library = await server.library();
+  console.log('friendlyName', server.friendlyName);
   await library.add(
     'TV Shows',
     'show',
@@ -15,6 +19,23 @@ export async function addMedia(): Promise<void> {
     'Plex Series Scanner',
     '/data/shows',
   );
+  let sections = await library.sections();
+  await pWaitFor(
+    async () => {
+      if (sections.length) {
+        const showSection = sections[0];
+        const shows = await showSection.all();
+        if (shows.length === 2) {
+          return true;
+        }
+      }
+
+      return false;
+    },
+    { interval: 2000, timeout: 60000 },
+  );
+  await delay(10000);
+
   await library.add(
     'Movies',
     'movie',
@@ -23,10 +44,8 @@ export async function addMedia(): Promise<void> {
     '/data/movies',
   );
   await delay(10000);
-  const sections = await library.sections();
-  const tv = sections.find(x => x.title === 'TV Shows');
-  const tvShows = await tv!.all();
-  if (sections.length !== 2 || tvShows.length !== 2) {
+  sections = await library.sections();
+  if (sections.length !== 2) {
     throw new Error('Sections not setup');
   }
 }
