@@ -1,4 +1,4 @@
-import { createClient } from './test-client';
+import { createClient } from '../test/test-client';
 
 const delay = async (ms: number) =>
   new Promise(resolve => {

@@ -1,7 +1,6 @@
 import puppeteer from 'puppeteer';
 
-import { MyPlexAccount } from '../src';
-import { username, password, token } from '../test/test-client';
+import { createAccount } from '../test/test-client';
 
 async function delay(ms: number) {
   return new Promise(resolve => {
@@ -47,12 +46,7 @@ async function main() {
   await page.click('.submit-btn');
   await browser.close();
 
-  const account = await new MyPlexAccount(
-    'http://localhost:32400',
-    username,
-    password,
-    token,
-  ).connect();
+  const account = await createAccount();
   console.log(`step ${step++} - get claimToken`);
   const claimToken = await account.claimToken();
   console.log(`step ${step++} - claimServer`);
