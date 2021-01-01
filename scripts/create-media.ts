@@ -31,6 +31,9 @@ export async function prepareMovieDir(): Promise<void> {
     'Sita Sings the Blues': 2008,
     'Big Buck Bunny': 2008,
     Sintel: 2010,
+    'The Lincoln Lawyer': 2011,
+    Ghostbusters: 1984,
+    'Step Brothers': 2008,
   };
   for (const [name, year] of Object.entries(requiredMovies)) {
     const moviePath = path.join(moviesDir, `${name} (${year}).mp4`);
@@ -41,8 +44,8 @@ export async function prepareMovieDir(): Promise<void> {
 export async function prepareTvDir(): Promise<void> {
   console.log('Preparing tv section..');
   const requiredShows = {
-    'Game of Thrones': [
-      Array.from({ length: 10 }, (_, i) => i + 1),
+    'Silicon Valley': [
+      Array.from({ length: 8 }, (_, i) => i + 1),
       Array.from({ length: 10 }, (_, i) => i + 1),
     ],
     'The 100': [

@@ -1,5 +1,5 @@
 import got from 'got';
-import { URL } from 'url';
+import { URL, URLSearchParams } from 'url';
 import pAny from 'p-any';
 
 import { TIMEOUT, BASE_HEADERS } from './config';
@@ -210,6 +210,24 @@ export class MyPlexAccount {
     const url = 'https://plex.tv/api/claim/token.json';
     const response = await this.query<{ token: string }>(url, 'get', undefined, TIMEOUT);
     return response.token;
+  }
+
+  /**
+   * @param token pass token from claimToken
+   */
+  async claimServer(token: string): Promise<any> {
+    const params = new URLSearchParams({
+      token,
+      ...BASE_HEADERS,
+    });
+    const url = `${this.baseUrl!}/myplex/claim?${params.toString()}`;
+    return got({
+      method: 'POST',
+      url,
+      timeout: TIMEOUT,
+      headers: this._headers(),
+      retry: 0,
+    });
   }
 
   _headers(): Record<string, string> {

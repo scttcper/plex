@@ -45,7 +45,7 @@ describe('Library', () => {
   it('should search for tv show matching a title', async () => {
     const library = await plex.library();
     const section = await library.section<ShowSection>('TV Shows');
-    const results = await section.search({ title: 'Game of Thrones' });
+    const results = await section.search({ title: 'Silicon Valley' });
     const show = results[0];
     expect(show.index).toBeDefined();
     expect(show.isWatched).toBeFalsy();
@@ -61,14 +61,14 @@ describe('Library', () => {
   it('should list all items in all sections', async () => {
     const library = await plex.library();
     const items = await library.all();
-    expect(items.length).toBe(6);
+    expect(items.length).toBe(9);
   });
 
   it('should list all movies in movie section', async () => {
     const library = await plex.library();
     const section = await library.section<MovieSection>('Movies');
     const items = await section.all();
-    expect(items.length).toBe(4);
+    expect(items.length).toBe(7);
   });
 
   // TODO: Not sure yet why this fails

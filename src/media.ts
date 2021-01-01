@@ -263,3 +263,21 @@ export class Optimized extends PlexObject {
     this.targetTagID = data.targetTagID;
   }
 }
+
+export class SearchResult extends PlexObject {
+  static TAG = 'SearchResult';
+
+  guid!: string;
+  name!: string;
+  score!: number;
+  year!: number;
+  lifespanEnded!: boolean;
+
+  protected _loadData(data: any) {
+    this.guid = data.guid;
+    this.lifespanEnded = data.lifespanEnded;
+    this.name = data.name;
+    this.score = data.score;
+    this.year = data.year;
+  }
+}
