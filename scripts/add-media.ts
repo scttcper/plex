@@ -18,6 +18,7 @@ export async function addMedia(): Promise<void> {
     '/data/shows',
     'en',
   );
+  await delay(10000);
   await library.add(
     'Movies',
     'movie',
@@ -32,7 +33,7 @@ export async function addMedia(): Promise<void> {
     },
   );
 
-  await delay(30000);
+  await delay(20000);
 }
 
 if (!module.parent) {
