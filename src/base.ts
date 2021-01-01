@@ -1,4 +1,5 @@
 import { PlexServer } from './server';
+import { SearchResult } from './media';
 import { URLSearchParams } from 'url';
 
 /**
@@ -95,6 +96,7 @@ export abstract class PartialPlexObject extends PlexObject {
     includeStations: 1,
   };
 
+  ratingKey?: string;
   _details_key = this._buildDetailsKey();
 
   /**
@@ -121,6 +123,21 @@ export abstract class PartialPlexObject extends PlexObject {
    */
   get isFullObject(): boolean {
     return !this.key || (this._details_key || this.key) === this.initpath;
+  }
+
+  /**
+   * Use match result to update show metadata.
+   * @param searchResult (:class:`~plexapi.media.SearchResult`): Search result from
+   *  ~plexapi.base.matches()
+   * @param auto True uses first match from matches, False allows user to provide the match
+   * @param agent (str): Agent name to be used (imdb, thetvdb, themoviedb, etc.)
+   */
+  async fixMatch(searchResult: SearchResult, auto: boolean, agent: string) {
+    const key = `/library/metadata/${this.ratingKey!}/match`;
+    // TODO: Auto match using first result
+
+    // TODO: incomplete
+    return key;
   }
 
   protected abstract _loadFullData(data: any): void;

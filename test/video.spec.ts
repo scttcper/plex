@@ -1,32 +1,32 @@
 import { describe, it, beforeAll, expect } from '@jest/globals';
 
-import { PlexServer, ShowSection, MovieSection, Show, Movie, Hub, Folder } from '../src';
+import { PlexServer, ShowSection, MovieSection, Show, Movie } from '../src';
 import { createClient } from './test-client';
 
 describe('Shows', () => {
   let plex: PlexServer;
-  /** Game of thrones */
+  /** Silicon Valley */
   let show: Show;
   let showSection: ShowSection;
   beforeAll(async () => {
     plex = await createClient();
     const library = await plex.library();
     showSection = await library.section<ShowSection>('TV Shows');
-    const results = await showSection.search({ title: 'Game of Thrones' });
+    const results = await showSection.search({ title: 'Silicon Valley' });
     show = results[0];
   });
 
   it("should get a shows's episodes", async () => {
     const episodes = await show.episodes();
-    // 2 seasons of GoT
-    expect(episodes.length).toBe(20);
+    // 2 seasons of Silicon Valley
+    expect(episodes.length).toBe(18);
   });
 
   it("should get a season's episodes", async () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();
-    // Season 1 of GoT
-    expect(episodes.length).toBe(10);
+    // Season 1 of Silicon Valley
+    expect(episodes.length).toBe(8);
   });
 
   it("should get an episode's full data", async () => {
@@ -59,14 +59,14 @@ describe('Shows', () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
     expect(episode.writers.length).toBe(2);
-    expect(episode.grandparentTitle).toBe('Game of Thrones');
+    expect(episode.grandparentTitle).toBe('Silicon Valley');
     expect(await episode.seasonNumber()).toBe(1);
   });
 
   it('should get show locations', async () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
-    expect(episode.locations()).toEqual(['/data/shows/Game of Thrones/S01E01.mp4']);
+    expect(episode.locations()).toEqual(['/data/shows/Silicon Valley/S01E01.mp4']);
   });
 
   it('should get show hubs', async () => {
@@ -82,8 +82,8 @@ describe('Shows', () => {
   });
 
   it('should search shows', async () => {
-    const shows = await showSection.searchShows({ title: 'Game of Thrones' });
-    expect(shows[0].title).toBe('Game of Thrones');
+    const shows = await showSection.searchShows({ title: 'Silicon Valley' });
+    expect(shows[0].title).toBe('Silicon Valley');
   });
 });
 

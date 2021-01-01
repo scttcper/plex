@@ -1,6 +1,3 @@
-import pWaitFor from 'p-wait-for';
-
-import { ShowSection } from '../src';
 import { createClient } from './test-client';
 
 const delay = async (ms: number) =>
@@ -9,7 +6,6 @@ const delay = async (ms: number) =>
   });
 
 export async function addMedia(): Promise<void> {
-  await delay(30000);
   const server = await createClient();
   const library = await server.library();
   console.log('friendlyName', server.friendlyName);
@@ -22,32 +18,6 @@ export async function addMedia(): Promise<void> {
     '/data/shows',
     'en',
   );
-  await pWaitFor(
-    async () => {
-      const showSection = await library.section<ShowSection>('TV Shows');
-      if (!showSection) {
-        return false;
-      }
-
-      if (showSection.refreshing) {
-        return false;
-      }
-
-      const shows = await showSection.all();
-      if (shows.length === 2) {
-        return true;
-      }
-
-      const thrones = await showSection.search({ title: 'Game of Thrones' });
-      if (thrones[0]) {
-        return (await thrones[0].episodes()).length === 20;
-      }
-
-      return false;
-    },
-    { interval: 2000, timeout: 60000 },
-  );
-
   await library.add(
     'Movies',
     'movie',
@@ -61,6 +31,7 @@ export async function addMedia(): Promise<void> {
       'prefs[collectionMode]': '0',
     },
   );
+
   await delay(30000);
 }
 
