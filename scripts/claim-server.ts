@@ -47,8 +47,15 @@ async function main() {
   await page.click('.submit-btn');
   await browser.close();
 
-  const account = new MyPlexAccount('http://localhost:32400', username, password, token);
+  const account = await new MyPlexAccount(
+    'http://localhost:32400',
+    username,
+    password,
+    token,
+  ).connect();
+  console.log(`step ${step++} - get claimToken`);
   const claimToken = await account.claimToken();
+  console.log(`step ${step++} - claimServer`);
   await account.claimServer(claimToken);
 }
 
