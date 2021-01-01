@@ -219,7 +219,6 @@ export class MyPlexAccount {
     const params = new URLSearchParams({
       token,
       ...BASE_HEADERS,
-      'Content-type': 'application/json',
     });
     const url = `${this.baseUrl!}/myplex/claim?${params.toString()}`;
     return got({
