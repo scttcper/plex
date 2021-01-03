@@ -62,8 +62,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /**
    * Use match result to update show metadata.
-   * @param searchResult (:class:`~plexapi.media.SearchResult`): Search result from
-   *  ~plexapi.base.matches()
+   * @param searchResult Search result @see {@link PartialPlexObject.matches}
    * @param auto True uses first match from matches, False allows user to provide the match
    * @param agent (str): Agent name to be used (imdb, thetvdb, themoviedb, etc.)
    */
@@ -166,8 +165,24 @@ export abstract class PartialPlexObject extends PlexObject {
     return this.server.query(key, 'put');
   }
 
+  /**
+   * Get Play History for a media item.
+   * @param maxresults Only return the specified number of results (optional).
+   * @param mindate Min datetime to return results from.
+   */
+  async history(maxresults = 9999999, mindate?: Date) {
+    return this.server.history(maxresults, mindate, this.ratingKey);
+  }
+
   async section() {
     return (await this.server.library()).sectionByID(this.librarySectionID!);
+  }
+
+  /**
+   * Delete a media element. This has to be enabled under settings > server > library in plex webui.
+   */
+  async delete(): Promise<any> {
+    return this.server.query(this.key, 'delete');
   }
 
   protected abstract _loadFullData(data: any): void;
