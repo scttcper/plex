@@ -1,6 +1,6 @@
 import { URL } from 'url';
 
-import { Playable } from './base';
+import { Playable } from './base/playable';
 import { fetchItem, fetchItems } from './baseFunctionality';
 import { MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';

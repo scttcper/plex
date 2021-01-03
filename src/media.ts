@@ -1,4 +1,4 @@
-import { PlexObject } from './base';
+import { PlexObject } from './base/plexObject';
 import {
   ChapterData,
   MarkerData,
@@ -261,23 +261,5 @@ export class Optimized extends PlexObject {
     this.type = data.type;
     this.target = data.target;
     this.targetTagID = data.targetTagID;
-  }
-}
-
-export class SearchResult extends PlexObject {
-  static TAG = 'SearchResult';
-
-  guid!: string;
-  name!: string;
-  score!: number;
-  year!: number;
-  lifespanEnded!: boolean;
-
-  protected _loadData(data: any) {
-    this.guid = data.guid;
-    this.lifespanEnded = data.lifespanEnded;
-    this.name = data.name;
-    this.score = data.score;
-    this.year = data.year;
   }
 }

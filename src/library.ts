@@ -1,4 +1,7 @@
-import { PlexServer } from './server';
+import { Class } from 'type-fest';
+import { URLSearchParams } from 'url';
+
+import type { PlexServer } from './server';
 import {
   LibraryRootResponse,
   SectionsResponse,
@@ -6,12 +9,11 @@ import {
   Location,
 } from './library.types';
 import { MediaContainer } from './util';
-import { PlexObject } from './base';
+import { PlexObject } from './base/plexObject';
 import { Movie, VideoType, Show } from './video';
-import { Class } from 'type-fest';
-import { URLSearchParams } from 'url';
 import { fetchItem, fetchItems } from './baseFunctionality';
-import { SearchResult } from './serverSearchResults';
+import { SearchResult } from './search.types';
+import { Agent, searchType } from './search';
 
 export type Section = MovieSection | ShowSection;
 
@@ -63,7 +65,7 @@ export class Library {
     return section;
   }
 
-  async sectionByID(sectionId: string): Promise<Section> {
+  async sectionByID(sectionId: string | number): Promise<Section> {
     const sections = await this.sections();
     const section = sections.find(s => s.key);
     if (!section) {
@@ -344,6 +346,10 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     const key = `/library/sections/${this.key}/all${sortStr}`;
     const items = await fetchItems(this.server, key);
     return items;
+  }
+
+  async agents(): Promise<Agent[]> {
+    return this.server.agents(searchType(this.type));
   }
 
   /**

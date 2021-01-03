@@ -1,3 +1,12 @@
+export interface MatchSearchResult {
+  thumb: string;
+  guid: string;
+  name: string;
+  score: number;
+  year: number;
+  lifespanEnded: boolean;
+}
+
 export interface SearchResult {
   title: string;
   type: string;

@@ -1,4 +1,4 @@
-import { PlexServer } from './server';
+import type { PlexServer } from './server';
 import { MediaContainer } from './util';
 
 const OPERATORS = {

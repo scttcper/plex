@@ -10,10 +10,11 @@ import {
   ConnectionInfo,
 } from './server.types';
 import { Library, Hub } from './library';
-import { MediaContainer, SEARCHTYPES } from './util';
+import { MediaContainer } from './util';
 import { LibraryRootResponse } from './library.types';
 import { fetchItems, fetchItem } from './baseFunctionality';
 import { Optimized } from './media';
+import { Agent, SEARCHTYPES } from './search';
 import { PlexClient } from './client';
 import { MyPlexAccount } from './myplex';
 
@@ -143,6 +144,15 @@ export class PlexServer {
     public readonly token: string,
     public readonly timeout?: number,
   ) {}
+
+  async agents(mediaType?: number | string) {
+    let key = '/system/agents';
+    if (mediaType) {
+      key += `?mediaType=${mediaType}`;
+    }
+
+    return fetchItems<Agent>(this, key, undefined, Agent, this);
+  }
 
   async connect(): Promise<void> {
     const data = await this.query<MediaContainer<ServerRootResponse>>(

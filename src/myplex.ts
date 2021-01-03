@@ -5,7 +5,7 @@ import pAny from 'p-any';
 import { TIMEOUT, BASE_HEADERS } from './config';
 import { UserResponse, ResourcesResponse, Connection, Device } from './myplex.types';
 import { PlexServer } from './server';
-import { PlexObject } from './base';
+import { PlexObject } from './base/plexObject';
 import { parseStringPromise } from 'xml2js';
 import { MediaContainer } from './util';
 

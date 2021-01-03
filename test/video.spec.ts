@@ -71,7 +71,7 @@ describe('Shows', () => {
 
   it('should get show hubs', async () => {
     const hubs = await showSection.hubs();
-    expect(hubs.length).toBe(5);
+    expect(hubs.length).toBeDefined();
     expect(hubs[0].type).toBe('episode');
   });
 
@@ -105,5 +105,12 @@ describe('Movies', () => {
 
   it('should get movie locations', async () => {
     expect(await movie.locations()).toEqual(['/data/movies/Big Buck Bunny (2008).mp4']);
+  });
+
+  it('should get movie matches', async () => {
+    const matches = await movie.matches();
+    expect(matches[0].year).toBe(movie.year);
+    expect(matches[0].score).toBeDefined();
+    expect(matches[0].name).toBe(movie.title);
   });
 });

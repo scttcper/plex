@@ -1,4 +1,4 @@
-import { PlexObject } from './base';
+import { PlexObject } from './base/plexObject';
 
 /**
  * Represents a single Plex setting
