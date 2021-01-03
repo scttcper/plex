@@ -31,3 +31,21 @@ export async function getAgentIdentifier(section: Section, agent: string) {
 
   throw new Error(`Couldnt find "${agent}" in agents list (${agents.join(', ')})`);
 }
+
+/** Simple tag helper for editing a object. */
+export function tagHelper(tag: string, items: string[], locked = true, remove = false) {
+  const data: Record<string, string | number> = {};
+  if (remove) {
+    const tagname = `${tag}[].tag.tag-`;
+    data[tagname] = items.join(',');
+  } else {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      const tagname = `${tag}[${idx}].tag.tag`;
+      data[tagname] = item;
+    }
+  }
+
+  data[`${tag}.locked`] = locked ? 1 : 0;
+  return data;
+}

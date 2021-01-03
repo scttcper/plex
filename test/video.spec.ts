@@ -107,6 +107,14 @@ describe('Movies', () => {
     expect(await movie.locations()).toEqual(['/data/movies/Big Buck Bunny (2008).mp4']);
   });
 
+  it('should add and remove movie from collection', async () => {
+    await movie.addCollection(['Test']);
+    expect(movie.collections.length).toBe(1);
+    expect(movie.collections[0].tag).toBe('Test');
+    await movie.removeCollection(['Test']);
+    expect(movie.collections.length).toBe(0);
+  });
+
   it('should get movie matches', async () => {
     const matches = await movie.matches();
     expect(matches[0].year).toBe(movie.year);

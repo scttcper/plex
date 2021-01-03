@@ -1,8 +1,8 @@
 import { URLSearchParams } from 'url';
 
 import { PlexObject } from './plexObject';
-import { SearchResult } from '../search';
-import { getAgentIdentifier, MediaContainer } from '../util';
+import { SearchResult, searchType } from '../search';
+import { getAgentIdentifier, MediaContainer, tagHelper } from '../util';
 import { MatchSearchResult } from '../search.types';
 
 export abstract class PartialPlexObject extends PlexObject {
@@ -30,6 +30,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
   ratingKey?: string;
   title?: string;
+  type?: string;
   year?: number;
   librarySectionID?: number;
   _details_key = this._buildDetailsKey();
@@ -183,6 +184,78 @@ export abstract class PartialPlexObject extends PlexObject {
    */
   async delete(): Promise<any> {
     return this.server.query(this.key, 'delete');
+  }
+
+  /** Add a collection(s). */
+  async addCollection(collections: string[]) {
+    await this._editTags('collection', collections);
+  }
+
+  /** Remove a collection(s). */
+  async removeCollection(collections: string[]) {
+    await this._editTags('collection', collections, undefined, true);
+  }
+
+  /** Add a label(s). */
+  async addLabel(labels: string[]) {
+    await this._editTags('label', labels);
+  }
+
+  /** Remove a label(s). */
+  async removeLabel(labels: string[]) {
+    await this._editTags('label', labels, undefined, true);
+  }
+
+  /** Add a genre(s). */
+  async addGenre(genres: string[]) {
+    await this._editTags('genre', genres);
+  }
+
+  /** Remove a genre(s). */
+  async removeGenre(genres: string[]) {
+    await this._editTags('genre', genres, undefined, true);
+  }
+
+  /**
+   * Edit an object.
+   * @param changeObj Obj of settings to edit.
+   * Example:
+   *  {'type': 1,
+   *  'id': movie.ratingKey,
+   *  'collection[0].tag.tag': 'Super',
+   *  'collection.locked': 0}
+   */
+  async edit(changeObj: Record<string, string | number>) {
+    // TODO
+    if (changeObj.id === undefined) {
+      changeObj.id = this.ratingKey!;
+    }
+
+    if (changeObj.type === undefined) {
+      changeObj.type = searchType(this.type!);
+    }
+
+    const strObj = Object.fromEntries(
+      Object.entries(changeObj).map(([key, value]) => [key, value.toString()]),
+    );
+    const params = new URLSearchParams(strObj);
+    const part = `/library/sections/${this.librarySectionID!}/all?${params.toString()}`;
+    await this.server.query(part, 'put');
+  }
+
+  /**
+   * Helper to edit and refresh a tags.
+   * @param tag tag name
+   * @param items list of tags to add
+   * @param locked lock this field.
+   * @param remove If this is active remove the tags in items.
+   */
+  private async _editTags(tag: string, items: string[], locked = true, remove = false) {
+    const value = this[tag + 's'];
+    const existingCols = value?.filter(x => x && remove).map(x => x.tag) ?? [];
+    const d = tagHelper(tag, [...existingCols, ...items], locked, remove);
+    await this.edit(d);
+    await this.reload();
   }
 
   protected abstract _loadFullData(data: any): void;
