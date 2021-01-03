@@ -19,6 +19,8 @@ import {
 } from './media';
 import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
 
+export type VideoType = Movie | Show;
+
 abstract class Video extends Playable {
   /** API URL (/library/metadata/<ratingkey>) */
   key!: string;
@@ -123,8 +125,6 @@ abstract class Video extends Playable {
     this.viewCount = (data as MovieData).viewCount;
   }
 }
-
-export type VideoType = Movie | Show;
 
 /**
  * Represents a single Movie.

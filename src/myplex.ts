@@ -293,7 +293,7 @@ export class MyPlexAccount {
 /**
  * Connects to the specified cls with url and token
  */
-export async function connect(
+async function connect(
   cls: (...args: ConstructorParameters<typeof PlexServer>) => PlexServer,
   url: string,
   token: string,
