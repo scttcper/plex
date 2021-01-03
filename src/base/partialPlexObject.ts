@@ -67,15 +67,22 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param auto True uses first match from matches, False allows user to provide the match
    * @param agent (str): Agent name to be used (imdb, thetvdb, themoviedb, etc.)
    */
-  async fixMatch(searchResult: SearchResult, auto: boolean, agent: string) {
+  async fixMatch(searchResult?: SearchResult, auto = false, agent = ''): Promise<void> {
     const key = `/library/metadata/${this.ratingKey!}/match`;
     if (auto) {
-      // const autoMatch = this.ma
+      const autoMatch = await this.matches();
+      if (autoMatch.length) {
+        searchResult = autoMatch[0];
+      } else {
+        throw new Error(`No matches found using this agent: (${agent})`);
+      }
+    } else if (!searchResult) {
+      throw new Error('Must either provide a searchResult or set auto parameter to true');
     }
-    // TODO: Auto match using first result
 
-    // TODO: incomplete
-    return key;
+    const params = new URLSearchParams({ guid: searchResult.guid, name: searchResult.name });
+    const url = `${key}?${params.toString()}`;
+    await this.server.query(url, 'put');
   }
 
   /**
