@@ -47,6 +47,17 @@ for (const hub of results) {
 }
 ```
 
+###### Example 4: List all episodes of a tv show.
+```ts
+import { ShowSection } from '@ctrl/plex';
+
+// Pass ShowSection generic because the section title doesn't imply a section type.
+const section = await library.section<ShowSection>('TV Shows');
+// Get an array of Show objects
+const results = await section.search({ title: 'Silicon Valley' });
+const episodes = await results[0].episodes();
+```
+
 ### Differences from python plex client
 JS is a different language and some methods of the api were not possible. 
 Chaining functions with requests must be awaited mostly individually. Constructors in JS don't typically make requests
