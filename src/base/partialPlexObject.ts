@@ -2,7 +2,7 @@ import { URLSearchParams } from 'url';
 
 import { PlexObject } from './plexObject';
 import { SearchResult, searchType } from '../search';
-import { getAgentIdentifier, MediaContainer, tagHelper } from '../util';
+import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util';
 import { MatchSearchResult } from '../search.types';
 
 export abstract class PartialPlexObject extends PlexObject {
@@ -34,6 +34,29 @@ export abstract class PartialPlexObject extends PlexObject {
   year?: number;
   librarySectionID?: number;
   _details_key = this._buildDetailsKey();
+
+  /**
+   * Tell Plex Media Server to performs analysis on it this item to gather
+   *  information. Analysis includes:
+   *  * Gather Media Properties: All of the media you add to a Library has
+   *      properties that are useful to know–whether it's a video file, a
+   *      music track, or one of your photos (container, codec, resolution, etc).
+   *  * Generate Default Artwork: Artwork will automatically be grabbed from a
+   *      video file. A background image will be pulled out as well as a
+   *      smaller image to be used for poster/thumbnail type purposes.
+   *  * Generate Video Preview Thumbnails: Video preview thumbnails are created,
+   *      if you have that feature enabled. Video preview thumbnails allow
+   *      graphical seeking in some Apps. It's also used in the Plex Web App Now
+   *      Playing screen to show a graphical representation of where playback
+   *      is. Video preview thumbnails creation is a CPU-intensive process akin
+   *      to transcoding the file.
+   *  * Generate intro video markers: Detects show intros, exposing the
+   *      'Skip Intro' button in clients.
+   */
+  async analyze() {
+    const key = `/${ltrim(this.key, ['/'])}/analyze`;
+    await this.server.query(key, 'put');
+  }
 
   /**
    * load full data / reload the data for this object from self.key.

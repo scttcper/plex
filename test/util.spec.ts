@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { searchType } from '../src/search';
-import { tagHelper } from '../src/util';
+import { tagHelper, ltrim } from '../src/util';
 
 describe('searchType', () => {
   it('should return matched search types ', () => {
@@ -34,5 +34,11 @@ describe('tagHelper', () => {
       'test[0].tag.tag': 'a',
       'test[1].tag.tag': 'b',
     });
+  });
+});
+
+describe('ltrim', () => {
+  it('should trim characters from the left of the string', () => {
+    expect(ltrim('////hello', ['/'])).toBe('hello');
   });
 });

@@ -49,3 +49,13 @@ export function tagHelper(tag: string, items: string[], locked = true, remove = 
   data[`${tag}.locked`] = locked ? 1 : 0;
   return data;
 }
+
+export function ltrim(x: string, characters: string[]) {
+  let start = 0;
+  while (characters.includes(x[start])) {
+    start += 1;
+  }
+
+  const end = x.length - 1;
+  return x.substr(start, end);
+}

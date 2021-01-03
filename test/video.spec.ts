@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach, beforeAll } from '@jest/globals';
 
 import { PlexServer, ShowSection, MovieSection, Show, Movie } from '../src';
 import { createClient } from './test-client';
@@ -12,6 +12,8 @@ describe('Shows', () => {
     plex = await createClient();
     const library = await plex.library();
     showSection = await library.section<ShowSection>('TV Shows');
+  });
+  beforeEach(async () => {
     const results = await showSection.search({ title: 'Silicon Valley' });
     show = results[0];
   });
@@ -89,14 +91,23 @@ describe('Shows', () => {
 
 describe('Movies', () => {
   let plex: PlexServer;
+  let section: MovieSection;
   /** Big buck bunny */
   let movie: Movie;
   beforeAll(async () => {
     plex = await createClient();
     const library = await plex.library();
-    const section = await library.section<MovieSection>('Movies');
+    section = await library.section<MovieSection>('Movies');
+  });
+
+  beforeEach(async () => {
     const results = await section.search({ title: 'Bunny' });
     movie = results[0];
+  });
+
+  // Takes forever
+  it.skip('should analyze movie', async () => {
+    await movie.analyze();
   });
 
   it('should reutrn roles as actors', () => {
