@@ -8,6 +8,10 @@
 npm install @ctrl/plex
 ```
 
+### Docs
+
+https://ctrl-plex.vercel.app 
+
 ### Use
 
 Create a plex connection
