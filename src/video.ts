@@ -300,7 +300,7 @@ export class Show extends Video {
   }
 
   // async preferences(): Promise<Preferences[]> {
-  //   const data = await this.server.query<MediaContainer<ShowPreferences>>(this._details_key as string);
+  //   const data = await this.server.query<MediaContainer<ShowPreferences>>(this._detailsKey as string);
   //   // return data.MediaContainer;
   //   // for (item in data.iter('Preferences')) {
   //   //   for (elem in item) {
@@ -383,7 +383,7 @@ export class Season extends Video {
   /**
    * @returns a list of :class:`~plexapi.video.Episode` objects.
    */
-  async episodes(query?: Record<string, string | number>) {
+  async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
     const key = `/library/metadata/${this.ratingKey}/children`;
     const episodes = await fetchItems<EpisodeMetadata>(this.server, key, query);
     return episodes.map(episode => new Episode(this.server, episode, key, this));
@@ -403,28 +403,6 @@ export class Season extends Video {
 }
 
 class Episode extends Video {
-  static include = {
-    checkFiles: 1,
-    includeAllConcerts: 1,
-    includeBandwidths: 1,
-    includeChapters: 1,
-    includeChildren: 1,
-    includeConcerts: 1,
-    includeExternalMedia: 1,
-    includeExtras: 1,
-    includeFields: 'thumbBlurHash,artBlurHash',
-    includeGeolocation: 1,
-    includeLoudnessRamps: 1,
-    includeMarkers: 1,
-    includeOnDeck: 1,
-    includePopularLeaves: 1,
-    includePreferences: 1,
-    includeRelated: 1,
-    includeRelatedCount: 1,
-    includeReviews: 1,
-    includeStations: 1,
-  };
-
   static TAG = 'Video';
   TYPE = 'episode';
   METADATA_TYPE = 'episode';
@@ -481,6 +459,28 @@ class Episode extends Video {
   collections!: Collection[];
   chapters!: Chapter[];
   markers!: Marker[];
+
+  protected _INCLUDES = {
+    checkFiles: 1,
+    includeAllConcerts: 1,
+    includeBandwidths: 1,
+    includeChapters: 1,
+    includeChildren: 1,
+    includeConcerts: 1,
+    includeExternalMedia: 1,
+    includeExtras: 1,
+    includeFields: 'thumbBlurHash,artBlurHash',
+    includeGeolocation: 1,
+    includeLoudnessRamps: 1,
+    includeMarkers: 1,
+    includeOnDeck: 1,
+    includePopularLeaves: 1,
+    includePreferences: 1,
+    includeRelated: 1,
+    includeRelatedCount: 1,
+    includeReviews: 1,
+    includeStations: 1,
+  };
 
   /**
    * Returns this episodes season number.

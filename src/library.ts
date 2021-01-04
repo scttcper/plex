@@ -329,14 +329,6 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   uuid!: string;
   VIDEO_TYPE!: Class<SectionVideoType>;
 
-  /**
-   * @param initpath Relative path requested when retrieving specified `data`
-   */
-  constructor(server: PlexServer, data: SectionsDirectory, initpath: string, parent: any) {
-    super(server, data, initpath, parent);
-    this._loadData(data);
-  }
-
   async all(sort = '') {
     let sortStr = '';
     if (sort) {

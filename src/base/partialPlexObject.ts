@@ -11,8 +11,9 @@ export abstract class PartialPlexObject extends PlexObject {
   type?: string;
   year?: number;
   librarySectionID?: number;
+
   protected _detailsKey = this._buildDetailsKey();
-  protected readonly _INCLUDES = {
+  protected _INCLUDES = {
     checkFiles: 1,
     includeAllConcerts: 1,
     includeBandwidths: 1,
@@ -61,8 +62,8 @@ export abstract class PartialPlexObject extends PlexObject {
    * load full data / reload the data for this object from this.key.
    */
   async reload(ekey?: string, args?: any): Promise<void> {
-    const detailsKey = this._buildDetailsKey(args);
-    const key = ekey ?? detailsKey ?? this.key;
+    this._detailsKey = this._buildDetailsKey(args);
+    const key = ekey ?? this._detailsKey ?? this.key;
     if (!key) {
       throw new Error('Cannot reload an object not built from a URL');
     }

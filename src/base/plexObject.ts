@@ -15,10 +15,10 @@ export abstract class PlexObject {
   /**
    * WeakRef to the parent object that this object is built from.
    */
-  public readonly parent?: WeakRef<any>;
-  protected initpath: string;
+  readonly parent?: WeakRef<any>;
   protected _detailsKey: string;
-  protected readonly _INCLUDES?: Record<string, string | number>;
+  protected initpath: string;
+  protected _INCLUDES?: Record<string, string | number>;
 
   constructor(
     public readonly server: PlexServer,
@@ -55,8 +55,8 @@ export abstract class PlexObject {
   }
 
   protected _buildDetailsKey(args: Record<string, boolean | number> = {}) {
-    let details_key = this.key;
-    if (details_key && this._INCLUDES !== undefined) {
+    let detailsKey = this.key;
+    if (detailsKey && this._INCLUDES !== undefined) {
       const params = new URLSearchParams();
       for (const [k, v] of Object.entries(this._INCLUDES)) {
         let value = args[k] ?? v;
@@ -66,11 +66,11 @@ export abstract class PlexObject {
       }
 
       if ([...params.keys()].length) {
-        details_key += '?' + params.toString();
+        detailsKey += '?' + params.toString();
       }
     }
 
-    return details_key;
+    return detailsKey;
   }
 
   protected abstract _loadData(data: any): void;
