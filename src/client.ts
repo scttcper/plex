@@ -110,18 +110,6 @@ export class PlexClient {
     return this.connect();
   }
 
-  _loadData(data: Player) {
-    this.deviceClass = data.deviceClass;
-    this.machineIdentifier = data.machineIdentifier;
-    this.product = data.product;
-    this.protocol = data.protocol;
-    this.protocolCapabilities = data.protocolCapabilities.split(',');
-    this.protocolVersion = data.protocolVersion;
-    this.platform = data.platform;
-    this.platformVersion = data.platformVersion;
-    this.title = data.title;
-  }
-
   /**
    * Main method used to handle HTTPS requests to the Plex client. This method helps
    * by encoding the response to utf-8 and parsing the returned XML into and
@@ -170,6 +158,18 @@ export class PlexClient {
     }
 
     return url;
+  }
+
+  protected _loadData(data: Player) {
+    this.deviceClass = data.deviceClass;
+    this.machineIdentifier = data.machineIdentifier;
+    this.product = data.product;
+    this.protocol = data.protocol;
+    this.protocolCapabilities = data.protocolCapabilities.split(',');
+    this.protocolVersion = data.protocolVersion;
+    this.platform = data.platform;
+    this.platformVersion = data.platformVersion;
+    this.title = data.title;
   }
 
   /**

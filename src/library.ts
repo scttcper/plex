@@ -642,7 +642,7 @@ export class Hub extends PlexObject {
   Directory: SearchResult['Directory'];
   Metadata: SearchResult['Metadata'];
 
-  _loadData(data: SearchResult) {
+  protected _loadData(data: SearchResult) {
     this.hubIdentifier = data.hubIdentifier;
     this.size = data.size;
     this.title = data.title;
@@ -659,7 +659,7 @@ export class Folder extends PlexObject {
   key!: string;
   title!: string;
 
-  _loadData(data: any) {
+  protected _loadData(data: any) {
     this.key = data.key;
     this.title = data.title;
   }

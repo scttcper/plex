@@ -37,7 +37,7 @@ export interface Directory {
   thumb?: string;
 }
 
-export interface Metadatum {
+interface Metadatum {
   librarySectionTitle: string;
   ratingKey: string;
   key: string;
@@ -100,12 +100,12 @@ export interface Collection {
   tag: string;
 }
 
-export interface Field {
+interface Field {
   locked: boolean;
   name: string;
 }
 
-export interface Location {
+interface Location {
   path: string;
 }
 

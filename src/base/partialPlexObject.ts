@@ -6,7 +6,13 @@ import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util';
 import { MatchSearchResult } from '../search.types';
 
 export abstract class PartialPlexObject extends PlexObject {
-  _INCLUDES = {
+  ratingKey?: string;
+  title?: string;
+  type?: string;
+  year?: number;
+  librarySectionID?: number;
+  protected _detailsKey = this._buildDetailsKey();
+  protected readonly _INCLUDES = {
     checkFiles: 1,
     includeAllConcerts: 1,
     includeBandwidths: 1,
@@ -27,13 +33,6 @@ export abstract class PartialPlexObject extends PlexObject {
     includeReviews: 1,
     includeStations: 1,
   };
-
-  ratingKey?: string;
-  title?: string;
-  type?: string;
-  year?: number;
-  librarySectionID?: number;
-  _details_key = this._buildDetailsKey();
 
   /**
    * Tell Plex Media Server to performs analysis on it this item to gather
@@ -59,7 +58,7 @@ export abstract class PartialPlexObject extends PlexObject {
   }
 
   /**
-   * load full data / reload the data for this object from self.key.
+   * load full data / reload the data for this object from this.key.
    */
   async reload(ekey?: string, args?: any): Promise<void> {
     const detailsKey = this._buildDetailsKey(args);
@@ -81,7 +80,7 @@ export abstract class PartialPlexObject extends PlexObject {
    * object (main url) for that movie would contain.
    */
   get isFullObject(): boolean {
-    return !this.key || (this._details_key || this.key) === this.initpath;
+    return !this.key || (this._detailsKey || this.key) === this.initpath;
   }
 
   /**

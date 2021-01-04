@@ -7,7 +7,7 @@
     "access": "public"
   },
   "license": "MIT",
-  "repository": "typectrl/plex",
+  "repository": "scttcper/plex",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
@@ -23,7 +23,7 @@
     "lint:fix": "eslint --fix --ext .js,.ts, . --format codeframe",
     "prepare": "npm run build",
     "build": "tsc -p tsconfig.build.json",
-    "build:docs": "typedoc --out docs --hideGenerator --tsconfig tsconfig.build.json src/index.ts",
+    "build:docs": "typedoc",
     "test": "jest --runInBand",
     "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverage",
     "claim-server": "ts-node scripts/claim-server.ts",

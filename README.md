@@ -78,7 +78,6 @@ Setup test environment variables, create a plex account just for testing. Using 
 ```sh
 export PLEX_USERNAME=email
 export PLEX_PASSWORD=password
-
 ```
 
 Claim server and setup test content (once)

@@ -478,7 +478,7 @@ export class MyPlexDevice extends PlexObject {
   /** List of connection URIs for the device. */
   connections?: string[];
 
-  _loadData(data: Device): void {
+  protected _loadData(data: Device): void {
     this.name = data.$.name;
     this.publicAddress = data.$.publicAddress;
     this.product = data.$.product;

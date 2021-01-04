@@ -81,7 +81,7 @@ export class Media extends PlexObject {
   width!: number;
   parts!: MediaPart[];
 
-  _loadData(data: MediaData) {
+  protected _loadData(data: MediaData) {
     this.aspectRatio = data.aspectRatio;
     this.audioChannels = data.audioChannels;
     this.audioCodec = data.audioCodec;
@@ -117,7 +117,7 @@ export class MediaPart extends PlexObject {
   streams!: MediaPartStream[];
   exists?: boolean;
 
-  _loadData(data: MediaPartData) {
+  protected _loadData(data: MediaPartData) {
     this.container = data.container;
     this.duration = data.duration;
     this.file = data.file;
@@ -143,7 +143,7 @@ export class MediaPartStream extends PlexObject {
   selected?: boolean;
   streamType?: number;
 
-  _loadData(data: MediaPartStreamData) {
+  protected _loadData(data: MediaPartStreamData) {
     this.id = data.id;
     this.codec = data.codec;
     this.index = data.index;

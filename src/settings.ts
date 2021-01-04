@@ -25,7 +25,7 @@ export class Setting extends PlexObject {
   /** List or dictionary of valis values for this setting. */
   enumValues: any[] | any;
 
-  _loadData(data) {
+  protected _loadData(data: any) {
     // this._setValue = None
     this.id = data.id;
     this.label = data.label;

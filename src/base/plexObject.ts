@@ -12,13 +12,13 @@ export abstract class PlexObject {
   static TYPE: string | null = null;
   /** plex relative url */
   key!: string;
-  _details_key: string;
-  _INCLUDES?: Record<string, string | number>;
   /**
    * WeakRef to the parent object that this object is built from.
    */
   public readonly parent?: WeakRef<any>;
   protected initpath: string;
+  protected _detailsKey: string;
+  protected readonly _INCLUDES?: Record<string, string | number>;
 
   constructor(
     public readonly server: PlexServer,
@@ -29,14 +29,14 @@ export abstract class PlexObject {
     this.initpath = initpath ?? this.key;
     this.parent = parent ? new WeakRef(parent) : undefined;
     this._loadData(data);
-    this._details_key = this._buildDetailsKey();
+    this._detailsKey = this._buildDetailsKey();
   }
 
   /**
-   * Reload the data for this object from self.key.
+   * Reload the data for this object from this.key.
    */
   async reload(ekey?: string): Promise<void> {
-    const key = ekey ?? this._details_key ?? this.key;
+    const key = ekey ?? this._detailsKey ?? this.key;
     if (!key) {
       throw new Error('Cannot reload an object not built from a URL');
     }
@@ -46,6 +46,9 @@ export abstract class PlexObject {
     this._loadData(innerData);
   }
 
+  /**
+   * Returns True if this object is a child of the given class.
+   */
   isChildOf(cls: any): boolean {
     const parent = this.parent?.deref();
     return (parent && parent.constructor === cls.constructor) || false;
