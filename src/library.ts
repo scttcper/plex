@@ -43,7 +43,7 @@ export class Library {
       for (const cls of [MovieSection, ShowSection]) {
         if (cls.TYPE === elem.type) {
           // eslint-disable-next-line new-cap
-          const instance = new cls(this.server, elem, key, this);
+          const instance = new cls(this.server, elem, key);
           sections.push(instance);
         }
       }
