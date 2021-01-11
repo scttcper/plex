@@ -3,6 +3,60 @@ import { describe, it, expect, beforeEach, beforeAll } from '@jest/globals';
 import { PlexServer, ShowSection, MovieSection, Show, Movie } from '../src';
 import { createClient } from './test-client';
 
+describe('Movies', () => {
+  let plex: PlexServer;
+  let section: MovieSection;
+  /** Big buck bunny */
+  let movie: Movie;
+  beforeAll(async () => {
+    plex = await createClient();
+    const library = await plex.library();
+    section = await library.section<MovieSection>('Movies');
+  });
+
+  beforeEach(async () => {
+    const results = await section.search({ title: 'Bunny' });
+    movie = results[0];
+  });
+
+  // Takes forever
+  it.skip('should analyze movie', async () => {
+    await movie.analyze();
+  });
+
+  it('should reutrn roles as actors', () => {
+    expect(movie.actors).toEqual(movie.roles);
+  });
+
+  it('should get movie locations', async () => {
+    expect(await movie.locations()).toEqual(['/data/movies/Big Buck Bunny (2008).mp4']);
+  });
+
+  it('should add and remove movie from collection', async () => {
+    await movie.addCollection(['Test']);
+    expect(movie.collections.length).toBe(1);
+    expect(movie.collections[0].tag).toBe('Test');
+    const collections = await section.collections({ title: 'Test' });
+    expect(collections.length).toBe(1);
+    const myCollection = collections[0];
+    expect(myCollection.title.toLowerCase()).toBe('test');
+    expect(myCollection.childCount).toBe(1);
+    const movies = await collections[0].items();
+    expect(movies[0].title).toBe(movie.title);
+    await movie.removeCollection(['Test']);
+    expect(movie.collections.length).toBe(0);
+    await myCollection.reload();
+    expect(myCollection.childCount).toBe(0);
+  });
+
+  it('should get movie matches', async () => {
+    const matches = await movie.matches();
+    expect(matches[0].year).toBe(movie.year);
+    expect(matches[0].score).toBeDefined();
+    expect(matches[0].name).toBe(movie.title);
+  });
+});
+
 describe('Shows', () => {
   let plex: PlexServer;
   /** Silicon Valley */
@@ -62,7 +116,7 @@ describe('Shows', () => {
     const [episode] = episodes;
     await episode.reload();
     // expect(episode.writers.length).toBeGreaterThan(0);
-    expect(episode.grandparentTitle).toBe('Silicon Valley');
+    expect(episode.grandparentTitle).toContain('Silicon Valley');
     expect(await episode.seasonNumber()).toBe(1);
   });
 
@@ -87,59 +141,5 @@ describe('Shows', () => {
   it('should search shows', async () => {
     const shows = await showSection.search({ title: 'Silicon Valley' });
     expect(shows[0].title).toContain('Silicon Valley');
-  });
-});
-
-describe('Movies', () => {
-  let plex: PlexServer;
-  let section: MovieSection;
-  /** Big buck bunny */
-  let movie: Movie;
-  beforeAll(async () => {
-    plex = await createClient();
-    const library = await plex.library();
-    section = await library.section<MovieSection>('Movies');
-  });
-
-  beforeEach(async () => {
-    const results = await section.search({ title: 'Bunny' });
-    movie = results[0];
-  });
-
-  // Takes forever
-  it.skip('should analyze movie', async () => {
-    await movie.analyze();
-  });
-
-  it('should reutrn roles as actors', () => {
-    expect(movie.actors).toEqual(movie.roles);
-  });
-
-  it('should get movie locations', async () => {
-    expect(await movie.locations()).toEqual(['/data/movies/Big Buck Bunny (2008).mp4']);
-  });
-
-  it('should add and remove movie from collection', async () => {
-    await movie.addCollection(['Test']);
-    expect(movie.collections.length).toBe(1);
-    expect(movie.collections[0].tag).toBe('Test');
-    const collections = await section.collections({ title: 'Test' });
-    expect(collections.length).toBe(1);
-    const myCollection = collections[0];
-    expect(myCollection.title.toLowerCase()).toBe('test');
-    expect(myCollection.childCount).toBe(1);
-    const movies = await collections[0].items();
-    expect(movies[0].title).toBe(movie.title);
-    await movie.removeCollection(['Test']);
-    expect(movie.collections.length).toBe(0);
-    await myCollection.reload();
-    expect(myCollection.childCount).toBe(0);
-  });
-
-  it('should get movie matches', async () => {
-    const matches = await movie.matches();
-    expect(matches[0].year).toBe(movie.year);
-    expect(matches[0].score).toBeDefined();
-    expect(matches[0].name).toBe(movie.title);
   });
 });
