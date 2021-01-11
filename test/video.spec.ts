@@ -84,7 +84,7 @@ describe('Shows', () => {
   });
 
   it('should search shows', async () => {
-    const shows = await showSection.searchShows({ title: 'Silicon Valley' });
+    const shows = await showSection.search({ title: 'Silicon Valley' });
     expect(shows[0].title).toBe('Silicon Valley');
   });
 });
@@ -122,8 +122,17 @@ describe('Movies', () => {
     await movie.addCollection(['Test']);
     expect(movie.collections.length).toBe(1);
     expect(movie.collections[0].tag).toBe('Test');
+    const collections = await section.collections({ title: 'Test' });
+    expect(collections.length).toBe(1);
+    const myCollection = collections[0];
+    expect(myCollection.title.toLowerCase()).toBe('test');
+    expect(myCollection.childCount).toBe(1);
+    const movies = await collections[0].items();
+    expect(movies[0].title).toBe(movie.title);
     await movie.removeCollection(['Test']);
     expect(movie.collections.length).toBe(0);
+    await myCollection.reload();
+    expect(myCollection.childCount).toBe(0);
   });
 
   it('should get movie matches', async () => {

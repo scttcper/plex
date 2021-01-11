@@ -62,8 +62,8 @@ export async function fetchItems<T = any>(
   parent?: any,
 ): Promise<T[]> {
   const response = await server.query<MediaContainer<any>>(ekey);
-  const containerKey: string = Cls?.TAG ?? 'Metadata';
-  const elems = response.MediaContainer[containerKey] ?? [];
+  const { MediaContainer } = response;
+  const elems = MediaContainer[Cls?.TAG] ?? MediaContainer.Metadata ?? [];
   const items = findItems(elems, options, Cls, server, parent);
   return items;
 }

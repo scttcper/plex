@@ -7,13 +7,16 @@ import {
   SectionsResponse,
   SectionsDirectory,
   Location,
+  CollectionData,
 } from './library.types';
 import { MediaContainer } from './util';
 import { PlexObject } from './base/plexObject';
 import { Movie, VideoType, Show } from './video';
 import { fetchItem, fetchItems } from './baseFunctionality';
 import { SearchResult } from './search.types';
-import { Agent, searchType } from './search';
+import { Agent, searchType, SEARCHTYPES } from './search';
+import { Playlist } from './playlist';
+import { PartialPlexObject } from './base/partialPlexObject';
 
 export type Section = MovieSection | ShowSection;
 
@@ -327,7 +330,8 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   scannedAt!: Date;
   /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
   uuid!: string;
-  VIDEO_TYPE!: Class<SectionVideoType>;
+  CONTENT_TYPE!: string;
+  readonly VIDEO_TYPE!: Class<SectionVideoType>;
 
   async all(sort = '') {
     let sortStr = '';
@@ -364,7 +368,11 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    * TLDR: This is untested but seems to work. Use library section search when you can.
    * @param args Search using a number of different attributes
    */
-  async search(args: Record<string, number | string | boolean> = {}): Promise<SectionVideoType[]> {
+  async search<T = SectionVideoType>(
+    args: Record<string, number | string | boolean> = {},
+    libtype?: keyof typeof SEARCHTYPES,
+    Cls: any = this.VIDEO_TYPE,
+  ): Promise<T[]> {
     const params = new URLSearchParams();
 
     for (const [key, value] of Object.entries(args)) {
@@ -380,14 +388,12 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
       params.append(key, strValue);
     }
 
-    const key = `/library/all?${params.toString()}`;
-    const data = await fetchItems<SectionVideoType>(
-      this.server,
-      key,
-      undefined,
-      this.VIDEO_TYPE,
-      this,
-    );
+    if (libtype) {
+      params.append('type', searchType(libtype).toString());
+    }
+
+    const key = `/library/all/?${params.toString()}`;
+    const data = await fetchItems(this.server, key, undefined, Cls, this);
     return data;
   }
 
@@ -483,6 +489,28 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   }
 
   /**
+   * Returns a list of playlists from this library section.
+   */
+  async playlists(): Promise<Playlist[]> {
+    const key = `/playlists?type=15&playlistType=${this.CONTENT_TYPE}&sectionID=${this.key}`;
+    return fetchItems<Playlist>(this.server, key, undefined, Playlist, this);
+  }
+
+  async collections(
+    args: Record<string, number | string | boolean> = {},
+  ): Promise<Array<Collections<SectionVideoType>>> {
+    const collections = await this.search<Collections<SectionVideoType>>(
+      args,
+      'collection',
+      Collections,
+    );
+    collections.forEach(collection => {
+      collection.VIDEO_TYPE = this.VIDEO_TYPE;
+    });
+    return collections;
+  }
+
+  /**
    * Returns a list of available Folders for this library section.
    */
   async folders(): Promise<Folder[]> {
@@ -548,9 +576,9 @@ export class MovieSection extends LibrarySection<Movie> {
   ];
 
   static TAG = 'Directory';
-  static METADATA_TYPE = 'movie';
-  static CONTENT_TYPE = 'video';
-  VIDEO_TYPE = Movie;
+  METADATA_TYPE = 'movie';
+  CONTENT_TYPE = 'video';
+  readonly VIDEO_TYPE = Movie;
 }
 
 export class ShowSection extends LibrarySection<Show> {
@@ -593,16 +621,9 @@ export class ShowSection extends LibrarySection<Show> {
   ];
 
   static TAG = 'Directory';
-  static METADATA_TYPE = 'episode';
-  static CONTENT_TYPE = 'video';
-  VIDEO_TYPE = Show;
-
-  /**
-   * Search for a show. See :func:`~plexapi.library.LibrarySection.search` for usage.
-   */
-  async searchShows(args: any) {
-    return this.search({ libtype: 'show', ...args });
-  }
+  METADATA_TYPE = 'episode';
+  CONTENT_TYPE = 'video';
+  readonly VIDEO_TYPE = Show;
 
   // TODO: figure out how to return episode objects
   // /**
@@ -651,11 +672,6 @@ export class Folder extends PlexObject {
   key!: string;
   title!: string;
 
-  protected _loadData(data: any) {
-    this.key = data.key;
-    this.title = data.title;
-  }
-
   /**
    * Returns a list of available Folders for this folder.
    * Continue down subfolders until a mediaType is found.
@@ -666,5 +682,79 @@ export class Folder extends PlexObject {
     }
 
     return fetchItems<Folder>(this.server, this.key, undefined, Folder);
+  }
+
+  protected _loadData(data: any) {
+    this.key = data.key;
+    this.title = data.title;
+  }
+}
+
+export class Collections<CollectionVideoType = VideoType> extends PartialPlexObject {
+  static TAG = 'Directory';
+  TYPE = 'collection';
+
+  ratingKey!: string;
+  guid!: string;
+  type!: string;
+  title!: string;
+  librarySectionTitle!: string;
+  librarySectionID!: number;
+  librarySectionKey!: string;
+  contentRating!: string;
+  subtype!: string;
+  summary!: string;
+  index!: number;
+  thumb!: string;
+  addedAt!: number;
+  updatedAt!: number;
+  childCount!: number;
+  maxYear!: string;
+  minYear!: string;
+  art?: string;
+
+  // TODO: can this be set in the constructor?
+  VIDEO_TYPE!: Class<CollectionVideoType>;
+
+  // Alias for childCount
+  get size() {
+    return this.childCount;
+  }
+
+  /**
+   * Returns a list of all items in the collection.
+   */
+  async items() {
+    const key = `/library/metadata/${this.ratingKey}/children`;
+    const data = await this.server.query<MediaContainer<{ Metadata: any[] }>>(key);
+    return data.MediaContainer.Metadata.map(
+      data => new this.VIDEO_TYPE(this.server, data, undefined, this),
+    );
+  }
+
+  protected _loadData(data: CollectionData) {
+    this.key = data.key;
+    this.title = data.title;
+    this.ratingKey = data.ratingKey;
+    this.guid = data.guid;
+    this.type = data.type;
+    this.librarySectionTitle = data.librarySectionTitle;
+    this.librarySectionID = data.librarySectionID;
+    this.librarySectionKey = data.librarySectionKey;
+    this.contentRating = data.contentRating;
+    this.subtype = data.subtype;
+    this.summary = data.summary;
+    this.index = data.index;
+    this.thumb = data.thumb;
+    this.addedAt = data.addedAt;
+    this.updatedAt = data.updatedAt;
+    this.childCount = parseInt(data.childCount ?? data.size ?? 0, 10);
+    this.maxYear = data.maxYear;
+    this.minYear = data.minYear;
+    this.art = data.art;
+  }
+
+  protected _loadFullData(data: any) {
+    this._loadData(data);
   }
 }

@@ -61,12 +61,12 @@ interface Metadatum {
   primaryExtraKey?: string;
   ratingImage?: string;
   Media?: Media[];
-  Genre?: Collection[];
-  Director?: Collection[];
-  Writer?: Collection[];
-  Country?: Collection[];
-  Collection?: Collection[];
-  Role?: Collection[];
+  Genre?: CollectionTagData[];
+  Director?: CollectionTagData[];
+  Writer?: CollectionTagData[];
+  Country?: CollectionTagData[];
+  Collection?: CollectionTagData[];
+  Role?: CollectionTagData[];
   parentRatingKey?: string;
   grandparentRatingKey?: string;
   parentGuid?: string;
@@ -96,7 +96,7 @@ interface Metadatum {
   Location?: Location[];
 }
 
-export interface Collection {
+interface CollectionTagData {
   tag: string;
 }
 

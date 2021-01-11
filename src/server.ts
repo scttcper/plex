@@ -6,7 +6,6 @@ import {
   ServerRootResponse,
   HistoryMediaContainer,
   HistoryMetadatum,
-  PlaylistMediaContainer,
   ConnectionInfo,
 } from './server.types';
 import { Library, Hub } from './library';
@@ -325,15 +324,16 @@ export class PlexServer {
     return results;
   }
 
-  /**
-   * Returns a list of all :class:`~plexapi.playlist.Playlist` objects saved on the server.
-   * TODO: return playlist objects
-   */
-  async playlists(): Promise<MediaContainer<PlaylistMediaContainer>> {
-    // TODO: Add sort and type options?
-    // /playlists/all?type=15&sort=titleSort%3Aasc&playlistType=video&smart=0
-    return this.query('/playlists');
-  }
+  // TODO: not sure if this works
+  // /**
+  //  * Returns a list of all playlist objects saved on the server.
+  //  */
+  // async playlists(): Promise<any> {
+  //   // TODO: Add sort and type options? (this comment is in py-plex)
+  //   // /playlists/all?type=15&sort=titleSort%3Aasc&playlistType=video&smart=0
+  //   const data = this.query('/playlists');
+  //   console.log(JSON.stringify(data));
+  // }
 
   /**
    * Returns a :class:`~plexapi.myplex.MyPlexAccount` object using the same

@@ -166,3 +166,26 @@ export interface ShowData {
   Genre: MediaTag[];
   Role: MediaTag[];
 }
+
+export interface CollectionData {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  type: string;
+  title: string;
+  librarySectionTitle: string;
+  librarySectionID: number;
+  librarySectionKey: string;
+  contentRating: string;
+  subtype: string;
+  summary: string;
+  index: number;
+  thumb: string;
+  art?: string;
+  addedAt: number;
+  updatedAt: number;
+  childCount: string;
+  size: number;
+  maxYear: string;
+  minYear: string;
+}
