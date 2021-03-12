@@ -2,7 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "moduleResolution": "node",
-    "lib": ["ES2020"],
+    "lib": ["ESNext"],
     "target": "ES2018",
     "module": "CommonJS",
     "esModuleInterop": true,
