@@ -369,6 +369,7 @@ export interface ShowAllLeaves {
 export interface EpisodeMetadata {
   key: string;
   index: number;
+  librarySectionID: number;
   addedAt: number;
   art: string;
   chapterSource: string;

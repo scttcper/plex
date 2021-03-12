@@ -109,6 +109,7 @@ abstract class Video extends Playable {
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
     this.addedAt = new Date(data.addedAt * 1000);
+    this.librarySectionID = data.librarySectionID;
     this.lastViewedAt = (data as MovieData).lastViewedAt
       ? new Date((data as MovieData).lastViewedAt! * 1000)
       : undefined;

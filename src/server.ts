@@ -404,14 +404,14 @@ export class PlexServer {
    * Build a URL string with proper token argument. Token will be appended to the URL
    * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
    */
-  url(key: string, includeToken = false): URL {
+  url(key: string, includeToken = false, params?: URLSearchParams): URL {
     if (!this.baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }
 
     const url = new URL(key, this.baseurl);
     if (this.token && includeToken) {
-      const searchParams = new URLSearchParams();
+      const searchParams = new URLSearchParams(params);
       searchParams.append('X-Plex-Token', this.token);
       url.search = searchParams.toString();
       return url;

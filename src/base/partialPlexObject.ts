@@ -245,11 +245,11 @@ export abstract class PartialPlexObject extends PlexObject {
    * Example:
    *  {'type': 1,
    *  'id': movie.ratingKey,
+   *  'title.value': 'New Title',
    *  'collection[0].tag.tag': 'Super',
    *  'collection.locked': 0}
    */
   async edit(changeObj: Record<string, string | number>) {
-    // TODO
     if (changeObj.id === undefined) {
       changeObj.id = this.ratingKey!;
     }
@@ -262,8 +262,8 @@ export abstract class PartialPlexObject extends PlexObject {
       Object.entries(changeObj).map(([key, value]) => [key, value.toString()]),
     );
     const params = new URLSearchParams(strObj);
-    const part = `/library/sections/${this.librarySectionID!}/all?${params.toString()}`;
-    await this.server.query(part, 'put');
+    const url = this.server.url(`/library/sections/${this.librarySectionID!}/all`, true, params);
+    await this.server.query(url.toString(), 'put');
   }
 
   /**
