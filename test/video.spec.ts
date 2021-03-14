@@ -52,7 +52,6 @@ describe('Movies', () => {
   it('should get movie matches', async () => {
     const matches = await movie.matches();
     expect(matches[0].year).toBe(movie.year);
-    expect(matches[0].score).toBeDefined();
     expect(matches[0].name).toBe(movie.title);
   });
 });
