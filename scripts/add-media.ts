@@ -13,23 +13,31 @@ export async function addMedia(): Promise<void> {
   await library.add(
     'TV Shows',
     'show',
-    'com.plexapp.agents.thetvdb',
-    'Plex Series Scanner',
+    'tv.plex.agents.series',
+    'Plex TV Series',
     '/data/shows',
-    'en',
+    'en-US',
+    {
+      'prefs[useLocalAssets]': '0',
+      'prefs[useExternalExtras]': '0',
+      'prefs[enableBIFGeneration]': '0',
+      'prefs[augmentWithProviderContent]': '0',
+    },
   );
   await delay(10000);
   await library.add(
     'Movies',
     'movie',
-    'com.plexapp.agents.imdb',
-    'Plex Movie Scanner',
+    'tv.plex.agents.movie',
+    'Plex Movie',
     '/data/movies',
-    'en',
+    'en-US',
     {
+      'prefs[enableCinemaTrailers]': '0',
+      'prefs[useLocalAssets]': '0',
+      'prefs[useExternalExtras]': '0',
       'prefs[enableBIFGeneration]': '0',
       'prefs[augmentWithProviderContent]': '0',
-      'prefs[collectionMode]': '0',
     },
   );
 

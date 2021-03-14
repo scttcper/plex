@@ -52,7 +52,6 @@ describe('Movies', () => {
   it('should get movie matches', async () => {
     const matches = await movie.matches();
     expect(matches[0].year).toBe(movie.year);
-    expect(matches[0].score).toBeDefined();
     expect(matches[0].name).toBe(movie.title);
   });
 });
@@ -97,10 +96,21 @@ describe('Shows', () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();
     const [episode] = episodes;
-    // Season 1 of GoT
+    // Season 1 of Silicon Valley
     expect((await episode.season()).key).toBe(seasons[0].key);
     expect((await episode.show()).key).toBe(show.key);
     expect(episode.isWatched).toBe(false);
+  });
+
+  it('should edit an episode title', async () => {
+    const seasons = await show.seasons();
+    const episodes = await seasons[0].episodes();
+    const [episode] = episodes;
+    const originalTitle = `${episode.title}`;
+    await episode.edit({ 'title.value': 'hello' });
+    await episode.reload();
+    expect(episode.title).toBe('hello');
+    await episode.edit({ 'title.value': originalTitle });
   });
 
   // Markers don't seem to be available from json? Or in the test env

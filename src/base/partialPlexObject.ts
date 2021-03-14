@@ -250,6 +250,13 @@ export abstract class PartialPlexObject extends PlexObject {
    *  'collection.locked': 0}
    */
   async edit(changeObj: Record<string, string | number>) {
+    if (this.librarySectionID === undefined) {
+      await this.reload();
+      if (this.librarySectionID === undefined) {
+        throw new Error('Missing librarySectionID');
+      }
+    }
+
     if (changeObj.id === undefined) {
       changeObj.id = this.ratingKey!;
     }
@@ -262,7 +269,7 @@ export abstract class PartialPlexObject extends PlexObject {
       Object.entries(changeObj).map(([key, value]) => [key, value.toString()]),
     );
     const params = new URLSearchParams(strObj);
-    const url = this.server.url(`/library/sections/${this.librarySectionID!}/all`, true, params);
+    const url = this.server.url(`/library/sections/${this.librarySectionID}/all`, true, params);
     await this.server.query(url.toString(), 'put');
   }
 
