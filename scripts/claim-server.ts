@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 
-import { createAccount } from '../test/test-client';
+import { username, password } from '../test/test-client';
 
 async function delay(ms: number) {
   return new Promise(resolve => {
@@ -15,28 +15,43 @@ async function main() {
   await delay(5000);
   await page.setViewport({ width: 900, height: 1000 });
   await page.goto('http://localhost:32400/web');
-  // await page.waitForNavigation();
-  // await page.waitForRequest(request => request.url() === 'https://app.plex.tv/auth/');
-  // await delay(5000);
+  await page.waitForRequest(request => request.url() === 'https://app.plex.tv/auth-form/');
+  await page.waitForSelector('[title="Plex Authentication"]');
+  const authPage = await page.evaluate(() => {
+    // @ts-expect-error
+    return document.querySelectorAll('[title="Plex Authentication"]')[0].attributes.src.value;
+  });
+  await page.goto(authPage);
   let step = 1;
   console.log(`step ${step++} - start`);
-  await page.waitForSelector('[data-subset="setupLoading"]');
-  await page.click('[data-subset="setupLoading"]');
+  await page.waitForSelector('[data-qa-id="signIn--email"]');
   await delay(5000);
+  await page.click('[data-qa-id="signIn--email"]');
 
-  console.log(`step ${step++} - close modal`);
-  // Remove modal
-  await page.evaluate(() => {
-    // @ts-expect-error
-    var buttons = document.querySelectorAll('button');
-    buttons[buttons.length - 1].focus();
-    buttons[buttons.length - 1].click();
-  });
+  console.log(`step ${step++} - submit form`);
+  await page.waitForSelector('#email');
+  await page.type('#email', username);
+  await page.type('#password', password);
+  await page.click('[type="submit"]');
 
   await delay(2000);
-  console.log(`step ${step++} - name`);
-  await page.waitForSelector('.submit-btn');
-  await page.click('.submit-btn');
+  console.log(`step ${step++} - how plex works`);
+  // await delay(500000);
+  await page.waitForSelector('[data-subset="setupLoading"]');
+  await page.click('[data-subset="setupLoading"]');
+  await delay(4000);
+
+  console.log(`step ${step++} - close modal`);
+  const elements = await page.$$('button[data-uid]');
+  await elements[elements.length - 1].click();
+  await delay(1000);
+
+  console.log(`step ${step++} - deselect access media outside my home`);
+  await page.waitForSelector('#PublishServerOnPlexOnlineKey');
+  await page.click('#PublishServerOnPlexOnlineKey');
+  console.log(`step ${step++} - name server`);
+  await page.waitForSelector('[type="submit"]');
+  await page.click('[type="submit"]');
   console.log(`step ${step++} - media library`);
   await page.waitForSelector('[data-subset="setupComplete"]');
   await page.click('[data-subset="setupComplete"]');
@@ -46,11 +61,11 @@ async function main() {
   await page.click('.submit-btn');
   await browser.close();
 
-  const account = await createAccount();
-  console.log(`step ${step++} - get claimToken`);
-  const claimToken = await account.claimToken();
-  console.log(`step ${step++} - claimServer`);
-  await account.claimServer(claimToken);
+  // const account = await createAccount();
+  // console.log(`step ${step++} - get claimToken`);
+  // const claimToken = await account.claimToken();
+  // console.log(`step ${step++} - claimServer`);
+  // await account.claimServer(claimToken);
 }
 
 if (!module.parent) {
