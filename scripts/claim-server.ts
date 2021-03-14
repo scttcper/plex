@@ -60,6 +60,7 @@ async function main() {
   await page.waitForSelector('.submit-btn');
   await page.click('.submit-btn');
   await browser.close();
+  await delay(3000);
 
   // const account = await createAccount();
   // console.log(`step ${step++} - get claimToken`);
