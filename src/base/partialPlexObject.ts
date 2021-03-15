@@ -258,11 +258,15 @@ export abstract class PartialPlexObject extends PlexObject {
     }
 
     if (changeObj.id === undefined) {
-      changeObj.id = this.ratingKey!;
+      if (!this.ratingKey) {
+        throw new Error('Missing ratingKey');
+      }
+
+      changeObj.id = this.ratingKey;
     }
 
     if (changeObj.type === undefined) {
-      changeObj.type = searchType(this.type!);
+      changeObj.type = searchType(this.type);
     }
 
     const strObj = Object.fromEntries(

@@ -2,7 +2,7 @@ import { URL } from 'url';
 
 import { Playable } from './base/playable';
 import { fetchItem, fetchItems } from './baseFunctionality';
-import { MovieData, ShowData } from './library.types';
+import { FullShowData, MovieData, ShowData } from './library.types';
 import { PlexServer } from './server';
 import {
   Director,
@@ -345,8 +345,8 @@ export class Show extends Video {
     this.roles = data.Role?.map(role => new Role(this.server, role)) ?? [];
   }
 
-  protected _loadFullData(data: ShowData): void {
-    this._loadData(data);
+  protected _loadFullData(data: FullShowData): void {
+    this._loadData(data.Metadata[0]);
   }
 }
 

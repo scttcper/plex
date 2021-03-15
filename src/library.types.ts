@@ -36,6 +36,7 @@ export interface SectionsDirectory {
   refreshing: boolean;
   thumb: string;
   key: string;
+  ratingKey: string;
   type: string;
   title: string;
   agent: string;
@@ -135,6 +136,18 @@ export interface Part {
   size: number;
   container: string;
   videoProfile: string;
+}
+
+export interface FullShowData {
+  size: number;
+  allowSync: boolean;
+  identifier: string;
+  librarySectionID: number;
+  librarySectionTitle: string;
+  librarySectionUUID: string;
+  mediaTagPrefix: string;
+  mediaTagVersion: number;
+  Metadata: ShowData[];
 }
 
 export interface ShowData {

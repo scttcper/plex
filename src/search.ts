@@ -77,19 +77,21 @@ type SearchTypesValues = ValueOf<typeof SEARCHTYPES>;
  * @param libtype to lookup (movie, show, season, episode, artist, album, track, collection)
  */
 export function searchType(
-  libtype: string | number | keyof typeof SEARCHTYPES | SearchTypesValues,
+  libtype?: string | number | keyof typeof SEARCHTYPES | SearchTypesValues,
 ): SearchTypesValues {
   if (
+    libtype &&
     Object.values(SEARCHTYPES)
-      .map(x => x.toString())
-      .includes(libtype.toString())
+      .map(num => num.toString())
+      .includes(`${libtype}`)
   ) {
     return Number(libtype) as SearchTypesValues;
   }
 
-  if (SEARCHTYPES[libtype] !== undefined) {
+  if (libtype && SEARCHTYPES[libtype] !== undefined) {
     return SEARCHTYPES[libtype];
   }
 
+  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   throw new Error(`Unknown libtype: ${libtype}`);
 }

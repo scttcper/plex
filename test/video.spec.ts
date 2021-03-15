@@ -113,6 +113,15 @@ describe('Shows', () => {
     await episode.edit({ 'title.value': originalTitle });
   });
 
+  it('should edit a show title', async () => {
+    const originalTitle = `${show.title}`;
+    await show.edit({ 'title.value': 'hello' });
+    await show.reload();
+    expect(show.ratingKey).toBeDefined();
+    expect(show.title).toBe('hello');
+    await show.edit({ 'title.value': originalTitle });
+  });
+
   // Markers don't seem to be available from json? Or in the test env
   it('should determine if an episode has makers', async () => {
     const seasons = await show.seasons();
