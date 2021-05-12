@@ -1,6 +1,6 @@
 import puppeteer from 'puppeteer';
 
-import { username, password } from '../test/test-client';
+import { password, username } from '../test/test-client';
 
 async function delay(ms: number) {
   return new Promise(resolve => {
