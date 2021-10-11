@@ -2,7 +2,9 @@ import { URLSearchParams } from 'url';
 
 import { Playable } from './base/playable';
 import { fetchItems } from './baseFunctionality';
-import { Episode, Movie } from './video';
+import type { Section } from './library';
+import type { PlexServer } from './server';
+import { Episode, Movie, VideoType } from './video';
 
 /**
  * Map media types to their respective class
@@ -18,10 +20,60 @@ function contentClass(data: any) {
   }
 }
 
+interface CreatePlaylistOptions {
+  /** Smart playlists only, the library section to create the playlist in. */
+  section?: Section;
+  /** Regular playlists only */
+  items?: VideoType[];
+  /** True to create a smart playlist. default false */
+  smart?: boolean;
+  /** Smart playlists only, limit the number of items in the playlist. */
+  limit?: number;
+  /**
+   * Smart playlists only, a string of comma separated sort fields
+   * or a list of sort fields in the format ``column:dir``.
+   * See {@link Section.search}  for more info.
+   */
+  sort?: string;
+  /**
+   * Smart playlists only, a dictionary of advanced filters.
+   * See {@link Section.search}  for more info.
+   */
+  filters?: Record<string, any>;
+}
+
 type PlaylistContent = Episode | Movie;
 
 export class Playlist extends Playable {
   static TAG = 'Playlist';
+
+  static async create(server: PlexServer, title: string, options: CreatePlaylistOptions) {
+    if (options.smart) {
+      throw new Error('not yet supported');
+      // return this._createSmart(server, title, options);
+    }
+
+    return this._create(server, title, options.items!);
+  }
+
+  /** Create a smart playlist. */
+  // private static _createSmart(server: PlexServer, title: string, options: CreatePlaylistOptions) {}
+
+  private static async _create(server: PlexServer, title: string, items: VideoType[]) {
+    const { listType } = items[0];
+    const ratingKeys = items ? items.map(x => x.ratingKey) : [];
+    const uri = `${server._uriRoot()}/library/metadata/${ratingKeys.join(',')}`;
+    const params = new URLSearchParams({
+      uri,
+      type: listType,
+      title,
+      smart: '0',
+    });
+    const key = `/playlists?${params.toString()}`;
+    const data = await server.query(key);
+    return new Playlist(server, data);
+  }
+
   TYPE = 'playlist';
 
   addedAt!: Date;
@@ -43,13 +95,8 @@ export class Playlist extends Playable {
    */
   async item(title: string): Promise<PlaylistContent | null> {
     const items = await this.items();
-    for (const item of items) {
-      if (item.title.toLowerCase() === title.toLowerCase()) {
-        return item;
-      }
-    }
-
-    return null;
+    const matched = items.find(item => item.title.toLowerCase() === title.toLowerCase());
+    return matched ?? null;
   }
 
   async items() {

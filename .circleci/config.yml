@@ -1,18 +1,19 @@
 version: 2.1
 orbs:
   node: circleci/node@4
-  codecov: codecov/codecov@1
+  browser-tools: circleci/browser-tools@1
+  codecov: codecov/codecov@3
 jobs:
   test:
     docker:
-      - image: circleci/node:14-browsers
+      - image: cimg/node:current-browsers
+        environment:
+            CHROME_BIN: '/usr/bin/google-chrome'
       - image: scttcper/plex-with-media
     steps:
+      - browser-tools/install-chrome
       - checkout
       - node/install-packages
-      - run:
-          name: npm-install
-          command: npm ci
       - run:
           name: claim-server
           command: npm run claim-server
@@ -49,7 +50,6 @@ jobs:
 workflows:
   version: 2
   test_and_release:
-    # Run the test jobs first, then the release only when all the test jobs are successful
     jobs:
       - cleanup
       - test:
@@ -60,5 +60,7 @@ workflows:
             branches:
               only:
                 - master
+          context:
+            - npm
           requires:
             - test

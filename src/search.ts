@@ -68,6 +68,7 @@ export const SEARCHTYPES = {
   playlist: 15,
   playlistFolder: 16,
   collection: 18,
+  optimizedVersion: 42,
   userPlaylistItem: 1001,
 } as const;
 

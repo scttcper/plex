@@ -1,7 +1,7 @@
 import type { PlexServer } from './server';
 import { MediaContainer } from './util';
 
-const OPERATORS = {
+export const OPERATORS = {
   exact: (v: string | number, q: string | number) => v === q,
   iexact: (v: string, q: string) => v.toLowerCase() === q.toLowerCase(),
   contains: (v: string, q: string) => q.includes(v),

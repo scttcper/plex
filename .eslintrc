@@ -6,6 +6,7 @@
   "extends": ["@ctrl/eslint-config"],
   "rules": {
     "max-params": "off",
-    "no-warning-comments": "off"
+    "no-warning-comments": "off",
+    "@typescript-eslint/restrict-template-expressions": "off"
   }
 }

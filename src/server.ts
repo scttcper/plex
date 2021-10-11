@@ -421,6 +421,10 @@ export class PlexServer {
     return url;
   }
 
+  _uriRoot(): string {
+    return `server://${this.machineIdentifier}/com.plexapp.plugins.library`;
+  }
+
   private _headers(): Record<string, string> {
     const headers = {
       ...BASE_HEADERS,

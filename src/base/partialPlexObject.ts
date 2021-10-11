@@ -278,6 +278,8 @@ export abstract class PartialPlexObject extends PlexObject {
     await this.server.query(url.toString(), 'put');
   }
 
+  protected abstract _loadFullData(data: any): void;
+
   /**
    * Helper to edit and refresh a tags.
    * @param tag tag name
@@ -292,6 +294,4 @@ export abstract class PartialPlexObject extends PlexObject {
     await this.edit(d);
     await this.reload();
   }
-
-  protected abstract _loadFullData(data: any): void;
 }
