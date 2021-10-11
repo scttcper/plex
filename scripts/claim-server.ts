@@ -25,9 +25,9 @@ async function main() {
   await page.goto(`https://app.plex.tv${authPage}`);
   let step = 1;
   console.log(`step ${step++} - start`);
-  await page.waitForSelector('[data-qa-id="signIn--email"]');
+  await page.waitForSelector('[data-testid="signIn--email"]');
   await delay(5000);
-  await page.click('[data-qa-id="signIn--email"]');
+  await page.click('[data-testid="signIn--email"]');
 
   console.log(`step ${step++} - submit form`);
   await page.waitForSelector('#email');
