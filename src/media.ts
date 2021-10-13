@@ -263,3 +263,21 @@ export class Optimized extends PlexObject {
     this.targetTagID = data.targetTagID;
   }
 }
+
+/**
+ * Base class for guid tags used only for Guids, as they contain only a string identifier
+ */
+class GuidTag extends PlexObject {
+  /**
+   * The guid for external metadata sources (e.g. IMDB, TMDB, TVDB). ex - imdb://tt3222784
+   */
+  id!: string;
+
+  protected _loadData(data: any) {
+    this.id = data.id;
+  }
+}
+
+export class Guid extends GuidTag {
+  static TAG = 'Guid' as const;
+}

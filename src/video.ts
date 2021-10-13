@@ -9,6 +9,7 @@ import {
   Country,
   Director,
   Genre,
+  Guid,
   Marker,
   Media,
   Producer,
@@ -151,8 +152,8 @@ export class Movie extends Video {
   duration!: number;
   /** Original title, often the foreign title (転々; 엽기적인 그녀). */
   originalTitle?: string;
-  /** Datetime movie was released. */
-  originallyAvailableAt!: Date;
+  /** YYYY-MM-DD movie was released. */
+  originallyAvailableAt!: string;
   /** Primary extra key (/library/metadata/66351). */
   primaryExtraKey!: string;
   /** Movie rating (7.9; 9.8; 8.1). */
@@ -183,6 +184,7 @@ export class Movie extends Video {
   roles!: Role[];
   similar!: Similar[];
   media!: Media[];
+  guids!: Guid[];
 
   get actors() {
     return this.roles;
@@ -207,7 +209,7 @@ export class Movie extends Video {
     this.duration = data.duration;
     this.guid = data.guid;
     this.originalTitle = data.originalTitle;
-    this.originallyAvailableAt = new Date(data.originallyAvailableAt);
+    this.originallyAvailableAt = data.originallyAvailableAt;
     this.primaryExtraKey = data.primaryExtraKey;
     this.rating = data.rating;
     this.ratingImage = data.ratingImage;
@@ -217,19 +219,17 @@ export class Movie extends Video {
     this.viewOffset = data.viewOffset ?? 0;
     this.year = data.year;
     this.librarySectionID = data.librarySectionID;
-    this.directors =
-      data.Director?.map(data => new Director(this.server, data, undefined, this)) ?? [];
-    this.countries =
-      data.Country?.map(data => new Country(this.server, data, undefined, this)) ?? [];
-    this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
+    this.directors = data.Director?.map(d => new Director(this.server, d, undefined, this)) ?? [];
+    this.countries = data.Country?.map(d => new Country(this.server, d, undefined, this)) ?? [];
+    this.writers = data.Writer?.map(d => new Writer(this.server, d, undefined, this)) ?? [];
     this.collections =
-      data.Collection?.map(data => new Collection(this.server, data, undefined, this)) ?? [];
-    this.roles = data.Role?.map(data => new Role(this.server, data, undefined, this)) ?? [];
-    this.similar = data.Similar?.map(data => new Similar(this.server, data, undefined, this)) ?? [];
-    this.genres = data.Genre?.map(data => new Genre(this.server, data, undefined, this)) ?? [];
-    this.producers =
-      data.Producer?.map(data => new Producer(this.server, data, undefined, this)) ?? [];
-    this.media = data.Media?.map(data => new Media(this.server, data, undefined, this)) ?? [];
+      data.Collection?.map(d => new Collection(this.server, d, undefined, this)) ?? [];
+    this.roles = data.Role?.map(d => new Role(this.server, d, undefined, this)) ?? [];
+    this.similar = data.Similar?.map(d => new Similar(this.server, d, undefined, this)) ?? [];
+    this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this)) ?? [];
+    this.producers = data.Producer?.map(d => new Producer(this.server, d, undefined, this)) ?? [];
+    this.media = data.Media?.map(d => new Media(this.server, d, undefined, this)) ?? [];
+    this.guids = data.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {
@@ -554,15 +554,13 @@ export class Episode extends Video {
     this.rating = data.rating;
     this.viewOffset = data.viewOffset;
     this.year = data.year;
-    this.directors =
-      data.Director?.map(data => new Director(this.server, data, undefined, this)) ?? [];
-    this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
-    this.media = data.Media?.map(data => new Media(this.server, data, undefined, this));
+    this.directors = data.Director?.map(d => new Director(this.server, d, undefined, this)) ?? [];
+    this.writers = data.Writer?.map(d => new Writer(this.server, d, undefined, this)) ?? [];
+    this.media = data.Media?.map(d => new Media(this.server, d, undefined, this));
     this.collections =
-      data.Collection?.map(data => new Collection(this.server, data, undefined, this)) ?? [];
-    this.chapters =
-      data.Chapter?.map(data => new Chapter(this.server, data, undefined, this)) ?? [];
-    this.markers = data.Marker?.map(data => new Marker(this.server, data, undefined, this)) ?? [];
+      data.Collection?.map(d => new Collection(this.server, d, undefined, this)) ?? [];
+    this.chapters = data.Chapter?.map(d => new Chapter(this.server, d, undefined, this)) ?? [];
+    this.markers = data.Marker?.map(d => new Marker(this.server, d, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {

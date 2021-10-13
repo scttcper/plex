@@ -2,7 +2,9 @@ import { URLSearchParams } from 'url';
 
 import { Playable } from './base/playable';
 import { fetchItems } from './baseFunctionality';
+import { BadRequest, NotFound } from './exceptions';
 import type { Section } from './library';
+import { PlaylistResponse } from './playlist.types';
 import type { PlexServer } from './server';
 import { Episode, Movie, VideoType } from './video';
 
@@ -20,13 +22,18 @@ function contentClass(data: any) {
   }
 }
 
-interface CreatePlaylistOptions {
-  /** Smart playlists only, the library section to create the playlist in. */
-  section?: Section;
+interface CreateRegularPlaylistOptions {
+  /** True to create a smart playlist */
+  smart?: false;
   /** Regular playlists only */
   items?: VideoType[];
-  /** True to create a smart playlist. default false */
-  smart?: boolean;
+}
+
+interface CreateSmartPlaylistOptions {
+  /** True to create a smart playlist */
+  smart: true;
+  /** Smart playlists only, the library section to create the playlist in. */
+  section?: Section;
   /** Smart playlists only, limit the number of items in the playlist. */
   limit?: number;
   /**
@@ -42,6 +49,7 @@ interface CreatePlaylistOptions {
   filters?: Record<string, any>;
 }
 
+type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
 type PlaylistContent = Episode | Movie;
 
 export class Playlist extends Playable {
@@ -60,6 +68,10 @@ export class Playlist extends Playable {
   // private static _createSmart(server: PlexServer, title: string, options: CreatePlaylistOptions) {}
 
   private static async _create(server: PlexServer, title: string, items: VideoType[]) {
+    if (!items || items.length === 0) {
+      throw new BadRequest('Must include items to add when creating new playlist.');
+    }
+
     const { listType } = items[0];
     const ratingKeys = items ? items.map(x => x.ratingKey) : [];
     const uri = `${server._uriRoot()}/library/metadata/${ratingKeys.join(',')}`;
@@ -70,25 +82,25 @@ export class Playlist extends Playable {
       smart: '0',
     });
     const key = `/playlists?${params.toString()}`;
-    const data = await server.query(key);
-    return new Playlist(server, data);
+    const data = await server.query(key, 'post');
+    return new Playlist(server, data.MediaContainer.Metadata[0], key);
   }
 
   TYPE = 'playlist';
 
   addedAt!: Date;
   updatedAt!: Date;
-  allowSync!: string;
   composite!: string;
-  duration!: string;
-  durationInSeconds!: string;
   guid!: string;
-  leafCount!: string;
+  leafCount!: number;
   playlistType!: string;
-  smart!: string;
+  smart!: boolean;
   summary!: string;
+  allowSync?: boolean;
+  duration?: number;
+  durationInSeconds?: number;
   /** Cache of playlist items */
-  private _items: Array<Episode | Movie> | null = null;
+  private _items: PlaylistContent[] | null = null;
 
   /**
    * @returns the item in the playlist that matches the specified title.
@@ -114,50 +126,76 @@ export class Playlist extends Playable {
 
   /** Add items to a playlist. */
   async addItems(items: PlaylistContent[]) {
+    if (this.smart) {
+      throw new BadRequest('Cannot add items to a smart playlist.');
+    }
+
+    const isInvalidType = items.some(x => x.listType !== this.playlistType);
+    if (isInvalidType) {
+      throw new BadRequest('Can not mix media types when building a playlist');
+    }
+
     const ratingKeys = items.map(x => x.ratingKey);
     const params = new URLSearchParams({
-      uri: `server://${
-        this.server.key
-      }/com.plexapp.plugins.library/library/metadata/${ratingKeys.join(',')}`,
+      uri: `${this.server._uriRoot()}/library/metadata/${ratingKeys.join(',')}`,
     });
-    const key = `${this.key}?${params.toString()}`;
-    const result = await this.server.query(key, 'put');
-    await this.reload();
-    return result;
+
+    const key = `${this.key}/items?${params.toString()}`;
+    await this.server.query(key, 'put');
   }
 
   /** Remove an item from a playlist. */
-  async removeItem(item: PlaylistContent) {
-    if (!item.playlistItemID) {
-      throw new Error('Missing playlistItemID');
+  async removeItems(items: PlaylistContent[]) {
+    if (this.smart) {
+      throw new BadRequest('Cannot remove items to a smart playlist.');
     }
 
-    const key = `${this.key}/items/${item.playlistItemID}`;
-    const result = await this.server.query(key, 'delete');
-    await this.reload();
-    return result;
+    for (const item of items) {
+      // eslint-disable-next-line no-await-in-loop
+      const playlistItemId = await this._getPlaylistItemID(item);
+      const key = `${this.key}/items/${playlistItemId}`;
+      // eslint-disable-next-line no-await-in-loop
+      await this.server.query(key, 'delete');
+    }
   }
 
-  protected _loadData(data: any) {
-    this.key = data.key;
+  /** Delete the playlist. */
+  async delete() {
+    console.log('delete key', this.key);
+    await this.server.query(this.key, 'delete');
+  }
+
+  protected _loadData(data: PlaylistResponse) {
+    this.key = data.key.replace('/items', '');
     this.ratingKey = data.ratingKey;
     this.title = data.title;
     this.type = data.type;
-
     this.addedAt = new Date(data.addedAt);
     this.updatedAt = new Date(data.updatedAt);
-    this.allowSync = data.allowSync;
     this.composite = data.composite;
+    this.guid = data.guid;
+    this.playlistType = data.playlistType;
+    this.summary = data.summary;
+    this.smart = data.smart;
+    this.leafCount = data.leafCount;
+
+    // TODO: verify these. Possibly audio playlist related
+    this.allowSync = data.allowSync;
     this.duration = data.duration;
     this.durationInSeconds = data.durationInSeconds;
-    this.guid = data.guid;
-    this.leafCount = data.leafCount;
-    this.playlistType = data.playlistType;
-    this.smart = data.smart;
-    this.summary = data.summary;
   }
 
   protected _loadFullData(data: any) {
     this._loadData(data);
+  }
+
+  private async _getPlaylistItemID(item: PlaylistContent) {
+    const items = await this.items();
+    const playlistItem = items.find(i => i.ratingKey === item.ratingKey);
+    if (!playlistItem) {
+      throw new NotFound(`Item with title "${item.title}" not found in the playlist`);
+    }
+
+    return playlistItem.playlistItemID;
   }
 }

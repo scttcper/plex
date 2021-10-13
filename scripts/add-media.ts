@@ -1,3 +1,4 @@
+import { PlexServer } from '../src';
 import { createClient } from '../test/test-client';
 
 const delay = async (ms: number) =>
@@ -6,7 +7,14 @@ const delay = async (ms: number) =>
   });
 
 export async function addMedia(): Promise<void> {
-  const server = await createClient();
+  let server: PlexServer;
+  try {
+    server = await createClient();
+  } catch (err) {
+    console.log('creating client failed');
+    throw err;
+  }
+
   const library = await server.library();
   console.log('friendlyName', server.friendlyName);
 

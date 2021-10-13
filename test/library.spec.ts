@@ -39,6 +39,8 @@ describe('Library', () => {
     const section = await library.section<MovieSection>('Movies');
     const results = await section.search({ title: 'Bunny' });
     expect(results.length).toBe(1);
+    const [buckBunny] = results;
+    await buckBunny.reload();
     expect(results[0].title).toBe('Big Buck Bunny');
     expect(results[0].librarySectionID).toBeDefined();
   });

@@ -114,6 +114,7 @@ export interface MovieData {
   Role?: MediaTag[];
   Similar?: MediaTagData[];
   Producer?: MediaTagData[];
+  Guid?: Guid[];
 }
 
 export interface MediaTag {
@@ -126,6 +127,10 @@ export interface Media {
   bitrate: number;
   videoProfile: string;
   Part: Part[];
+}
+
+export interface Guid {
+  id: string;
 }
 
 export interface Part {
