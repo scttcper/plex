@@ -112,7 +112,6 @@ describe('Shows', () => {
 });
 
 describe('Movies', () => {
-  jest.retryTimes(3);
   let plex: PlexServer;
   let section: MovieSection;
   /** Big buck bunny */
