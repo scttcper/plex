@@ -1,10 +1,11 @@
-import { beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src';
 
 import { createClient } from './test-client';
 
 describe('Shows', () => {
+  jest.retryTimes(3);
   let plex: PlexServer;
   /** Silicon Valley */
   let show: Show;

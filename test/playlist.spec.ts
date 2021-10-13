@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from '@jest/globals';
+import { beforeAll, describe, expect, it, jest } from '@jest/globals';
 
 import { MovieSection, Playlist, PlexServer } from '../src';
 
@@ -10,6 +10,7 @@ const delay = async (ms: number) =>
   });
 
 describe('Library', () => {
+  jest.retryTimes(3);
   let plex: PlexServer;
   beforeAll(async () => {
     plex = await createClient();
