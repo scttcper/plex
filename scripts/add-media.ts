@@ -49,7 +49,7 @@ export async function addMedia(): Promise<void> {
     },
   );
 
-  await delay(20000);
+  await delay(25000);
 }
 
 if (!module.parent) {
