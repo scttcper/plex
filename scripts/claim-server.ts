@@ -44,8 +44,11 @@ async function main() {
   await delay(4000);
 
   console.log(`step ${step++} - close modal`);
-  const elements = await page.$$('button[data-uid]');
-  await elements[elements.length - 1].click();
+  try {
+    const elements = await page.$$('button[data-uid]');
+    await elements[elements.length - 1].click();
+  } catch {}
+
   await delay(1000);
 
   console.log(`step ${step++} - deselect access media outside my home`);
