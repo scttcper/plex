@@ -161,7 +161,6 @@ export class Playlist extends Playable {
 
   /** Delete the playlist. */
   async delete() {
-    console.log('delete key', this.key);
     await this.server.query(this.key, 'delete');
   }
 
