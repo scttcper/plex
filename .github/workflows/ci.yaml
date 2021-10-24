@@ -1,0 +1,93 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PLEXAPI_AUTH_SERVER_BASEURL: http://127.0.0.1:32400
+      PLEX_CONTAINER: plexinc/pms-docker
+      PLEX_CONTAINER_TAG: latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@master
+      - name: setup node
+        uses: actions/setup-node@master
+        with:
+          node-version: 16
+      - name: install dependencies
+        run: npm ci
+      - name: lint
+        run: npm run lint
+      - name: Get PMS Docker image digest
+        id: docker-digest
+        run: |
+          mkdir -p ~/.cache/docker/${{ env.PLEX_CONTAINER }}
+          echo "Image: ${{ env.PLEX_CONTAINER }}"
+          echo "Tag: ${{ env.PLEX_CONTAINER_TAG }}"
+          token=$(curl \
+            --silent \
+            "https://auth.docker.io/token?scope=repository:${{ env.PLEX_CONTAINER }}:pull&service=registry.docker.io" \
+            | jq -r '.token')
+          digest=$(curl \
+            --silent \
+            --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+            --header "Authorization: Bearer $token" \
+            "https://registry-1.docker.io/v2/${{ env.PLEX_CONTAINER }}/manifests/${{ env.PLEX_CONTAINER_TAG }}" \
+            | jq -r '.config.digest')
+          echo "Digest: $digest"
+          echo ::set-output name=digest::$digest
+      - name: Cache PMS Docker image
+        id: docker-cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/docker/plexinc
+          key: ${{ runner.os }}-docker-pms-${{ steps.docker-digest.outputs.digest }}
+      - name: Load PMS Docker image
+        if: steps.docker-cache.outputs.cache-hit == 'true'
+        run: |
+          docker load -i ~/.cache/docker/${{ env.PLEX_CONTAINER }}-${{ env.PLEX_CONTAINER_TAG }}.tar
+      - name: Set Plex credentials
+        run: |
+          echo "PLEXAPI_AUTH_SERVER_TOKEN=${{ secrets.PLEXAPI_AUTH_SERVER_TOKEN }}" >> $GITHUB_ENV
+      # - name: Bootstrap ${{ matrix.plex }} Plex server
+      #   run: |
+      #     . venv/bin/activate
+      #     python \
+      #       -u tools/plex-bootstraptest.py \
+      #       --destination plex \
+      #       --advertise-ip 127.0.0.1 \
+      #       --bootstrap-timeout 540 \
+      #       --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
+      #       --${{ matrix.plex }
+      # - name: test
+      #   run: npm run test:ci
+
+
+  # coverage:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: Atrox/codecov-action@master
+  #       env:
+  #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@master
+      - name: setup node
+        uses: actions/setup-node@master
+        with:
+          node-version: 16
+      - name: install dependencies
+        run: npm ci
+      - name: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # run: npx semantic-release
+        run: node --version
