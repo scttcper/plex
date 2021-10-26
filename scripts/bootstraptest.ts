@@ -1,11 +1,11 @@
 /* eslint-disable no-await-in-loop */
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import delay from 'delay';
 import execa from 'execa';
 import globby from 'globby';
+import makeDir from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
 import { hideBin } from 'yargs/helpers';
@@ -195,7 +195,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
 }
 
 async function setupMovies(moviePath: string): Promise<number> {
-  mkdirSync(moviePath);
+  await makeDir(moviePath);
   const files = await globby(`${moviePath}/*.mkv`);
   const totalMovies = Object.keys(requiredMovies).length;
   if (files.length === totalMovies) {
@@ -207,7 +207,7 @@ async function setupMovies(moviePath: string): Promise<number> {
 }
 
 async function setupShows(showPath: string): Promise<number> {
-  mkdirSync(showPath);
+  await makeDir(showPath);
   const files = await globby(`${showPath}/*.mkv`);
   const totalEpisodes = Object.values(requiredShows).flat(2).length;
 
