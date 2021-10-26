@@ -59,3 +59,7 @@ export function ltrim(x: string, characters: string[]) {
   const end = x.length - 1;
   return x.substr(start, end);
 }
+
+export function lowerFirst(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}

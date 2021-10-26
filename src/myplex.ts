@@ -151,6 +151,23 @@ export class MyPlexAccount {
   }
 
   /**
+   * @param name Name to match against.
+   * @param clientId clientIdentifier to match against.
+   */
+  async device(name = '', clientId?: string): Promise<MyPlexDevice> {
+    const devices = await this.devices();
+    const device = devices.find(
+      device =>
+        device.name.toLowerCase() === name.toLowerCase() || device.clientIdentifier === clientId,
+    );
+    if (!device) {
+      throw new Error('Unable to find device');
+    }
+
+    return device;
+  }
+
+  /**
    * Returns a list of all :class:`~plexapi.myplex.MyPlexDevice` objects connected to the server.
    */
   async devices(): Promise<MyPlexDevice[]> {
@@ -478,6 +495,18 @@ export class MyPlexDevice extends PlexObject {
   lastSeenAt!: Date;
   /** List of connection URIs for the device. */
   connections?: string[];
+
+  async connect(): Promise<PlexServer> {
+    // TODO: switch between PlexServer and PlexClient
+
+    // Try connecting to all known resource connections in parellel, but
+    // only return the first server (in order) that provides a response.
+    const promises = (this.connections ?? []).map(async url =>
+      connect((...args) => new PlexServer(...args), url, this.token),
+    );
+    const result = await pAny(promises);
+    return result;
+  }
 
   protected _loadData(data: Device): void {
     this.name = data.$.name;

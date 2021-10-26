@@ -3,7 +3,7 @@
   "compilerOptions": {
     "moduleResolution": "node",
     "lib": ["ESNext"],
-    "target": "ES2018",
+    "target": "ES2020",
     "module": "CommonJS",
     "esModuleInterop": true,
     "strict": true,
@@ -13,5 +13,8 @@
     "sourceMap": false,
     "skipLibCheck": true,
     "outDir": "dist"
+  },
+  "ts-node": {
+    "transpileOnly": true
   }
 }

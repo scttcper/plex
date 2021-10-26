@@ -90,7 +90,7 @@ describe('Shows', () => {
   it('should get show locations', async () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
-    expect(episode.locations()).toEqual(['/data/shows/Silicon Valley/S01E01.mp4']);
+    expect(episode.locations()[0]).toContain('Silicon Valley/S01E01.mp4');
   });
 
   it('should get show hubs', async () => {
@@ -137,7 +137,7 @@ describe('Movies', () => {
   });
 
   it('should get movie locations', async () => {
-    expect(await movie.locations()).toEqual(['/data/movies/Big Buck Bunny (2008).mp4']);
+    expect((await movie.locations())[0]).toContain('Big Buck Bunny (2008).mp4');
   });
 
   it('should add and remove movie from collection', async () => {

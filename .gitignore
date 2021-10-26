@@ -40,3 +40,6 @@ yarn.lock
 # my garbage
 src/run.ts
 media/**/**.mp4
+plex/db
+plex/media
+plex/transcode

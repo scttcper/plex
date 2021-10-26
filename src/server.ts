@@ -16,6 +16,7 @@ import {
   HistoryMetadatum,
   ServerRootResponse,
 } from './server.types';
+import { SettingResponse, Settings } from './settings';
 import { MediaContainer } from './util';
 
 /**
@@ -137,6 +138,7 @@ export class PlexServer {
   /** Unknown */
   pushNotifications!: boolean;
   _library?: Library;
+  _settings?: Settings;
   private _myPlexAccount?: MyPlexAccount;
 
   constructor(
@@ -323,6 +325,15 @@ export class PlexServer {
     }
 
     return results;
+  }
+
+  async settings(): Promise<Settings> {
+    if (!this._settings) {
+      const data = await this.query<MediaContainer<{ Setting: SettingResponse[] }>>(Settings.key);
+      this._settings = new Settings(this, data.MediaContainer.Setting);
+    }
+
+    return this._settings;
   }
 
   // TODO: not sure if this works
