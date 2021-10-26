@@ -56,7 +56,6 @@ jobs:
 
       - name: Bootstrap Plex server
         run: npm run bootstraptest -- \
-            --destination plex \
             --advertise-ip 127.0.0.1 \
             --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
       - name: test
