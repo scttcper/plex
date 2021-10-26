@@ -18,8 +18,6 @@ jobs:
           node-version: 16
       - name: install dependencies
         run: npm ci
-      - name: lint
-        run: npm run lint
 
       - name: Get PMS Docker image digest
         id: docker-digest
@@ -60,6 +58,8 @@ jobs:
             --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
       - name: test
         run: npm run test:ci
+      - name: lint
+        run: npm run lint
 
 
   # coverage:

@@ -24,7 +24,7 @@ const yarg = yargs(hideBin(process.argv))
   .option('destination', {
     type: 'string',
     desc: 'Local path where to store all the media',
-    default: '../plex',
+    default: 'plex',
   })
   .option('advertise-ip', {
     type: 'string',
@@ -234,7 +234,11 @@ async function main() {
     token,
   ).connect();
   const claimToken = await account.claimToken();
-  const destination = join(__dirname, argv.destination);
+  const destination = join(__dirname, '..', argv.destination);
+  console.log({
+    __dirname,
+    destination,
+  });
 
   const opts: Options = {
     destination,
