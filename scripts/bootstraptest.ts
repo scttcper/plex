@@ -221,7 +221,7 @@ async function setupShows(showPath: string): Promise<number> {
 
 async function main() {
   const argv = await Promise.resolve(yarg.argv);
-  const token = argv.token ?? process.env.PLEXAPI_AUTH_SERVER_TOKEN;
+  const token = argv.token || process.env.PLEXAPI_AUTH_SERVER_TOKEN;
   const { username, password } = argv;
   if (!username && !password && !token) {
     throw new Error('Must provider username/password or token');
