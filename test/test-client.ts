@@ -2,7 +2,7 @@ import { MyPlexAccount, PlexServer } from '../src';
 
 export const username = process.env.PLEX_USERNAME;
 export const password = process.env.PLEX_PASSWORD;
-export const token = process.env.PLEX_TOKEN;
+export const token = process.env.PLEX_TOKEN ?? process.env.PLEXAPI_AUTH_SERVER_TOKEN;
 
 if (!username && !password && !token) {
   console.error('Test environment variables must be set.');
