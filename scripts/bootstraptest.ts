@@ -235,6 +235,8 @@ async function main() {
   ).connect();
   const claimToken = await account.claimToken();
   const destination = join(__dirname, '..', argv.destination);
+  const mediaPath = join(destination, 'media');
+  await makeDir(mediaPath);
   console.log({
     __dirname,
     destination,
@@ -311,7 +313,6 @@ async function main() {
   await settings.save();
   settingsProg.succeed();
 
-  const mediaPath = join(opts.destination, 'media');
   const sections: Section[] = [];
 
   if (argv['create-movies']) {
