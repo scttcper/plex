@@ -40,22 +40,13 @@ jobs:
           echo "Digest: $digest"
           echo ::set-output name=digest::$digest
 
-      - name: Cache PMS Docker image
-        id: docker-cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/docker/plexinc
-          key: ${{ runner.os }}-docker-pms-${{ steps.docker-digest.outputs.digest }}
-
       - name: Pull PMS Docker image
-        if: steps.docker-cache.outputs.cache-hit != 'true'
         run: |
           docker pull ${{ env.PLEX_CONTAINER }}:${{ env.PLEX_CONTAINER_TAG }}
           docker save -o ~/.cache/docker/${{ env.PLEX_CONTAINER }}-${{ env.PLEX_CONTAINER_TAG }}.tar ${{ env.PLEX_CONTAINER }}:${{ env.PLEX_CONTAINER_TAG }}
           echo "Saved image: ${{ env.PLEX_CONTAINER }}:${{ env.PLEX_CONTAINER_TAG }}"
 
       - name: Load PMS Docker image
-        if: steps.docker-cache.outputs.cache-hit == 'true'
         run: |
           docker load -i ~/.cache/docker/${{ env.PLEX_CONTAINER }}-${{ env.PLEX_CONTAINER_TAG }}.tar
 
