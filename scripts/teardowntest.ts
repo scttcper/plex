@@ -10,9 +10,10 @@ async function main() {
     undefined,
     token,
   ).connect();
-  const plex = new PlexServer('http://localhost:32400', token);
+  const plex = new PlexServer('http://localhost:32400', account.token!);
 
-  const devices = await account.devices();
+  const devices = await plex.myPlexAccount().devices();
+  console.log(`${devices.length} devices exist`);
   for (const device of devices) {
     if (device.clientIdentifier === plex.machineIdentifier) {
       console.log(`Removing device "${device.name}", with id "${device.clientIdentifier}"`);
