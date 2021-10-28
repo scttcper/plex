@@ -1,16 +1,10 @@
 /* eslint-disable no-await-in-loop */
-import { MyPlexAccount, PlexServer, X_PLEX_IDENTIFIER } from '../src';
+import { PlexServer, X_PLEX_IDENTIFIER } from '../src';
 
 async function main() {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const token = process.env.PLEX_TOKEN || process.env.PLEXAPI_AUTH_SERVER_TOKEN!;
-  const account = await new MyPlexAccount(
-    'http://localhost:32400',
-    undefined,
-    undefined,
-    token,
-  ).connect();
-  const plex = new PlexServer('http://localhost:32400', account.token!);
+  const plex = new PlexServer('http://localhost:32400', token);
 
   const devices = await plex.myPlexAccount().devices();
   console.log(`${devices.length} devices exist`);
