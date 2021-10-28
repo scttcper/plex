@@ -508,6 +508,14 @@ export class MyPlexDevice extends PlexObject {
     return result;
   }
 
+  /**
+   * Remove this device from your account
+   */
+  async delete() {
+    const key = `https://plex.tv/devices/${this.id}.xml`;
+    await this.server.query(key, 'delete');
+  }
+
   protected _loadData(data: Device): void {
     this.name = data.$.name;
     this.publicAddress = data.$.publicAddress;

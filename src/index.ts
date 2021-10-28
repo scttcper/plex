@@ -1,8 +1,12 @@
+export * from './alert';
+export { AlertTypes } from './alert.types';
 export * from './client';
-export * from './server';
-export * from './myplex';
+export * from './exceptions';
 export * from './library';
-export * from './video';
 export * from './media';
+export * from './myplex';
 export * from './playlist';
-export { SearchResult, Agent } from './search';
+export * from './server';
+export * from './video';
+export { X_PLEX_IDENTIFIER } from './config';
+export { SearchResult, Agent, SEARCHTYPES } from './search';

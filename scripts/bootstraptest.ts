@@ -11,9 +11,7 @@ import pRetry from 'p-retry';
 import { hideBin } from 'yargs/helpers';
 import yargs from 'yargs/yargs';
 
-import { MyPlexAccount, PlexServer } from '../src';
-import { AlertListener } from '../src/alert';
-import { AlertTypes } from '../src/alert.types';
+import { AlertListener, AlertTypes, MyPlexAccount, PlexServer } from '../src';
 
 import { prepareMovieDir, prepareTvDir, requiredMovies, requiredShows } from './create-media';
 
@@ -126,17 +124,6 @@ type Section = {
   expectedMediaCount: number;
 };
 
-// const x = {
-//   destination: '/Users/scooper/gh/python-plexapi/plex',
-//   hostname: 'plex-test-docker-042ed3f6-901b-44de-a491-18f92c66a799',
-//   claim_token: 'claim-ti5xUu4NKWn6uKzJpS91',
-//   timezone: 'UTC',
-//   language: 'en_US.UTF-8',
-//   advertise_ip: '127.0.0.1',
-//   image_tag: 'something',
-//   container_name_extra: '',
-// };
-
 type Options = {
   destination: string;
   hostname: string;
@@ -150,6 +137,7 @@ type Options = {
 
 async function createSection(section: Section, server: PlexServer): Promise<void> {
   let processedMedia = 0;
+  let listener: AlertListener;
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async resolve => {
     const alertCallback = (data: AlertTypes) => {
@@ -160,10 +148,11 @@ async function createSection(section: Section, server: PlexServer): Promise<void
 
       if (processedMedia === section.expectedMediaCount) {
         resolve();
+        listener.stop();
       }
     };
 
-    const listener = new AlertListener(server, alertCallback);
+    listener = new AlertListener(server, alertCallback);
     await listener.run();
 
     await delay(4000);
@@ -352,18 +341,6 @@ async function main() {
     await createSection(section, plexServer);
     sectionProgress.succeed();
   }
-
-  // const path = join(__dirname, argv.destination);
-  //   const         arg_bindings = {
-  //     "destination": path,
-  //     "hostname": opts.server_name,
-  //     "claim_token": account.claimToken() if account else "",
-  //     "timezone": opts.timezone,
-  //     "language": opts.language,
-  //     "advertise_ip": opts.advertise_ip,
-  //     "image_tag": opts.docker_tag,
-  //     "container_name_extra": "" if account else "unclaimed-",
-  // }
 }
 
 main()

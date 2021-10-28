@@ -13,6 +13,8 @@ jobs:
       PLEXAPI_AUTH_SERVER_BASEURL: http://127.0.0.1:32400
       PLEX_CONTAINER: plexinc/pms-docker
       PLEX_CONTAINER_TAG: latest
+    strategy:
+      fail-fast: false
     steps:
       - name: checkout
         uses: actions/checkout@master
@@ -22,6 +24,9 @@ jobs:
           node-version: 16
       - name: install dependencies
         run: npm ci
+
+      - name: lint
+        run: npm run lint
 
       - name: Get PMS Docker image digest
         id: docker-digest
@@ -42,6 +47,13 @@ jobs:
           echo "Digest: $digest"
           echo ::set-output name=digest::$digest
 
+      - name: Cache PMS Docker image
+        id: docker-cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/docker/plexinc
+          key: ${{ runner.os }}-docker-pms-${{ steps.docker-digest.outputs.digest }}
+
       - name: Pull PMS Docker image
         run: |
           docker pull ${{ env.PLEX_CONTAINER }}:${{ env.PLEX_CONTAINER_TAG }}
@@ -60,10 +72,14 @@ jobs:
         run: npm run bootstraptest -- \
             --advertise-ip 127.0.0.1 \
             --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
+
       - name: test
         run: npm run test:ci
-      - name: lint
-        run: npm run lint
+
+      - name: Unlink PMS from MyPlex account
+        run: npm run teardowntest
+
+
 
 
   # coverage:

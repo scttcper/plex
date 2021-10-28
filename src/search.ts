@@ -73,6 +73,7 @@ export const SEARCHTYPES = {
 } as const;
 
 type SearchTypesValues = ValueOf<typeof SEARCHTYPES>;
+
 /**
  * Returns the integer value of the library string type.
  * @param libtype to lookup (movie, show, season, episode, artist, album, track, collection)
@@ -93,6 +94,5 @@ export function searchType(
     return SEARCHTYPES[libtype];
   }
 
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   throw new Error(`Unknown libtype: ${libtype}`);
 }

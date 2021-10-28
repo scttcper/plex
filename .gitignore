@@ -43,3 +43,6 @@ media/**/**.mp4
 
 # media garbage
 plex
+
+# temporary ignore
+examples
