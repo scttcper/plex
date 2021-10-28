@@ -15,6 +15,12 @@ async function main() {
   const devices = await plex.myPlexAccount().devices();
   console.log(`${devices.length} devices exist`);
   for (const device of devices) {
+    console.log({
+      device: device.clientIdentifier,
+      name: device.name,
+      plex: plex.machineIdentifier,
+      X_PLEX_IDENTIFIER,
+    });
     if (device.clientIdentifier === plex.machineIdentifier) {
       console.log(`Removing device "${device.name}", with id "${device.clientIdentifier}"`);
       await device.delete();
