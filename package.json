@@ -68,7 +68,8 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "coverageProvider": "v8"
+    "coverageProvider": "v8",
+    "testTimeout": 15000
   },
   "babel": {
     "presets": [

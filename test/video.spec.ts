@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 
 import { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src';
 
@@ -10,7 +10,6 @@ describe('Shows', () => {
   let show: Show;
   let showSection: ShowSection;
   beforeAll(async () => {
-    jest.setTimeout(15000);
     plex = await createClient();
     const library = await plex.library();
     showSection = await library.section<ShowSection>('TV Shows');
