@@ -61,7 +61,7 @@ export class PlexServer {
    */
   hubSearch!: boolean;
   /** Unique ID for this server (looks like an md5) */
-  machineIdentifier!: string;
+  machineIdentifier?: string;
   /**
    * True if `multiusers <https!://support.plex.tv/hc/en-us/articles/200250367-Multi-User-Support>`_ are enabled.
    */
