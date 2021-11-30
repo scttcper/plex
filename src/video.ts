@@ -1,8 +1,8 @@
 import { URL } from 'url';
 
 import { Playable } from './base/playable';
-import { fetchItem, fetchItems } from './baseFunctionality';
-import { FullShowData, MovieData, ShowData } from './library.types';
+import { fetchItem, fetchItems, findItems } from './baseFunctionality';
+import { ExtrasData, FullShowData, MovieData, ShowData } from './library.types';
 import {
   Chapter,
   Collection,
@@ -106,6 +106,17 @@ abstract class Video extends Playable {
     const key = `/:/rate?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&rating=${rate}`;
     await this.server.query(key);
     await this.reload();
+  }
+
+  async extras(): Promise<Extra[]> {
+    const data = await this.server.query(this._detailsKey);
+    return findItems(
+      data.MediaContainer.Metadata[0].Extras?.Metadata,
+      undefined,
+      Extra,
+      this.server,
+      this,
+    );
   }
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
@@ -462,28 +473,6 @@ export class Episode extends Video {
   chapters!: Chapter[];
   markers!: Marker[];
 
-  protected _INCLUDES = {
-    checkFiles: 1,
-    includeAllConcerts: 1,
-    includeBandwidths: 1,
-    includeChapters: 1,
-    includeChildren: 1,
-    includeConcerts: 1,
-    includeExternalMedia: 1,
-    includeExtras: 1,
-    includeFields: 'thumbBlurHash,artBlurHash',
-    includeGeolocation: 1,
-    includeLoudnessRamps: 1,
-    includeMarkers: 1,
-    includeOnDeck: 1,
-    includePopularLeaves: 1,
-    includePreferences: 1,
-    includeRelated: 1,
-    includeRelatedCount: 1,
-    includeReviews: 1,
-    includeStations: 1,
-  };
-
   /**
    * Returns this episodes season number.
    */
@@ -564,6 +553,33 @@ export class Episode extends Video {
   }
 
   protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {
+    this._loadData(data.Metadata[0]);
+  }
+}
+
+export class Clip extends Video {
+  static TAG = 'Video';
+  TYPE = 'clip';
+  METADATA_TYPE = 'clip';
+
+  protected _loadData(data: any): void {
+    super._loadData(data);
+  }
+
+  protected _loadFullData(data: any): void {
+    this._loadData(data.Metadata[0]);
+  }
+}
+
+/**
+ * Represents a single Extra (trailer, behindTheScenes, etc).
+ */
+export class Extra extends Clip {
+  protected _loadData(data: ExtrasData): void {
+    super._loadData(data);
+  }
+
+  protected _loadFullData(data: any): void {
     this._loadData(data.Metadata[0]);
   }
 }

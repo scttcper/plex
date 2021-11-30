@@ -7,14 +7,7 @@ import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util';
 import { PlexObject } from './plexObject';
 
 export abstract class PartialPlexObject extends PlexObject {
-  ratingKey?: string;
-  title?: string;
-  type?: string;
-  year?: number;
-  librarySectionID?: number;
-
-  protected _detailsKey = this._buildDetailsKey();
-  protected _INCLUDES = {
+  _INCLUDES = {
     checkFiles: 1,
     includeAllConcerts: 1,
     includeBandwidths: 1,
@@ -35,6 +28,14 @@ export abstract class PartialPlexObject extends PlexObject {
     includeReviews: 1,
     includeStations: 1,
   };
+
+  ratingKey?: string;
+  title?: string;
+  type?: string;
+  year?: number;
+  librarySectionID?: number;
+
+  protected _detailsKey = this._buildDetailsKey();
 
   /**
    * Tell Plex Media Server to performs analysis on it this item to gather

@@ -169,4 +169,14 @@ describe('Movies', () => {
     expect(url).toContain(plex.machineIdentifier);
     expect(url).toContain('details');
   });
+
+  it('should get movie extras', async () => {
+    const results = await section.search({ title: 'The Lincoln Lawyer' });
+    movie = results[0];
+    expect(movie).toBeDefined();
+    const extras = await movie.extras();
+    const extra = extras[0];
+    expect(extra.type).toBe('clip');
+    expect((await extra.section()).title).toBe('Movies');
+  });
 });

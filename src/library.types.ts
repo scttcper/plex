@@ -114,6 +114,7 @@ export interface MovieData {
   Role?: MediaTag[];
   Similar?: MediaTagData[];
   Producer?: MediaTagData[];
+  Extras?: ExtrasData[];
   Guid?: Guid[];
 }
 
@@ -206,4 +207,58 @@ export interface CollectionData {
   size: number;
   maxYear: string;
   minYear: string;
+}
+
+export interface ExtrasData {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  type: string;
+  title: string;
+  titleSort: string;
+  summary: string;
+  index: number;
+  thumb: string;
+  subtype: string;
+  duration: number;
+  addedAt: number;
+  extraType: number;
+  Media: ExtrasMedia[];
+}
+
+export interface ExtrasMedia {
+  id: number;
+  duration: number;
+  bitrate: number;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  audioCodec: string;
+  videoCodec: string;
+  videoResolution: string;
+  container: string;
+  optimizedForStreaming: number;
+  protocol: string;
+  premium: boolean;
+  Part: Array<{
+    id: number;
+    duration: number;
+    container: string;
+    key: string;
+    Stream: ExtrasStream[];
+  }>;
+}
+
+interface ExtrasStream {
+  id: number;
+  streamType: number;
+  codec: string;
+  index: number;
+  bitrate?: number;
+  height?: number;
+  width?: number;
+  displayTitle: string;
+  extendedDisplayTitle: string;
+  selected?: boolean;
+  channels?: number;
 }
