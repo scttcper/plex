@@ -213,7 +213,7 @@ async function main() {
   const token = argv.token || process.env.PLEXAPI_AUTH_SERVER_TOKEN;
   const { username, password } = argv;
   if (!username && !password && !token) {
-    throw new Error('Must provider username/password or token');
+    throw new Error('Must provide username/password or token');
   }
 
   const account = await new MyPlexAccount(

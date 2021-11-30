@@ -20,11 +20,13 @@ async function main() {
       await device.delete();
       continue;
     }
+  }
 
+  // If we remove the client first we wouldn't be able to authenticate to delete the server
+  for (const device of devices) {
     if (device.clientIdentifier === X_PLEX_IDENTIFIER) {
       console.log(`Removing device "${device.name}", with id "${device.clientIdentifier}"`);
       await device.delete();
-      continue;
     }
   }
 }

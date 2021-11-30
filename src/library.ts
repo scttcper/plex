@@ -444,6 +444,29 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   }
 
   /**
+   * Returns the Plex Web URL for the library.
+   *
+   * @param base The base URL before the fragment (``#!``).
+   *    Default is https://app.plex.tv/desktop.
+   * @param tab The library tab (recommended, library, collections, playlists, timeline).
+   * @param key A hub key.
+   */
+  getWebURL(base?: string, tab?: string, key?: string): string {
+    const params = new URLSearchParams();
+    params.append('source', this.key);
+    if (tab) {
+      params.append('pivot', tab);
+    }
+
+    if (key) {
+      params.append('key', key);
+      params.append('pageType', 'list');
+    }
+
+    return this.server._buildWebURL(base, undefined, params);
+  }
+
+  /**
    * Search the library. The http requests will be batched in container_size. If you are only looking for the
    * first <num> results, it would be wise to set the maxresults option to that amount so the search doesn't iterate
    * over all results on the server.

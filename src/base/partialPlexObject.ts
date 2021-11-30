@@ -240,6 +240,10 @@ export abstract class PartialPlexObject extends PlexObject {
     await this._editTags('genre', genres, undefined, true);
   }
 
+  getWebURL(base?: string): string {
+    return this._getWebURL(base);
+  }
+
   /**
    * Edit an object.
    * @param changeObj Obj of settings to edit.
@@ -279,6 +283,16 @@ export abstract class PartialPlexObject extends PlexObject {
   }
 
   protected abstract _loadFullData(data: any): void;
+
+  /**
+   * Get the Plex Web URL with the correct parameters.
+   * Private method to allow overriding parameters from subclasses.
+   */
+  private _getWebURL(base?: string): string {
+    const params = new URLSearchParams();
+    params.append('key', this.key);
+    return this.server._buildWebURL(base, 'details', params);
+  }
 
   /**
    * Helper to edit and refresh a tags.

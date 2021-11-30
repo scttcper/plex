@@ -162,4 +162,11 @@ describe('Movies', () => {
     expect(matches[0].year).toBe(movie.year);
     expect(matches[0].name).toBe(movie.title);
   });
+
+  it('should get movie plex web url', async () => {
+    const url = movie.getWebURL();
+    expect(url).toContain('https://app.plex.tv/desktop');
+    expect(url).toContain(plex.machineIdentifier);
+    expect(url).toContain('details');
+  });
 });

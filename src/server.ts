@@ -432,6 +432,27 @@ export class PlexServer {
     return url;
   }
 
+  /**
+   * Build the Plex Web URL for the object.
+   * @param base The base URL before the fragment (``#!``).
+   *    Default is https://app.plex.tv/desktop.
+   * @param endpoint The Plex Web URL endpoint.
+   *    None for server, 'playlist' for playlists, 'details' for all other media types.
+   */
+  _buildWebURL(
+    base = 'https://app.plex.tv/desktop/',
+    endpoint?: string,
+    params?: URLSearchParams,
+  ): string {
+    if (endpoint) {
+      return `${base}#!/server/${this.machineIdentifier}/${endpoint}?${params?.toString()}`;
+    }
+
+    return `${base}#!/media/${
+      this.machineIdentifier
+    }/com.plexapp.plugins.library?${params?.toString()}`;
+  }
+
   _uriRoot(): string {
     return `server://${this.machineIdentifier}/com.plexapp.plugins.library`;
   }
