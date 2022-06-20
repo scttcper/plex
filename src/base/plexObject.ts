@@ -1,6 +1,6 @@
 import { URLSearchParams } from 'url';
 
-import type { PlexServer } from '../server';
+import type { PlexServer } from '../server.js';
 
 /**
  * Base class for all? Plex objects

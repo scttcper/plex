@@ -1,12 +1,12 @@
 import { URLSearchParams } from 'url';
 
-import { Playable } from './base/playable';
-import { fetchItems } from './baseFunctionality';
-import { BadRequest, NotFound } from './exceptions';
-import type { Section } from './library';
-import { PlaylistResponse } from './playlist.types';
-import type { PlexServer } from './server';
-import { Episode, Movie, VideoType } from './video';
+import { Playable } from './base/playable.js';
+import { fetchItems } from './baseFunctionality.js';
+import { BadRequest, NotFound } from './exceptions.js';
+import type { Section } from './library.js';
+import { PlaylistResponse } from './playlist.types.js';
+import type { PlexServer } from './server.js';
+import { Episode, Movie, VideoType } from './video.js';
 
 /**
  * Map media types to their respective class
@@ -53,7 +53,7 @@ type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistO
 type PlaylistContent = Episode | Movie;
 
 export class Playlist extends Playable {
-  static TAG = 'Playlist';
+  static override TAG = 'Playlist';
 
   static async create(server: PlexServer, title: string, options: CreatePlaylistOptions) {
     if (options.smart) {
@@ -61,7 +61,7 @@ export class Playlist extends Playable {
       // return this._createSmart(server, title, options);
     }
 
-    return this._create(server, title, options.items!);
+    return this._create(server, title, (options as any).items!);
   }
 
   /** Create a smart playlist. */
@@ -107,13 +107,13 @@ export class Playlist extends Playable {
    */
   async item(title: string): Promise<PlaylistContent | null> {
     const items = await this.items();
-    const matched = items.find(item => item.title.toLowerCase() === title.toLowerCase());
+    const matched = items.find(item => item.title!.toLowerCase() === title.toLowerCase());
     return matched ?? null;
   }
 
   async items() {
     if (this._items === null) {
-      const key = `/playlists/${this.ratingKey!}/items`;
+      const key = `/playlists/${this.ratingKey}/items`;
       const items = await fetchItems(this.server, key);
       this._items = items.map(data => {
         const Cls = contentClass(data);
@@ -160,7 +160,7 @@ export class Playlist extends Playable {
   }
 
   /** Delete the playlist. */
-  async delete() {
+  override async delete() {
     await this.server.query(this.key, 'delete');
   }
 

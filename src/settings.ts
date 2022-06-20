@@ -1,8 +1,8 @@
 import { URLSearchParams } from 'url';
 
-import { PlexObject } from './base/plexObject';
-import { NotFound } from './exceptions';
-import { lowerFirst } from './util';
+import { PlexObject } from './base/plexObject.js';
+import { NotFound } from './exceptions.js';
+import { lowerFirst } from './util.js';
 
 export interface SettingResponse {
   id: string;
@@ -142,7 +142,7 @@ export class Setting extends PlexObject {
 }
 
 export class Preferences extends Setting {
-  static TAG = 'Preferences' as const;
+  static override TAG = 'Preferences' as const;
   FILTER = 'preferences' as const;
 }
 

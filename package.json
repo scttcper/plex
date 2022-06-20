@@ -8,10 +8,11 @@
   },
   "license": "MIT",
   "repository": "scttcper/plex",
-  "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "typings": "./dist/src/index.d.ts",
   "files": [
-    "dist"
+    "dist/src"
   ],
   "sideEffects": false,
   "keywords": [
@@ -22,67 +23,52 @@
     "lint": "eslint --ext .ts .",
     "lint:fix": "eslint --fix --ext .ts .",
     "prepare": "npm run build",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc",
     "build:docs": "typedoc",
-    "test": "jest --runInBand",
-    "test:ci": "jest --ci --runInBand --reporters=default --reporters=jest-junit --coverage",
-    "bootstraptest": "ts-node scripts/bootstraptest.ts",
-    "teardowntest": "ts-node scripts/teardowntest.ts",
-    "claim-server": "ts-node scripts/claim-server.ts",
-    "add-media": "ts-node scripts/add-media.ts",
-    "test-cleanup": "ts-node scripts/test-cleanup.ts"
+    "test": "vitest run",
+    "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=./junit.xml",
+    "bootstraptest": "node --loader ts-node/esm scripts/bootstraptest.ts",
+    "teardowntest": "node --require ts-node/esm scripts/teardowntest.ts",
+    "claim-server": "node --require ts-node/esm scripts/claim-server.ts",
+    "add-media": "node --require ts-node/esm scripts/add-media.ts",
+    "test-cleanup": "node --require ts-node/esm scripts/test-cleanup.ts"
   },
   "dependencies": {
-    "@ctrl/mac-address": "^2.1.2",
-    "got": "^11.8.3",
-    "p-any": "^3.0.0",
-    "type-fest": "^2.6.0",
-    "ws": "^8.3.0",
+    "@ctrl/mac-address": "^3.0.2",
+    "got": "^12.1.0",
+    "p-any": "^4.0.0",
+    "type-fest": "^2.13.1",
+    "ws": "^8.8.0",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
-    "@babel/plugin-transform-modules-commonjs": "7.16.0",
-    "@babel/preset-typescript": "7.16.0",
-    "@ctrl/eslint-config": "3.1.3",
-    "@jest/globals": "27.4.0",
-    "@types/lodash": "4.14.177",
+    "@sindresorhus/tsconfig": "3.0.1",
+    "@ctrl/eslint-config": "3.4.6",
+    "@types/lodash": "4.14.182",
     "@types/micromatch": "4.0.2",
-    "@types/node": "16.11.11",
-    "@types/ws": "8.2.1",
-    "@types/xml2js": "0.4.9",
-    "@types/yargs": "17.0.7",
+    "@types/node": "18.0.0",
+    "@types/ws": "8.5.3",
+    "@types/xml2js": "0.4.11",
+    "@types/yargs": "17.0.10",
+    "c8": "7.11.3",
     "delay": "5.0.0",
-    "execa": "5.1.1",
-    "glob": "7.2.0",
-    "globby": "11.0.4",
-    "jest": "27.4.0",
-    "jest-junit": "13.0.0",
+    "execa": "6.1.0",
+    "glob": "8.0.3",
+    "globby": "13.1.2",
     "lodash": "4.17.21",
     "make-dir": "3.1.0",
-    "ora": "5.4.1",
-    "p-retry": "4.6.1",
-    "ts-node": "10.4.0",
-    "typedoc": "0.22.10",
-    "typescript": "4.5.2",
-    "yargs": "17.2.1"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "coverageProvider": "v8",
-    "testTimeout": 15000
-  },
-  "babel": {
-    "presets": [
-      "@babel/preset-typescript"
-    ],
-    "plugins": [
-      "@babel/plugin-transform-modules-commonjs"
-    ]
+    "ora": "6.1.0",
+    "p-retry": "5.1.1",
+    "ts-node": "10.8.1",
+    "typedoc": "0.22.17",
+    "typescript": "4.7.4",
+    "vitest": "0.15.1",
+    "yargs": "17.5.1"
   },
   "release": {
-    "branch": "master"
+    "branches": ["master"]
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=16.10"
   }
 }

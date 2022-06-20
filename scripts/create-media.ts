@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 
+const __dirname = new URL('.', import.meta.url).pathname;
 const mediaDir = path.join(__dirname, '../media/');
 const moviesDir = path.join(mediaDir, './movies/');
 const tvDir = path.join(mediaDir, './shows/');
@@ -78,11 +79,11 @@ export async function createAll(): Promise<void> {
   await prepareTvDir();
 }
 
-if (!module.parent) {
-  createAll()
-    .then(() => process.exit(0))
-    .catch(err => {
-      console.error(err);
-      process.exit(1);
-    });
-}
+// if (!module.parent) {
+//   createAll()
+//     .then(() => process.exit(0))
+//     .catch(err => {
+//       console.error(err);
+//       process.exit(1);
+//     });
+// }

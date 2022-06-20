@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 
-import { AlertTypes, NotificationContainer } from './alert.types';
-import { PlexServer } from './server';
+import { AlertTypes, NotificationContainer } from './alert.types.js';
+import { PlexServer } from './server.js';
 
 export class AlertListener {
   key = '/:/websockets/notifications';
@@ -24,7 +24,7 @@ export class AlertListener {
     });
 
     return new Promise(resolve => {
-      this._ws!.on('open', () => {
+      this._ws.on('open', () => {
         resolve();
       });
     });

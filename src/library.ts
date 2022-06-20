@@ -2,23 +2,23 @@ import { URLSearchParams } from 'url';
 
 import { Class } from 'type-fest';
 
-import { PartialPlexObject } from './base/partialPlexObject';
-import { PlexObject } from './base/plexObject';
-import { fetchItem, fetchItems, findItems } from './baseFunctionality';
-import { NotFound } from './exceptions';
+import { PartialPlexObject } from './base/partialPlexObject.js';
+import { PlexObject } from './base/plexObject.js';
+import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
+import { NotFound } from './exceptions.js';
 import {
   CollectionData,
   LibraryRootResponse,
   Location,
   SectionsDirectory,
   SectionsResponse,
-} from './library.types';
-import { Playlist } from './playlist';
-import { Agent, searchType, SEARCHTYPES } from './search';
-import { SearchResult } from './search.types';
-import type { PlexServer } from './server';
-import { MediaContainer } from './util';
-import { Movie, Show, VideoType } from './video';
+} from './library.types.js';
+import { Playlist } from './playlist.js';
+import { Agent, searchType, SEARCHTYPES } from './search.js';
+import { SearchResult } from './search.types.js';
+import type { PlexServer } from './server.js';
+import { MediaContainer } from './util.js';
+import { Movie, Show, VideoType } from './video.js';
 
 export type Section = MovieSection | ShowSection;
 
@@ -359,8 +359,6 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   composite!: string;
   /** Unknown */
   filters!: boolean;
-  /** Key (or ID) of this library section. */
-  key!: string;
   /** Language represented in this section (en, xn, etc). */
   language!: string;
   /** Paths on disk where section content is stored. */
@@ -550,7 +548,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    * Forces a download of fresh media information from the internet.
    * This can take a long time. Any locked fields are not modified.
    */
-  async refresh(): Promise<void> {
+  override async refresh(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh?force=1`;
     await this.server.query(key);
   }
@@ -696,7 +694,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
       await this._loadFilters();
     }
 
-    return this._filterTypes!;
+    return this._filterTypes;
   }
 
   async fieldTypes() {
@@ -704,7 +702,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
       await this._loadFilters();
     }
 
-    return this._fieldTypes!;
+    return this._fieldTypes;
   }
 
   protected _loadData(data: SectionsDirectory): void {
@@ -801,8 +799,8 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
 }
 
 export class MovieSection extends LibrarySection<Movie> {
-  static TYPE = 'movie';
-  static ALLOWED_FILTERS = [
+  static override TYPE = 'movie';
+  static override ALLOWED_FILTERS = [
     'unwatched',
     'duplicate',
     'year',
@@ -826,7 +824,7 @@ export class MovieSection extends LibrarySection<Movie> {
     'addedAt',
   ];
 
-  static ALLOWED_SORT = [
+  static override ALLOWED_SORT = [
     'addedAt',
     'originallyAvailableAt',
     'lastViewedAt',
@@ -836,15 +834,15 @@ export class MovieSection extends LibrarySection<Movie> {
     'duration',
   ];
 
-  static TAG = 'Directory';
+  static override TAG = 'Directory';
   METADATA_TYPE = 'movie';
-  CONTENT_TYPE = 'video';
-  readonly VIDEO_TYPE = Movie;
+  override CONTENT_TYPE = 'video';
+  override readonly VIDEO_TYPE = Movie;
 }
 
 export class ShowSection extends LibrarySection<Show> {
-  static TYPE = 'show';
-  static ALLOWED_FILTERS = [
+  static override TYPE = 'show';
+  static override ALLOWED_FILTERS = [
     'unwatched',
     'year',
     'genre',
@@ -872,7 +870,7 @@ export class ShowSection extends LibrarySection<Show> {
     'episode.lastViewedAt',
   ];
 
-  static ALLOWED_SORT = [
+  static override ALLOWED_SORT = [
     'addedAt',
     'lastViewedAt',
     'originallyAvailableAt',
@@ -881,10 +879,10 @@ export class ShowSection extends LibrarySection<Show> {
     'unwatched',
   ];
 
-  static TAG = 'Directory';
+  static override TAG = 'Directory';
   METADATA_TYPE = 'episode';
-  CONTENT_TYPE = 'video';
-  readonly VIDEO_TYPE = Show;
+  override CONTENT_TYPE = 'video';
+  override readonly VIDEO_TYPE = Show;
 
   // TODO: figure out how to return episode objects
   // /**
@@ -906,7 +904,7 @@ export class ShowSection extends LibrarySection<Show> {
 
 /** Represents a single Hub (or category) in the PlexServer search */
 export class Hub extends PlexObject {
-  static TAG = 'Hub';
+  static override TAG = 'Hub';
 
   hubIdentifier!: string;
   /** Number of items found. */
@@ -930,7 +928,6 @@ export class Hub extends PlexObject {
  * Represents a Folder inside a library.
  */
 export class Folder extends PlexObject {
-  key!: string;
   title!: string;
 
   /**
@@ -952,15 +949,11 @@ export class Folder extends PlexObject {
 }
 
 export class Collections<CollectionVideoType = VideoType> extends PartialPlexObject {
-  static TAG = 'Directory';
+  static override TAG = 'Directory';
   TYPE = 'collection';
 
-  ratingKey!: string;
   guid!: string;
-  type!: string;
-  title!: string;
   librarySectionTitle!: string;
-  librarySectionID!: number;
   librarySectionKey!: string;
   contentRating!: string;
   subtype!: string;
@@ -1013,7 +1006,7 @@ export class Collections<CollectionVideoType = VideoType> extends PartialPlexObj
     this.thumb = data.thumb;
     this.addedAt = data.addedAt;
     this.updatedAt = data.updatedAt;
-    this.childCount = parseInt(data.childCount ?? data.size ?? 0, 10);
+    this.childCount = Number(data.childCount ?? data.size ?? '0');
     this.maxYear = data.maxYear;
     this.minYear = data.minYear;
     this.art = data.art;
@@ -1021,15 +1014,13 @@ export class Collections<CollectionVideoType = VideoType> extends PartialPlexObj
 }
 
 export class FilterChoice extends PlexObject {
-  static TAG = 'Directory';
+  static override TAG = 'Directory';
 
   /**
    * API URL path to quickly list all items with this filter choice.
    * (/library/sections/<section>/all?genre=<key>)
    */
   fastKey!: string;
-  /** The id value of this filter choice. */
-  key!: string;
   /** Thumbnail URL for the filter choice. */
   thumb?: string;
   /** The title of the filter choice. */
@@ -1046,10 +1037,8 @@ export class FilterChoice extends PlexObject {
 }
 
 export class FilteringType extends PlexObject {
-  static TAG = 'Type';
+  static override TAG = 'Type';
 
-  /** The API URL path for the libtype filter. */
-  key!: string;
   /** The libtype for the filter. */
   type!: string;
   /** True if this filter type is currently active. */
@@ -1063,7 +1052,6 @@ export class FilteringType extends PlexObject {
   title!: string;
 
   _loadData(data: any) {
-    console.log(data);
     this.active = data.active;
     this.fields = findItems(data, undefined, FilteringField);
     this.filters = findItems(data, undefined, FilteringFilter);
@@ -1078,14 +1066,12 @@ export class FilteringType extends PlexObject {
  * Represents a single Filter object for a {@link FilteringType}
  */
 export class FilteringFilter extends PlexObject {
-  static TAG = 'Filter';
+  static override TAG = 'Filter';
 
   /** The key for the filter. */
   filter!: string;
   /** The :class:`~plexapi.library.FilteringFieldType` type (string, boolean, integer, date, etc). */
   filterType!: string;
-  /** The API URL path for the filter. */
-  key!: string;
   /** The title of the filter. */
   title!: string;
   /** 'filter' */
@@ -1104,7 +1090,7 @@ export class FilteringFilter extends PlexObject {
  * Represents a single Sort object for a {@link FilteringType}
  */
 export class FilteringSort extends PlexObject {
-  static TAG = 'Sort';
+  static override TAG = 'Sort';
 
   /** True if the sort is currently active. */
   active!: boolean;
@@ -1118,8 +1104,6 @@ export class FilteringSort extends PlexObject {
   descKey!: string;
   /** API URL path for first character endpoint. */
   firstCharacterKey!: string;
-  /** The URL key for the sorting. */
-  key!: string;
   /** The title of the sorting. */
   title!: string;
 
@@ -1139,10 +1123,8 @@ export class FilteringSort extends PlexObject {
  * Represents a single Field object for a {@link FilteringType}
  */
 export class FilteringField extends PlexObject {
-  static TAG = 'Field';
+  static override TAG = 'Field';
 
-  /** The API URL path for the libtype filter. */
-  key!: string;
   type!: string;
   title!: string;
   /** The subtype of the filter (decade, rating, etc) */
@@ -1160,7 +1142,7 @@ export class FilteringField extends PlexObject {
  * Represents a single FieldType for library filtering.
  */
 export class FilteringFieldType extends PlexObject {
-  static TAG = 'FieldType';
+  static override TAG = 'FieldType';
 
   /** The filtering data type (string, boolean, integer, date, etc). */
   type!: string;
@@ -1176,14 +1158,12 @@ export class FilteringFieldType extends PlexObject {
  * Represents a single FilterChoice for library filtering.
  */
 export class FilteringOperator extends PlexObject {
-  static TAG = 'Operator';
+  static override TAG = 'Operator';
 
-  /** The API URL path for the libtype filter. */
-  key!: string;
   /** The libtype for the filter. */
   type!: string;
 
-  _loadData(data) {
+  _loadData(data: any) {
     this.key = data.key;
     this.type = data.type;
   }

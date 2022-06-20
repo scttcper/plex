@@ -1,11 +1,11 @@
-import type { PlexServer } from './server';
-import { MediaContainer } from './util';
+import type { PlexServer } from './server.js';
+import { MediaContainer } from './util.js';
 
 export const OPERATORS = {
   exact: (v: string | number, q: string | number) => v === q,
   iexact: (v: string, q: string) => v.toLowerCase() === q.toLowerCase(),
   contains: (v: string, q: string) => q.includes(v),
-  icontains: (v: string, q) => q.toLowerCase().includes(v.toLowerCase()),
+  icontains: (v: string, q: string) => q.toLowerCase().includes(v.toLowerCase()),
   ne: (v: string, q: string) => v !== q,
   in: (v: string, q: any) => v in q,
   gt: (v: number, q: number) => v > q,
@@ -102,7 +102,7 @@ function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): bool
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
     const [key, , operator] = getAttrOperator(attr);
-    const value = elem[key] as string;
+    const value = (elem as any)[key] as string;
     attrsFound[key] = operator(value, query);
   }
 

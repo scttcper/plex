@@ -2,22 +2,22 @@ import { URL, URLSearchParams } from 'url';
 
 import got from 'got';
 
-import { fetchItem, fetchItems } from './baseFunctionality';
-import { PlexClient } from './client';
-import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config';
-import { Hub, Library } from './library';
-import { LibraryRootResponse } from './library.types';
-import { Optimized } from './media';
-import { MyPlexAccount } from './myplex';
-import { Agent, SEARCHTYPES } from './search';
+import { fetchItem, fetchItems } from './baseFunctionality.js';
+import { PlexClient } from './client.js';
+import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.js';
+import { Hub, Library } from './library.js';
+import { LibraryRootResponse } from './library.types.js';
+import { Optimized } from './media.js';
+import { MyPlexAccount } from './myplex.js';
+import { Agent, SEARCHTYPES } from './search.js';
 import {
   ConnectionInfo,
   HistoryMediaContainer,
   HistoryMetadatum,
   ServerRootResponse,
-} from './server.types';
-import { SettingResponse, Settings } from './settings';
-import { MediaContainer } from './util';
+} from './server.types.js';
+import { SettingResponse, Settings } from './settings.js';
+import { MediaContainer } from './util.js';
 
 /**
  * This is the main entry point to interacting with a Plex server. It allows you to
@@ -258,10 +258,10 @@ export class PlexServer {
       method,
       url,
       headers: requestHeaders,
-      timeout: timeout ?? TIMEOUT,
-      username,
-      password,
-      retry: 0,
+      timeout: { request: timeout ?? TIMEOUT },
+      ...(username ? { username } : {}),
+      ...(password ? { password } : {}),
+      retry: { limit: 0 },
     }).json<T>();
 
     return response;
@@ -458,7 +458,7 @@ export class PlexServer {
   }
 
   private _headers(): Record<string, string> {
-    const headers = {
+    const headers: Record<string, string> = {
       ...BASE_HEADERS,
       'Content-type': 'application/json',
     };

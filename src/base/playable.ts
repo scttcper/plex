@@ -1,4 +1,4 @@
-import { PartialPlexObject } from './partialPlexObject';
+import { PartialPlexObject } from './partialPlexObject.js';
 
 /**
  * This is a general place to store functions specific to media that is Playable.

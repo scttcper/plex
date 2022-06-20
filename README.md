@@ -75,8 +75,6 @@ and accessing properties normally cannot make requests either.
 
 Tests are run against a real instance of plex.
 
-Start docker container [scttcper/plex-with-media](https://hub.docker.com/r/scttcper/plex-with-media)
-
 Setup test environment variables, create a plex account just for testing. Using a real account will break everything
 
 ```sh

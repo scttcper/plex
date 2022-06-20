@@ -1,11 +1,11 @@
-import { PlexObject } from './base/plexObject';
+import { PlexObject } from './base/plexObject.js';
 import {
   ChapterData,
   MarkerData,
   MediaData,
   MediaPartData,
   MediaPartStreamData,
-} from './video.types';
+} from './video.types.js';
 
 /**
  * Base class for media tags used for filtering and searching your library
@@ -13,7 +13,7 @@ import {
  * the construct used for things such as Country, Director, Genre, etc.
  */
 abstract class MediaTag extends PlexObject {
-  static TAG: string;
+  static override TAG: string;
   /** Tag ID (This seems meaningless except to use it as a unique id). */
   id?: string;
   /** unknown */
@@ -42,7 +42,7 @@ abstract class MediaTag extends PlexObject {
 }
 
 export class Media extends PlexObject {
-  static TAG = 'Media' as const;
+  static override TAG = 'Media' as const;
   aspectRatio!: number;
   /**
    * Number of audio channels for this video (ex: 6)
@@ -101,14 +101,13 @@ export class Media extends PlexObject {
 }
 
 export class MediaPart extends PlexObject {
-  static TAG = 'Part' as const;
+  static override TAG = 'Part' as const;
 
   container!: string;
   duration!: number;
   file!: string;
   id!: number;
   indexes!: string;
-  key!: string;
   size!: number;
   optimizedForStreaming!: boolean;
   syncItemId!: string;
@@ -133,7 +132,7 @@ export class MediaPart extends PlexObject {
 }
 
 export class MediaPartStream extends PlexObject {
-  static TAG = 'Stream' as const;
+  static override TAG = 'Stream' as const;
 
   id!: number;
   codec!: string;
@@ -158,7 +157,7 @@ export class MediaPartStream extends PlexObject {
  * Represents a single Role (actor/actress) media tag.
  */
 export class Role extends MediaTag {
-  static TAG = 'Role' as const;
+  static override TAG = 'Role' as const;
   FILTER = 'role' as const;
 }
 
@@ -166,7 +165,7 @@ export class Role extends MediaTag {
  * Represents a single Genre media tag.
  */
 export class Genre extends MediaTag {
-  static TAG = 'Genre' as const;
+  static override TAG = 'Genre' as const;
   FILTER = 'genre' as const;
 }
 
@@ -174,7 +173,7 @@ export class Genre extends MediaTag {
  * Represents a single Country media tag.
  */
 export class Country extends MediaTag {
-  static TAG = 'Country' as const;
+  static override TAG = 'Country' as const;
   FILTER = 'country' as const;
 }
 
@@ -182,7 +181,7 @@ export class Country extends MediaTag {
  * Represents a single Writer media tag.
  */
 export class Writer extends MediaTag {
-  static TAG = 'Writer' as const;
+  static override TAG = 'Writer' as const;
   FILTER = 'writer' as const;
 }
 
@@ -190,29 +189,29 @@ export class Writer extends MediaTag {
  * Represents a single Director media tag.
  */
 export class Director extends MediaTag {
-  static TAG = 'Director' as const;
+  static override TAG = 'Director' as const;
   FILTER = 'director' as const;
 }
 
 export class Similar extends MediaTag {
-  static TAG = 'Similar' as const;
+  static override TAG = 'Similar' as const;
   FILTER = 'similar' as const;
 }
 
 export class Producer extends MediaTag {
-  static TAG = 'Producer' as const;
+  static override TAG = 'Producer' as const;
   FILTER = 'producer' as const;
 }
 
 export class Marker extends MediaTag {
-  static TAG = 'Marker' as const;
+  static override TAG = 'Marker' as const;
   FILTER = 'marker' as const;
 
   type!: 'intro';
   startTimeOffset!: number;
   endTimeOffset!: number;
 
-  protected _loadData(data: MarkerData) {
+  protected override _loadData(data: MarkerData) {
     this.type = data.type;
     this.startTimeOffset = data.startTimeOffset;
     this.endTimeOffset = data.endTimeOffset;
@@ -223,14 +222,14 @@ export class Marker extends MediaTag {
  * Represents a single Chapter media tag.
  */
 export class Chapter extends MediaTag {
-  static TAG = 'Chapter' as const;
+  static override TAG = 'Chapter' as const;
   FILTER = 'chapter' as const;
 
   startTimeOffset!: number;
   endTimeOffset!: number;
   thumb?: string;
 
-  protected _loadData(data: ChapterData) {
+  protected override _loadData(data: ChapterData) {
     this.startTimeOffset = data.startTimeOffset;
     this.endTimeOffset = data.endTimeOffset;
     this.thumb = data.thumb;
@@ -241,12 +240,12 @@ export class Chapter extends MediaTag {
  * Represents a single Collection media tag.
  */
 export class Collection extends MediaTag {
-  static TAG = 'Collection' as const;
+  static override TAG = 'Collection' as const;
   FILTER = 'collection' as const;
 }
 
 export class Optimized extends PlexObject {
-  static TAG = 'Item';
+  static override TAG = 'Item';
   id!: string;
   composite!: any;
   title!: any;
@@ -279,5 +278,5 @@ class GuidTag extends PlexObject {
 }
 
 export class Guid extends GuidTag {
-  static TAG = 'Guid' as const;
+  static override TAG = 'Guid' as const;
 }

@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { PlexServer, X_PLEX_IDENTIFIER } from '../src';
+import { PlexServer, X_PLEX_IDENTIFIER } from '../src/index.js';
 
 async function main() {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

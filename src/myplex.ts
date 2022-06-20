@@ -4,11 +4,11 @@ import got from 'got';
 import pAny from 'p-any';
 import { parseStringPromise } from 'xml2js';
 
-import { PlexObject } from './base/plexObject';
-import { BASE_HEADERS, TIMEOUT } from './config';
-import { Connection, Device, ResourcesResponse, UserResponse } from './myplex.types';
-import { PlexServer } from './server';
-import { MediaContainer } from './util';
+import { PlexObject } from './base/plexObject.js';
+import { BASE_HEADERS, TIMEOUT } from './config.js';
+import { Connection, Device, ResourcesResponse, UserResponse } from './myplex.types.js';
+import { PlexServer } from './server.js';
+import { MediaContainer } from './util.js';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -158,7 +158,7 @@ export class MyPlexAccount {
     const devices = await this.devices();
     const device = devices.find(
       device =>
-        device.name.toLowerCase() === name.toLowerCase() || device.clientIdentifier === clientId,
+        device.name?.toLowerCase() === name.toLowerCase() || device.clientIdentifier === clientId,
     );
     if (!device) {
       throw new Error('Unable to find device');
@@ -172,7 +172,7 @@ export class MyPlexAccount {
    */
   async devices(): Promise<MyPlexDevice[]> {
     const response = await this.query<MediaContainer<{ Device: Device[] }>>(MyPlexDevice.key);
-    return response.MediaContainer.Device.map(data => new MyPlexDevice(this.server!, data));
+    return response.MediaContainer.Device.map(data => new MyPlexDevice(this.server, data));
   }
 
   /**
@@ -203,10 +203,10 @@ export class MyPlexAccount {
       method,
       url: new URL(url),
       headers: requestHeaders,
-      timeout: timeout ?? TIMEOUT,
-      username,
-      password,
-      retry: 0,
+      timeout: { request: timeout ?? TIMEOUT },
+      ...(username ? { username } : {}),
+      ...(password ? { password } : {}),
+      retry: { limit: 0 },
     });
 
     if (url.includes('xml')) {
@@ -238,18 +238,18 @@ export class MyPlexAccount {
       token,
       ...BASE_HEADERS,
     });
-    const url = `${this.baseUrl!}/myplex/claim?${params.toString()}`;
+    const url = `${this.baseUrl}/myplex/claim?${params.toString()}`;
     return got({
       method: 'POST',
       url,
-      timeout: TIMEOUT,
+      timeout: { request: TIMEOUT },
       headers: this._headers(),
-      retry: 0,
+      retry: { limit: 0 },
     });
   }
 
   _headers(): Record<string, string> {
-    const headers = {
+    const headers: Record<string, string> = {
       ...BASE_HEADERS,
       'Content-type': 'application/json',
     };
@@ -412,7 +412,7 @@ export class MyPlexResource {
   /** Remove this device from your account */
   async delete(): Promise<void> {
     const key = `https://plex.tv/api/servers/${this.clientIdentifier}?X-Plex-Client-Identifier=${BASE_HEADERS['X-Plex-Client-Identifier']}&X-Plex-Token=${this.accessToken}`;
-    await got.delete(key, { retry: 0 });
+    await got.delete(key, { retry: { limit: 0 } });
   }
 
   private _loadData(data: ResourcesResponse): void {
@@ -472,7 +472,7 @@ export class ResourceConnection {
  * https://plex.tv/devices.xml
  */
 export class MyPlexDevice extends PlexObject {
-  static TAG = 'Device';
+  static override TAG = 'Device';
   static key = 'https://plex.tv/devices.xml';
 
   name!: string;
@@ -516,7 +516,7 @@ export class MyPlexDevice extends PlexObject {
     await this.server.query(key, 'delete');
   }
 
-  protected _loadData(data: Device): void {
+  protected override _loadData(data: Device): void {
     this.name = data.$.name;
     this.publicAddress = data.$.publicAddress;
     this.product = data.$.product;
@@ -538,8 +538,8 @@ export class MyPlexDevice extends PlexObject {
     });
     this.screenResolution = data.$.screenResolution;
     this.screenDensity = data.$.screenDensity;
-    this.createdAt = new Date(data.$.createdAt);
-    this.lastSeenAt = new Date(data.$.lastSeenAt);
+    this.createdAt = new Date(parseInt(data.$.createdAt, 10));
+    this.lastSeenAt = new Date(parseInt(data.$.lastSeenAt, 10));
     this.connections = data.Connection?.map(connection => connection.$.uri);
   }
 }

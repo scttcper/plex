@@ -1,11 +1,11 @@
 import { ValueOf } from 'type-fest';
 
-import { PlexObject } from './base/plexObject';
-import { MatchSearchResult } from './search.types';
-import { rsplit } from './util';
+import { PlexObject } from './base/plexObject.js';
+import { MatchSearchResult } from './search.types.js';
+import { rsplit } from './util.js';
 
 export class SearchResult extends PlexObject {
-  static TAG = 'SearchResult';
+  static override TAG = 'SearchResult';
 
   guid!: string;
   name!: string;
@@ -26,7 +26,7 @@ export class SearchResult extends PlexObject {
  * Represents a single Agent
  */
 export class Agent extends PlexObject {
-  static TAG = 'Agent';
+  static override TAG = 'Agent';
 
   hasAttribution!: boolean;
   hasPrefs!: boolean;
@@ -90,8 +90,8 @@ export function searchType(
     return Number(libtype) as SearchTypesValues;
   }
 
-  if (libtype && SEARCHTYPES[libtype] !== undefined) {
-    return SEARCHTYPES[libtype];
+  if (libtype && SEARCHTYPES[libtype as keyof typeof SEARCHTYPES] !== undefined) {
+    return SEARCHTYPES[libtype as keyof typeof SEARCHTYPES];
   }
 
   throw new Error(`Unknown libtype: ${libtype}`);

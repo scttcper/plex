@@ -1,8 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src';
+import { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src/index.js';
 
-import { createClient } from './test-client';
+import { createClient } from './test-client.js';
 
 describe('Shows', () => {
   let plex: PlexServer;

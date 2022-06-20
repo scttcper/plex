@@ -3,17 +3,19 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
 import delay from 'delay';
-import execa from 'execa';
-import globby from 'globby';
+import { execa } from 'execa';
+import { globby } from 'globby';
 import makeDir from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
+import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import yargs from 'yargs/yargs';
 
-import { AlertListener, AlertTypes, MyPlexAccount, PlexServer } from '../src';
+import { AlertListener, AlertTypes, MyPlexAccount, PlexServer } from '../src/index.js';
 
-import { prepareMovieDir, prepareTvDir, requiredMovies, requiredShows } from './create-media';
+import { prepareMovieDir, prepareTvDir, requiredMovies, requiredShows } from './create-media.js';
+
+const __dirname = new URL('.', import.meta.url).pathname;
 
 const yarg = yargs(hideBin(process.argv))
   .option('token', { type: 'string', desc: 'plex account token', default: '' })
@@ -279,7 +281,8 @@ async function main() {
       retries: 20,
       onFailedAttempt: async () => delay(1000),
     });
-  } catch {
+  } catch (err) {
+    console.error(err);
     throw new Error('Server didnt appear in your account');
   }
 

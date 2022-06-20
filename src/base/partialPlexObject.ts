@@ -1,13 +1,13 @@
 import { URLSearchParams } from 'url';
 
-import { SearchResult, searchType } from '../search';
-import { MatchSearchResult } from '../search.types';
-import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util';
+import { SearchResult, searchType } from '../search.js';
+import { MatchSearchResult } from '../search.types.js';
+import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util.js';
 
-import { PlexObject } from './plexObject';
+import { PlexObject } from './plexObject.js';
 
 export abstract class PartialPlexObject extends PlexObject {
-  _INCLUDES = {
+  override _INCLUDES = {
     checkFiles: 1,
     includeAllConcerts: 1,
     includeBandwidths: 1,
@@ -35,7 +35,7 @@ export abstract class PartialPlexObject extends PlexObject {
   year?: number;
   librarySectionID?: number;
 
-  protected _detailsKey = this._buildDetailsKey();
+  protected override _detailsKey = this._buildDetailsKey();
 
   /**
    * Tell Plex Media Server to performs analysis on it this item to gather
@@ -63,7 +63,7 @@ export abstract class PartialPlexObject extends PlexObject {
   /**
    * load full data / reload the data for this object from this.key.
    */
-  async reload(ekey?: string, args?: any): Promise<void> {
+  override async reload(ekey?: string, args?: any): Promise<void> {
     this._detailsKey = this._buildDetailsKey(args);
     const key = ekey ?? this._detailsKey ?? this.key;
     if (!key) {
@@ -93,7 +93,7 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param agent (str): Agent name to be used (imdb, thetvdb, themoviedb, etc.)
    */
   async fixMatch(searchResult?: SearchResult, auto = false, agent = ''): Promise<void> {
-    const key = `/library/metadata/${this.ratingKey!}/match`;
+    const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
       const autoMatch = await this.matches();
       if (autoMatch.length) {
@@ -142,7 +142,7 @@ export abstract class PartialPlexObject extends PlexObject {
     year?: string,
     language?: string,
   ): Promise<SearchResult[]> {
-    const key = `/library/metadata/${this.ratingKey!}/matches`;
+    const key = `/library/metadata/${this.ratingKey}/matches`;
     const params = new URLSearchParams({ manual: '1' });
 
     if (agent && [title, year, language].some(x => x)) {
@@ -187,7 +187,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /** Unmatches metadata match from object. */
   async unmatch() {
-    const key = `/library/metadata/${this.ratingKey!}/unmatch`;
+    const key = `/library/metadata/${this.ratingKey}/unmatch`;
     return this.server.query(key, 'put');
   }
 
@@ -303,8 +303,8 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param remove If this is active remove the tags in items.
    */
   private async _editTags(tag: string, items: string[], locked = true, remove = false) {
-    const value = this[tag + 's'];
-    const existingCols = value?.filter(x => x && remove).map(x => x.tag) ?? [];
+    const value = (this as any)[tag + 's'];
+    const existingCols = value?.filter((x: any) => x && remove).map((x: any) => x.tag) ?? [];
     const d = tagHelper(tag, [...existingCols, ...items], locked, remove);
     await this.edit(d);
     await this.reload();

@@ -1,5 +1,5 @@
-import { PlexServer } from '../src';
-import { createClient } from '../test/test-client';
+import { PlexServer } from '../src/index.js';
+import { createClient } from '../test/test-client.js';
 
 const delay = async (ms: number) =>
   new Promise(resolve => {
