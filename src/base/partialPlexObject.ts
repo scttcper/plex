@@ -154,13 +154,13 @@ export abstract class PartialPlexObject extends PlexObject {
       if (title) {
         params.append('title', title);
       } else {
-        params.append('title', this.title!);
+        params.append('title', this.title);
       }
 
       if (year) {
         params.append('year', year);
       } else {
-        params.append('year', this.year!.toString());
+        params.append('year', this.year.toString());
       }
 
       if (language) {
@@ -201,7 +201,7 @@ export abstract class PartialPlexObject extends PlexObject {
   }
 
   async section() {
-    return (await this.server.library()).sectionByID(this.librarySectionID!);
+    return (await this.server.library()).sectionByID(this.librarySectionID);
   }
 
   /**

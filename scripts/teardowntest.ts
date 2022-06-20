@@ -2,7 +2,6 @@
 import { PlexServer, X_PLEX_IDENTIFIER } from '../src/index.js';
 
 async function main() {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const token = process.env.PLEX_TOKEN || process.env.PLEXAPI_AUTH_SERVER_TOKEN!;
   const plex = new PlexServer('http://localhost:32400', token);
 

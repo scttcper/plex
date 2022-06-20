@@ -107,7 +107,7 @@ export class Playlist extends Playable {
    */
   async item(title: string): Promise<PlaylistContent | null> {
     const items = await this.items();
-    const matched = items.find(item => item.title!.toLowerCase() === title.toLowerCase());
+    const matched = items.find(item => item.title.toLowerCase() === title.toLowerCase());
     return matched ?? null;
   }
 

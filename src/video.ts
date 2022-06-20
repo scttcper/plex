@@ -63,7 +63,7 @@ abstract class Video extends Playable {
 
   get artUrl(): URL {
     const art = this.art ?? this.grandparentArt;
-    return this.server.url(art!, true);
+    return this.server.url(art, true);
   }
 
   /**
@@ -112,7 +112,7 @@ abstract class Video extends Playable {
     this.librarySectionID = data.librarySectionID;
     this.addedAt = new Date(data.addedAt * 1000);
     this.lastViewedAt = (data as MovieData).lastViewedAt
-      ? new Date((data as MovieData).lastViewedAt! * 1000)
+      ? new Date((data as MovieData).lastViewedAt * 1000)
       : undefined;
     this.updatedAt = (data as MovieData).lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
     this.viewCount = (data as MovieData).viewCount ?? 0;
