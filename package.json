@@ -28,10 +28,10 @@
     "test": "vitest run",
     "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=./junit.xml",
     "bootstraptest": "node --loader ts-node/esm scripts/bootstraptest.ts",
-    "teardowntest": "node --require ts-node/esm scripts/teardowntest.ts",
-    "claim-server": "node --require ts-node/esm scripts/claim-server.ts",
-    "add-media": "node --require ts-node/esm scripts/add-media.ts",
-    "test-cleanup": "node --require ts-node/esm scripts/test-cleanup.ts"
+    "teardowntest": "node --loader ts-node/esm scripts/teardowntest.ts",
+    "claim-server": "node --loader ts-node/esm scripts/claim-server.ts",
+    "add-media": "node --loader ts-node/esm scripts/add-media.ts",
+    "test-cleanup": "node --loader ts-node/esm scripts/test-cleanup.ts"
   },
   "dependencies": {
     "@ctrl/mac-address": "^3.0.2",
