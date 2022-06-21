@@ -980,9 +980,11 @@ export class Collections<CollectionVideoType = VideoType> extends PartialPlexObj
    */
   async items() {
     const key = `/library/metadata/${this.ratingKey}/children`;
-    const data = await this.server.query<MediaContainer<{ Metadata: any[] }>>(key);
-    return data.MediaContainer.Metadata.map(
-      d => new this.VIDEO_TYPE(this.server, d, undefined, this),
+    const data = await this.server.query<MediaContainer<{ Metadata?: any[] }>>(key);
+    return (
+      data.MediaContainer.Metadata?.map(
+        d => new this.VIDEO_TYPE(this.server, d, undefined, this),
+      ) ?? []
     );
   }
 
