@@ -1,62 +1,45 @@
 import { URL } from 'url';
 
-import { Playable } from './base/playable';
-import { fetchItem, fetchItems } from './baseFunctionality';
-import { FullShowData, MovieData, ShowData } from './library.types';
-import { PlexServer } from './server';
+import { Playable } from './base/playable.js';
+import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
+import { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.js';
 import {
-  Director,
-  Country,
-  Writer,
   Chapter,
   Collection,
+  Country,
+  Director,
   Genre,
-  Role,
-  Media,
-  Similar,
-  Producer,
+  Guid,
   Marker,
-} from './media';
-import { FullMovieResponse, ChapterSource, EpisodeMetadata } from './video.types';
+  Media,
+  Producer,
+  Role,
+  Similar,
+  Writer,
+} from './media.js';
+import { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
 
 export type VideoType = Movie | Show;
 
 abstract class Video extends Playable {
-  /** API URL (/library/metadata/<ratingkey>) */
-  key!: string;
   /** Datetime this item was added to the library. */
   addedAt!: Date;
   /** Datetime item was last accessed. */
   lastViewedAt?: Date;
   /** Hardcoded as 'video' (useful for search filters). */
   listType = 'video' as const;
-  /** Unique key identifying this item. */
-  ratingKey!: string;
   /** Summary of the artist, track, or album. */
   summary!: string;
   /** URL to thumbnail image. */
   thumb!: string;
-  /** Artist, Album or Track title. (Jason Mraz, We Sing, Lucky, etc.) */
-  title!: string;
   /** Title to use when sorting (defaults to title). */
   titleSort?: string;
-  /** 'artist', 'album', or 'track'. */
-  type!: string;
   /** Datetime this item was updated. */
   updatedAt?: Date;
   /** Count of times this item was accessed. */
   viewCount?: number;
   art?: string;
   grandparentArt?: string;
-
-  constructor(
-    public server: PlexServer,
-    data: MovieData | EpisodeMetadata,
-    initpath: string,
-    parent?: any,
-  ) {
-    super(server, data, initpath, parent);
-  }
 
   /**
    * Returns True if this video is watched.
@@ -80,7 +63,7 @@ abstract class Video extends Playable {
 
   get artUrl(): URL {
     const art = this.art ?? this.grandparentArt;
-    return this.server.url(art!, true);
+    return this.server.url(art, true);
   }
 
   /**
@@ -107,23 +90,35 @@ abstract class Video extends Playable {
     await this.reload();
   }
 
+  async extras(): Promise<Extra[]> {
+    const data = await this.server.query(this._detailsKey);
+    return findItems(
+      data.MediaContainer.Metadata[0].Extras?.Metadata,
+      undefined,
+      Extra,
+      this.server,
+      this,
+    );
+  }
+
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
-    this.addedAt = new Date(data.addedAt * 1000);
-    this.librarySectionID = data.librarySectionID;
-    this.lastViewedAt = (data as MovieData).lastViewedAt
-      ? new Date((data as MovieData).lastViewedAt! * 1000)
-      : undefined;
-    this.updatedAt = (data as MovieData).lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
-    this.viewCount = (data as MovieData).viewCount ?? 0;
     this.title = data.title;
     this.summary = data.summary;
     this.thumb = data.thumb;
     this.title = data.title;
-    this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.type = data.type;
+    this.librarySectionID = data.librarySectionID;
+    this.addedAt = new Date(data.addedAt * 1000);
+    this.lastViewedAt = (data as MovieData).lastViewedAt
+      ? new Date((data as MovieData).lastViewedAt * 1000)
+      : undefined;
+    this.updatedAt = (data as MovieData).lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
+    this.viewCount = (data as MovieData).viewCount ?? 0;
+    this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.viewCount = (data as MovieData).viewCount;
+    this.playlistItemID = (data as any).playlistItemID;
   }
 }
 
@@ -135,9 +130,6 @@ export class Movie extends Video {
   TYPE = 'movie';
   METADATA_TYPE = 'movie';
 
-  /** Key to movie artwork (/library/metadata/<ratingkey>/art/<artid>) */
-  art!: string;
-  librarySectionID?: number;
   /** Audience rating (usually from Rotten Tomatoes). */
   audienceRating?: number;
   /** Key to audience rating image (rottentomatoes://image.rating.spilled) */
@@ -150,8 +142,8 @@ export class Movie extends Video {
   duration!: number;
   /** Original title, often the foreign title (転々; 엽기적인 그녀). */
   originalTitle?: string;
-  /** Datetime movie was released. */
-  originallyAvailableAt!: Date;
+  /** YYYY-MM-DD movie was released. */
+  originallyAvailableAt!: string;
   /** Primary extra key (/library/metadata/66351). */
   primaryExtraKey!: string;
   /** Movie rating (7.9; 9.8; 8.1). */
@@ -166,8 +158,6 @@ export class Movie extends Video {
   userRating?: number;
   /** View offset in milliseconds. */
   viewOffset!: number;
-  /** Year movie was released. */
-  year!: number;
   /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en) */
   guid!: string;
   directors!: Director[];
@@ -182,6 +172,7 @@ export class Movie extends Video {
   roles!: Role[];
   similar!: Similar[];
   media!: Media[];
+  guids!: Guid[];
 
   get actors() {
     return this.roles;
@@ -196,7 +187,7 @@ export class Movie extends Video {
     return parts.map(part => part.file);
   }
 
-  protected _loadData(data: MovieData): void {
+  protected override _loadData(data: MovieData): void {
     super._loadData(data);
     this.art = data.art;
     this.audienceRating = data.audienceRating;
@@ -206,7 +197,7 @@ export class Movie extends Video {
     this.duration = data.duration;
     this.guid = data.guid;
     this.originalTitle = data.originalTitle;
-    this.originallyAvailableAt = new Date(data.originallyAvailableAt);
+    this.originallyAvailableAt = data.originallyAvailableAt;
     this.primaryExtraKey = data.primaryExtraKey;
     this.rating = data.rating;
     this.ratingImage = data.ratingImage;
@@ -216,24 +207,22 @@ export class Movie extends Video {
     this.viewOffset = data.viewOffset ?? 0;
     this.year = data.year;
     this.librarySectionID = data.librarySectionID;
-    this.directors =
-      data.Director?.map(data => new Director(this.server, data, undefined, this)) ?? [];
-    this.countries =
-      data.Country?.map(data => new Country(this.server, data, undefined, this)) ?? [];
-    this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
+    this.directors = data.Director?.map(d => new Director(this.server, d, undefined, this)) ?? [];
+    this.countries = data.Country?.map(d => new Country(this.server, d, undefined, this)) ?? [];
+    this.writers = data.Writer?.map(d => new Writer(this.server, d, undefined, this)) ?? [];
     this.collections =
-      data.Collection?.map(data => new Collection(this.server, data, undefined, this)) ?? [];
-    this.roles = data.Role?.map(data => new Role(this.server, data, undefined, this)) ?? [];
-    this.similar = data.Similar?.map(data => new Similar(this.server, data, undefined, this)) ?? [];
-    this.genres = data.Genre?.map(data => new Genre(this.server, data, undefined, this)) ?? [];
-    this.producers =
-      data.Producer?.map(data => new Producer(this.server, data, undefined, this)) ?? [];
-    this.media = data.Media?.map(data => new Media(this.server, data, undefined, this)) ?? [];
+      data.Collection?.map(d => new Collection(this.server, d, undefined, this)) ?? [];
+    this.roles = data.Role?.map(d => new Role(this.server, d, undefined, this)) ?? [];
+    this.similar = data.Similar?.map(d => new Similar(this.server, d, undefined, this)) ?? [];
+    this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this)) ?? [];
+    this.producers = data.Producer?.map(d => new Producer(this.server, d, undefined, this)) ?? [];
+    this.media = data.Media?.map(d => new Media(this.server, d, undefined, this)) ?? [];
+    this.guids = data.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {
     const metadata = data.Metadata[0];
-    this._loadData(metadata);
+    this._loadData(metadata as any);
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
     this.collections =
@@ -251,8 +240,6 @@ export class Show extends Video {
   TYPE = 'show';
   METADATA_TYPE = 'episode';
 
-  /** Key to show artwork (/library/metadata/<ratingkey>/art/<artid>) */
-  art!: string;
   /** Key to banner artwork (/library/metadata/<ratingkey>/art/<artid>) */
   banner!: string;
   /** Unknown. */
@@ -279,8 +266,6 @@ export class Show extends Video {
   theme!: string;
   /** Unknown. */
   viewedLeafCount!: number;
-  /** Year the show was released. */
-  year!: number;
   /** List of genre objects. */
   genres!: Genre[];
   /** List of role objects. */
@@ -296,7 +281,7 @@ export class Show extends Video {
   }
 
   /** @returns True if this show is fully watched. */
-  get isWatched(): boolean {
+  override get isWatched(): boolean {
     return this.viewedLeafCount === this.leafCount;
   }
 
@@ -323,7 +308,7 @@ export class Show extends Video {
     return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
 
-  protected _loadData(data: ShowData): void {
+  protected override _loadData(data: ShowData): void {
     super._loadData(data);
     this.key = (data.key ?? '').replace('/children', '');
     this.art = data.art;
@@ -377,7 +362,7 @@ export class Season extends Video {
   }
 
   /** Returns season number */
-  get isWatched(): boolean {
+  override get isWatched(): boolean {
     return this.viewedLeafCount === this.leafCount;
   }
 
@@ -390,7 +375,7 @@ export class Season extends Video {
     return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
 
-  protected _loadData(data: ShowData): void {
+  protected override _loadData(data: ShowData): void {
     super._loadData(data);
     this.key = (data.key || '').replace('/children', '');
     this.index = data.index;
@@ -403,25 +388,17 @@ export class Season extends Video {
   }
 }
 
-class Episode extends Video {
-  static TAG = 'Video';
+export class Episode extends Video {
+  static override TAG = 'Video';
   TYPE = 'episode';
   METADATA_TYPE = 'episode';
 
-  /**
-   * Name of this Episode
-   */
-  title!: string;
-  /** Key to episode artwork (/library/metadata/<ratingkey>/art/<artid>) */
-  art!: string;
   /** Unknown (media). */
   chapterSource?: string;
   /** Content rating (PG-13; NR; TV-G). */
   contentRating!: string;
   /**  Duration of episode in milliseconds. */
   duration!: number;
-  /** Key to this episodes :class:`~plexapi.video.Show` artwork. */
-  grandparentArt!: string;
   /** Key to this episodes :class:`~plexapi.video.Show`. */
   grandparentKey!: string;
   /** Unique key for this episodes :class:`~plexapi.video.Show`. */
@@ -452,36 +429,12 @@ class Episode extends Video {
   rating!: number;
   /**  View offset in milliseconds. */
   viewOffset?: number;
-  /**  Year episode was released. */
-  year!: number;
   writers!: Writer[];
   directors!: Director[];
   media!: Media[];
   collections!: Collection[];
   chapters!: Chapter[];
   markers!: Marker[];
-
-  protected _INCLUDES = {
-    checkFiles: 1,
-    includeAllConcerts: 1,
-    includeBandwidths: 1,
-    includeChapters: 1,
-    includeChildren: 1,
-    includeConcerts: 1,
-    includeExternalMedia: 1,
-    includeExtras: 1,
-    includeFields: 'thumbBlurHash,artBlurHash',
-    includeGeolocation: 1,
-    includeLoudnessRamps: 1,
-    includeMarkers: 1,
-    includeOnDeck: 1,
-    includePopularLeaves: 1,
-    includePreferences: 1,
-    includeRelated: 1,
-    includeRelatedCount: 1,
-    includeReviews: 1,
-    includeStations: 1,
-  };
 
   /**
    * Returns this episodes season number.
@@ -527,7 +480,7 @@ class Episode extends Video {
     return this.markers.some(marker => marker.type === 'intro');
   }
 
-  protected _loadData(data: EpisodeMetadata): void {
+  protected override _loadData(data: EpisodeMetadata): void {
     super._loadData(data);
     this.key = (data.key || '').replace('/children', '');
     this.title = data.title;
@@ -553,18 +506,43 @@ class Episode extends Video {
     this.rating = data.rating;
     this.viewOffset = data.viewOffset;
     this.year = data.year;
-    this.directors =
-      data.Director?.map(data => new Director(this.server, data, undefined, this)) ?? [];
-    this.writers = data.Writer?.map(data => new Writer(this.server, data, undefined, this)) ?? [];
-    this.media = data.Media?.map(data => new Media(this.server, data, undefined, this));
+    this.directors = data.Director?.map(d => new Director(this.server, d, undefined, this)) ?? [];
+    this.writers = data.Writer?.map(d => new Writer(this.server, d, undefined, this)) ?? [];
+    this.media = data.Media?.map(d => new Media(this.server, d, undefined, this));
     this.collections =
-      data.Collection?.map(data => new Collection(this.server, data, undefined, this)) ?? [];
-    this.chapters =
-      data.Chapter?.map(data => new Chapter(this.server, data, undefined, this)) ?? [];
-    this.markers = data.Marker?.map(data => new Marker(this.server, data, undefined, this)) ?? [];
+      data.Collection?.map(d => new Collection(this.server, d, undefined, this)) ?? [];
+    this.chapters = data.Chapter?.map(d => new Chapter(this.server, d, undefined, this)) ?? [];
+    this.markers = data.Marker?.map(d => new Marker(this.server, d, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: { Metadata: EpisodeMetadata[] }): void {
+    this._loadData(data.Metadata[0]);
+  }
+}
+
+export class Clip extends Video {
+  static override TAG = 'Video';
+  TYPE = 'clip';
+  METADATA_TYPE = 'clip';
+
+  protected override _loadData(data: any): void {
+    super._loadData(data);
+  }
+
+  protected _loadFullData(data: any): void {
+    this._loadData(data.Metadata[0]);
+  }
+}
+
+/**
+ * Represents a single Extra (trailer, behindTheScenes, etc).
+ */
+export class Extra extends Clip {
+  protected override _loadData(data: ExtrasData): void {
+    super._loadData(data);
+  }
+
+  protected override _loadFullData(data: any): void {
     this._loadData(data.Metadata[0]);
   }
 }

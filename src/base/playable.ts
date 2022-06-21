@@ -1,4 +1,4 @@
-import { PartialPlexObject } from './partialPlexObject';
+import { PartialPlexObject } from './partialPlexObject.js';
 
 /**
  * This is a general place to store functions specific to media that is Playable.
@@ -19,5 +19,5 @@ export abstract class Playable extends PartialPlexObject {
   /** (datetime): Datetime item was last viewed (history). */
   viewedAt: any;
   /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
-  playlistItemID: any;
+  playlistItemID?: number;
 }

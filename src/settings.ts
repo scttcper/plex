@@ -1,4 +1,92 @@
-import { PlexObject } from './base/plexObject';
+import { URLSearchParams } from 'url';
+
+import { PlexObject } from './base/plexObject.js';
+import { NotFound } from './exceptions.js';
+import { lowerFirst } from './util.js';
+
+export interface SettingResponse {
+  id: string;
+  label: string;
+  summary: string;
+  type: Type;
+  default: boolean | number | string;
+  value: boolean | number | string;
+  hidden: boolean;
+  advanced: boolean;
+  group: SettingsGroup;
+  // enumValues?: string;
+}
+
+enum SettingsGroup {
+  Butler = 'butler',
+  Channels = 'channels',
+  Dlna = 'dlna',
+  Empty = '',
+  Extras = 'extras',
+  General = 'general',
+  Library = 'library',
+  Network = 'network',
+  Transcoder = 'transcoder',
+}
+
+enum Type {
+  Bool = 'bool',
+  Double = 'double',
+  Int = 'int',
+  Text = 'text',
+}
+
+export class Settings extends PlexObject {
+  static key = '/:/prefs';
+  _settings!: Record<string, Setting>;
+  _data: SettingResponse[] = [];
+
+  all(): Setting[] {
+    return Object.entries(this._settings)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(x => x[1]);
+  }
+
+  get(id: string): Setting {
+    const lowerId = lowerFirst(id);
+    if (this._settings[lowerId]) {
+      return this._settings[lowerId];
+    }
+
+    throw new NotFound(`Invalid setting id: ${id}`);
+  }
+
+  /**
+   * Save any outstanding settnig changes to the PlexServer. This
+   * performs a full reload() of Settings after complete.
+   */
+  async save() {
+    const params = new URLSearchParams();
+    for (const setting of this.all()) {
+      if (setting._setValue !== null) {
+        params.append('setting.id', JSON.stringify(setting._setValue));
+      }
+    }
+
+    const url = `${this.key}?${params.toString()}`;
+    await this.server.query(url, 'put');
+  }
+
+  override _loadData(data: SettingResponse[]) {
+    this._data = data;
+    this._settings = this._settings ?? {};
+
+    for (const elem of data) {
+      const id = lowerFirst(elem.id);
+      if (this._settings[id]) {
+        this._settings[id]._loadData(elem);
+        continue;
+      }
+
+      this._settings[id] = new Setting(this.server, elem, this.initpath);
+    }
+  }
+}
 
 /**
  * Represents a single Plex setting
@@ -13,7 +101,7 @@ export class Setting extends PlexObject {
   /** Setting type (text, int, double, bool). */
   type!: string;
   /** Default value for this setting. */
-  default!: string;
+  default!: string | boolean | number;
   /** Current value for this setting. */
   value!: string | boolean | number;
   /** True if this is a hidden setting. */
@@ -24,24 +112,37 @@ export class Setting extends PlexObject {
   group!: string;
   /** List or dictionary of valis values for this setting. */
   enumValues: any[] | any;
+  _setValue: string | boolean | number | null = null;
 
-  protected _loadData(data: any) {
+  /**
+   * Set a new value for this setitng. NOTE: You must call {@link Settings.save} before
+   * any changes to setting values are persisted to the PlexServer.
+   */
+  set(value: string | boolean | number): void {
+    if (typeof value !== typeof this.value) {
+      throw new Error('Invalid type');
+    }
+
+    this._setValue = value;
+  }
+
+  override _loadData(data: SettingResponse) {
     // this._setValue = None
     this.id = data.id;
     this.label = data.label;
     this.summary = data.summary;
     this.type = data.type;
-    // this.default = this._cast(data.('default'))
-    // this.value = this._cast(data.('value'))
-    // this.hidden = utils.cast(bool, data.('hidden'))
-    // this.advanced = utils.cast(bool, data.('advanced'))
+    this.default = data.default;
+    this.value = data.value;
+    this.hidden = data.hidden;
+    this.advanced = data.advanced;
     this.group = data.group;
     // this.enumValues = this._getEnumValues(data);
   }
 }
 
 export class Preferences extends Setting {
-  static TAG = 'Preferences' as const;
+  static override TAG = 'Preferences' as const;
   FILTER = 'preferences' as const;
 }
 

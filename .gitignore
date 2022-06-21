@@ -40,3 +40,11 @@ yarn.lock
 # my garbage
 src/run.ts
 media/**/**.mp4
+
+# media garbage
+plex
+media/db
+media/transcode
+
+# temporary ignore
+examples

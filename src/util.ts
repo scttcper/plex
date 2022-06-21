@@ -1,4 +1,4 @@
-import type { Section } from './library';
+import type { Section } from './library.js';
 
 export interface MediaContainer<T> {
   MediaContainer: T;
@@ -9,7 +9,7 @@ export interface MetadataContainer<T extends { Metadata: any }> {
 }
 
 export function rsplit(str: string, sep: string, maxsplit: number): string[] {
-  var split = str.split(sep);
+  const split = str.split(sep);
   return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
 }
 
@@ -58,4 +58,8 @@ export function ltrim(x: string, characters: string[]) {
 
   const end = x.length - 1;
   return x.substr(start, end);
+}
+
+export function lowerFirst(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }

@@ -1,19 +1,13 @@
 import { URLSearchParams } from 'url';
 
-import { PlexObject } from './plexObject';
-import { SearchResult, searchType } from '../search';
-import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util';
-import { MatchSearchResult } from '../search.types';
+import { SearchResult, searchType } from '../search.js';
+import { MatchSearchResult } from '../search.types.js';
+import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util.js';
+
+import { PlexObject } from './plexObject.js';
 
 export abstract class PartialPlexObject extends PlexObject {
-  ratingKey?: string;
-  title?: string;
-  type?: string;
-  year?: number;
-  librarySectionID?: number;
-
-  protected _detailsKey = this._buildDetailsKey();
-  protected _INCLUDES = {
+  override _INCLUDES = {
     checkFiles: 1,
     includeAllConcerts: 1,
     includeBandwidths: 1,
@@ -34,6 +28,14 @@ export abstract class PartialPlexObject extends PlexObject {
     includeReviews: 1,
     includeStations: 1,
   };
+
+  ratingKey?: string;
+  title?: string;
+  type?: string;
+  year?: number;
+  librarySectionID?: number;
+
+  protected override _detailsKey = this._buildDetailsKey();
 
   /**
    * Tell Plex Media Server to performs analysis on it this item to gather
@@ -61,7 +63,7 @@ export abstract class PartialPlexObject extends PlexObject {
   /**
    * load full data / reload the data for this object from this.key.
    */
-  async reload(ekey?: string, args?: any): Promise<void> {
+  override async reload(ekey?: string, args?: any): Promise<void> {
     this._detailsKey = this._buildDetailsKey(args);
     const key = ekey ?? this._detailsKey ?? this.key;
     if (!key) {
@@ -91,7 +93,7 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param agent (str): Agent name to be used (imdb, thetvdb, themoviedb, etc.)
    */
   async fixMatch(searchResult?: SearchResult, auto = false, agent = ''): Promise<void> {
-    const key = `/library/metadata/${this.ratingKey!}/match`;
+    const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
       const autoMatch = await this.matches();
       if (autoMatch.length) {
@@ -140,7 +142,7 @@ export abstract class PartialPlexObject extends PlexObject {
     year?: string,
     language?: string,
   ): Promise<SearchResult[]> {
-    const key = `/library/metadata/${this.ratingKey!}/matches`;
+    const key = `/library/metadata/${this.ratingKey}/matches`;
     const params = new URLSearchParams({ manual: '1' });
 
     if (agent && [title, year, language].some(x => x)) {
@@ -152,13 +154,13 @@ export abstract class PartialPlexObject extends PlexObject {
       if (title) {
         params.append('title', title);
       } else {
-        params.append('title', this.title!);
+        params.append('title', this.title);
       }
 
       if (year) {
         params.append('year', year);
       } else {
-        params.append('year', this.year!.toString());
+        params.append('year', this.year.toString());
       }
 
       if (language) {
@@ -185,7 +187,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /** Unmatches metadata match from object. */
   async unmatch() {
-    const key = `/library/metadata/${this.ratingKey!}/unmatch`;
+    const key = `/library/metadata/${this.ratingKey}/unmatch`;
     return this.server.query(key, 'put');
   }
 
@@ -199,7 +201,7 @@ export abstract class PartialPlexObject extends PlexObject {
   }
 
   async section() {
-    return (await this.server.library()).sectionByID(this.librarySectionID!);
+    return (await this.server.library()).sectionByID(this.librarySectionID);
   }
 
   /**
@@ -237,6 +239,10 @@ export abstract class PartialPlexObject extends PlexObject {
   /** Remove a genre(s). */
   async removeGenre(genres: string[]) {
     await this._editTags('genre', genres, undefined, true);
+  }
+
+  getWebURL(base?: string): string {
+    return this._getWebURL(base);
   }
 
   /**
@@ -277,6 +283,18 @@ export abstract class PartialPlexObject extends PlexObject {
     await this.server.query(url.toString(), 'put');
   }
 
+  protected abstract _loadFullData(data: any): void;
+
+  /**
+   * Get the Plex Web URL with the correct parameters.
+   * Private method to allow overriding parameters from subclasses.
+   */
+  private _getWebURL(base?: string): string {
+    const params = new URLSearchParams();
+    params.append('key', this.key);
+    return this.server._buildWebURL(base, 'details', params);
+  }
+
   /**
    * Helper to edit and refresh a tags.
    * @param tag tag name
@@ -285,12 +303,10 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param remove If this is active remove the tags in items.
    */
   private async _editTags(tag: string, items: string[], locked = true, remove = false) {
-    const value = this[tag + 's'];
-    const existingCols = value?.filter(x => x && remove).map(x => x.tag) ?? [];
+    const value = (this as any)[tag + 's'];
+    const existingCols = value?.filter((x: any) => x && remove).map((x: any) => x.tag) ?? [];
     const d = tagHelper(tag, [...existingCols, ...items], locked, remove);
     await this.edit(d);
     await this.reload();
   }
-
-  protected abstract _loadFullData(data: any): void;
 }

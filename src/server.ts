@@ -1,21 +1,23 @@
-import got from 'got';
 import { URL, URLSearchParams } from 'url';
 
-import { TIMEOUT, BASE_HEADERS, X_PLEX_CONTAINER_SIZE } from './config';
+import got from 'got';
+
+import { fetchItem, fetchItems } from './baseFunctionality.js';
+import { PlexClient } from './client.js';
+import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.js';
+import { Hub, Library } from './library.js';
+import { LibraryRootResponse } from './library.types.js';
+import { Optimized } from './media.js';
+import { MyPlexAccount } from './myplex.js';
+import { Agent, SEARCHTYPES } from './search.js';
 import {
-  ServerRootResponse,
+  ConnectionInfo,
   HistoryMediaContainer,
   HistoryMetadatum,
-  ConnectionInfo,
-} from './server.types';
-import { Library, Hub } from './library';
-import { MediaContainer } from './util';
-import { LibraryRootResponse } from './library.types';
-import { fetchItems, fetchItem } from './baseFunctionality';
-import { Optimized } from './media';
-import { Agent, SEARCHTYPES } from './search';
-import { PlexClient } from './client';
-import { MyPlexAccount } from './myplex';
+  ServerRootResponse,
+} from './server.types.js';
+import { SettingResponse, Settings } from './settings.js';
+import { MediaContainer } from './util.js';
 
 /**
  * This is the main entry point to interacting with a Plex server. It allows you to
@@ -59,7 +61,7 @@ export class PlexServer {
    */
   hubSearch!: boolean;
   /** Unique ID for this server (looks like an md5) */
-  machineIdentifier!: string;
+  machineIdentifier?: string;
   /**
    * True if `multiusers <https!://support.plex.tv/hc/en-us/articles/200250367-Multi-User-Support>`_ are enabled.
    */
@@ -136,6 +138,7 @@ export class PlexServer {
   /** Unknown */
   pushNotifications!: boolean;
   _library?: Library;
+  _settings?: Settings;
   private _myPlexAccount?: MyPlexAccount;
 
   constructor(
@@ -255,10 +258,10 @@ export class PlexServer {
       method,
       url,
       headers: requestHeaders,
-      timeout: timeout ?? TIMEOUT,
-      username,
-      password,
-      retry: 0,
+      timeout: { request: timeout ?? TIMEOUT },
+      ...(username ? { username } : {}),
+      ...(password ? { password } : {}),
+      retry: { limit: 0 },
     }).json<T>();
 
     return response;
@@ -324,6 +327,15 @@ export class PlexServer {
     return results;
   }
 
+  async settings(): Promise<Settings> {
+    if (!this._settings) {
+      const data = await this.query<MediaContainer<{ Setting: SettingResponse[] }>>(Settings.key);
+      this._settings = new Settings(this, data.MediaContainer.Setting);
+    }
+
+    return this._settings;
+  }
+
   // TODO: not sure if this works
   // /**
   //  * Returns a list of all playlist objects saved on the server.
@@ -367,17 +379,17 @@ export class PlexServer {
     const shouldFetchPorts = response.MediaContainer.Server.some(
       server => server.port === null || server.port === undefined,
     );
-    let ports: Record<string, string>;
+    let ports: Record<string, string> = {};
 
     if (shouldFetchPorts) {
       ports = await this._myPlexClientPorts();
     }
 
     for (const server of response.MediaContainer.Server) {
-      let port: number | string | undefined = server.port;
+      let { port } = server;
       if (!port) {
         // TODO: print warning about doing weird port stuff
-        port = ports!?.[server.machineIdentifier];
+        port = Number(ports?.[server.machineIdentifier]);
       }
 
       const baseurl = `http://${server.host}:${port}`;
@@ -420,8 +432,33 @@ export class PlexServer {
     return url;
   }
 
+  /**
+   * Build the Plex Web URL for the object.
+   * @param base The base URL before the fragment (``#!``).
+   *    Default is https://app.plex.tv/desktop.
+   * @param endpoint The Plex Web URL endpoint.
+   *    None for server, 'playlist' for playlists, 'details' for all other media types.
+   */
+  _buildWebURL(
+    base = 'https://app.plex.tv/desktop/',
+    endpoint?: string,
+    params?: URLSearchParams,
+  ): string {
+    if (endpoint) {
+      return `${base}#!/server/${this.machineIdentifier}/${endpoint}?${params?.toString()}`;
+    }
+
+    return `${base}#!/media/${
+      this.machineIdentifier
+    }/com.plexapp.plugins.library?${params?.toString()}`;
+  }
+
+  _uriRoot(): string {
+    return `server://${this.machineIdentifier}/com.plexapp.plugins.library`;
+  }
+
   private _headers(): Record<string, string> {
-    const headers = {
+    const headers: Record<string, string> = {
       ...BASE_HEADERS,
       'Content-type': 'application/json',
     };
@@ -486,7 +523,7 @@ export class PlexServer {
    * See python plex issue #126: Make PlexServer.clients() more user friendly.
    */
   private async _myPlexClientPorts(): Promise<Record<string, string>> {
-    let ports: Record<string, string> = {};
+    const ports: Record<string, string> = {};
     const account = this.myPlexAccount();
     const devices = await account.devices();
 

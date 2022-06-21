@@ -1,6 +1,6 @@
 import { URLSearchParams } from 'url';
 
-import type { PlexServer } from '../server';
+import type { PlexServer } from '../server.js';
 
 /**
  * Base class for all? Plex objects
@@ -47,6 +47,17 @@ export abstract class PlexObject {
   }
 
   /**
+   * Refreshing a Library or individual item causes the metadata for the item to be
+   * refreshed, even if it already has metadata. You can think of refreshing as
+   * "update metadata for the requested item even if it already has some". You should
+   * refresh a Library or individual item if:
+   */
+  async refresh() {
+    const key = `${this.key}/refresh`;
+    await this.server.query(key, 'put');
+  }
+
+  /**
    * Returns True if this object is a child of the given class.
    */
   isChildOf(cls: any): boolean {
@@ -59,7 +70,7 @@ export abstract class PlexObject {
     if (detailsKey && this._INCLUDES !== undefined) {
       const params = new URLSearchParams();
       for (const [k, v] of Object.entries(this._INCLUDES)) {
-        let value = args[k] ?? v;
+        const value = args[k] ?? v;
         if (![false, 0, '0'].includes(value)) {
           params.set(k, (value === true ? 1 : value).toString());
         }

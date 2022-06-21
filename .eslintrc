@@ -5,7 +5,9 @@
   },
   "extends": ["@ctrl/eslint-config"],
   "rules": {
-    "max-params": 0,
-    "no-warning-comments": 0
+    "max-params": "off",
+    "no-warning-comments": "off",
+    "@typescript-eslint/restrict-template-expressions": "off",
+    "@typescript-eslint/no-redundant-type-constituents": "off"
   }
 }

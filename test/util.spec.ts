@@ -1,7 +1,7 @@
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 
-import { searchType } from '../src/search';
-import { tagHelper, ltrim } from '../src/util';
+import { searchType } from '../src/search.js';
+import { ltrim, tagHelper } from '../src/util.js';
 
 describe('searchType', () => {
   it('should return matched search types ', () => {

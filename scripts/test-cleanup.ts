@@ -1,4 +1,4 @@
-import { createAccount } from '../test/test-client';
+import { createAccount } from '../test/test-client.js';
 
 async function cleanup(): Promise<void> {
   const account = await createAccount();

@@ -1,9 +1,10 @@
-import got from 'got';
 import { URL, URLSearchParams } from 'url';
 
-import { BASE_HEADERS, TIMEOUT } from './config';
-import { MediaContainer } from './util';
-import { Player } from './client.types';
+import got from 'got';
+
+import { Player } from './client.types.js';
+import { BASE_HEADERS, TIMEOUT } from './config.js';
+import { MediaContainer } from './util.js';
 
 export interface PlexOptions {
   /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */
@@ -130,9 +131,9 @@ export class PlexClient {
     const response = await got({
       method,
       url: this.url(path),
-      timeout: timeout ?? TIMEOUT,
+      timeout: { request: timeout ?? TIMEOUT },
       headers: headersObj,
-      retry: 0,
+      retry: { limit: 0 },
     }).json<T>();
 
     return response;
