@@ -24,6 +24,10 @@ export async function createClient(): Promise<PlexServer> {
   const resources = await account.resources();
   const sortedResources = resources.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const plex = sortedResources[0];
+  if (!plex) {
+    throw new Error('No servers found');
+  }
+
   const server = await plex.connect(undefined, 2000);
   return server;
 }

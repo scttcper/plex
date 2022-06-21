@@ -102,6 +102,16 @@ export class Playlist extends Playable {
   /** Cache of playlist items */
   private _items: PlaylistContent[] | null = null;
 
+  async _edit(args: { title?: string; summary?: string }) {
+    const searchparams = new URLSearchParams(args);
+    const key = `${this.key}?${searchparams.toString()}`;
+    await this.server.query(key, 'put');
+  }
+
+  override async edit(changeObj: { title?: string; summary?: string }) {
+    await this._edit(changeObj);
+  }
+
   /**
    * @returns the item in the playlist that matches the specified title.
    */
@@ -185,7 +195,7 @@ export class Playlist extends Playable {
   }
 
   protected _loadFullData(data: any) {
-    this._loadData(data);
+    this._loadData(data.Metadata[0]);
   }
 
   private async _getPlaylistItemID(item: PlaylistContent) {

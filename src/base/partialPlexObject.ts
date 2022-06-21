@@ -72,7 +72,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
     this.initpath = key;
     const data = await this.server.query(key);
-    const innerData = data.MediaContainer ? data.MediaContainer : data;
+    const innerData = data.MediaContainer ?? data;
     this._loadFullData(innerData);
   }
 

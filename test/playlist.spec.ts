@@ -1,26 +1,29 @@
-import { beforeAll, expect, it } from 'vitest';
+import { afterEach, beforeAll, expect, it } from 'vitest';
 
-import { MovieSection, Playlist, PlexServer } from '../src/index.js';
+import { Movie, MovieSection, Playlist, PlexServer } from '../src/index.js';
 
 import { createClient } from './test-client.js';
 
-const delay = async (ms: number) =>
-  new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
-
 let plex: PlexServer;
+let playlist: Playlist | undefined;
+let buckBunny: Movie;
+let ghostbusters: Movie;
 beforeAll(async () => {
   plex = await createClient();
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  [buckBunny] = await section.search({ title: 'Bunny' });
+  [ghostbusters] = await section.search({ title: 'Ghostbusters' });
+  expect(buckBunny).toBeDefined();
+  expect(ghostbusters).toBeDefined();
+});
+afterEach(async () => {
+  await playlist?.delete();
+  playlist = undefined;
 });
 
 it('should create a playlist and add/remove an item', async () => {
-  const library = await plex.library();
-  const section = await library.section<MovieSection>('Movies');
-  const [buckBunny] = await section.search({ title: 'Bunny' });
-  const [ghostbusters] = await section.search({ title: 'Ghostbusters' });
-
-  const playlist = await Playlist.create(plex, 'my playlist', { items: [buckBunny] });
+  playlist = await Playlist.create(plex, 'my playlist', { items: [buckBunny] });
   expect(playlist.ratingKey).toBeDefined();
 
   await playlist.addItems([ghostbusters]);
@@ -37,7 +40,17 @@ it('should create a playlist and add/remove an item', async () => {
 
   const itemsRemoved = await playlist.items();
   expect(itemsRemoved).toHaveLength(1);
+});
 
-  await delay(1000);
-  await playlist.delete();
+it('should edit a playlist', async () => {
+  const title = 'test_playlist_edit';
+  const new_title = 'test_playlist_edit_new_title';
+  const new_summary = 'test_playlist_edit_summary';
+  playlist = await Playlist.create(plex, title, { items: [buckBunny] });
+  expect(playlist.title).toBe(title);
+  expect(playlist.summary).toBe('');
+  await playlist.edit({ title: new_title, summary: new_summary });
+  await playlist.reload();
+  expect(playlist.title).toBe(new_title);
+  expect(playlist.summary).toBe(new_summary);
 });

@@ -63,7 +63,7 @@ it('should search for all content matching search query', async () => {
 it('should list all items in all sections', async () => {
   const library = await plex.library();
   const items = await library.all();
-  expect(items.length).toBe(9);
+  expect(items.length).toBeGreaterThanOrEqual(9);
 });
 
 it('should list all movies in movie section', async () => {
