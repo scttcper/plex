@@ -2,8 +2,6 @@
   "extends": "@sindresorhus/tsconfig",
   "compilerOptions": {
     "outDir": "dist",
-    "lib": ["ES2021"],
-		"target": "ES2021", // Node.js 16
     "strictNullChecks": false,
     "noUnusedParameters": false,
 		"useDefineForClassFields": false,
