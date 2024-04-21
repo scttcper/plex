@@ -173,6 +173,7 @@ export class Movie extends Video {
   similar!: Similar[];
   media!: Media[];
   guids!: Guid[];
+  markers!: Marker[];
 
   get actors() {
     return this.roles;
@@ -186,6 +187,28 @@ export class Movie extends Video {
     const parts = (this.media?.map(media => media.parts) ?? []).flat();
     return parts.map(part => part.file);
   }
+
+  /**
+   * Returns True if this movie has an intro marker
+   */
+  async hasIntroMarker(): Promise<boolean> {
+    if (!this.isFullObject) {
+      await this.reload();
+    }
+  
+    return this.markers.some(marker => marker.type === 'intro');
+  }
+  
+  /**
+   * Returns True if this movie has a credits marker
+   */
+  async hasCreditsMarker(): Promise<boolean> {
+    if (!this.isFullObject) {
+      await this.reload();
+    }
+  
+    return this.markers.some(marker => marker.type === 'credits');
+  }  
 
   protected override _loadData(data: MovieData): void {
     super._loadData(data);
@@ -218,6 +241,7 @@ export class Movie extends Video {
     this.producers = data.Producer?.map(d => new Producer(this.server, d, undefined, this)) ?? [];
     this.media = data.Media?.map(d => new Media(this.server, d, undefined, this)) ?? [];
     this.guids = data.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
+    this.markers = data.Marker?.map(d => new Marker(this.server, d, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {
@@ -478,6 +502,17 @@ export class Episode extends Video {
     }
 
     return this.markers.some(marker => marker.type === 'intro');
+  }
+
+  /**
+   * Returns True if this episode has a credits marker
+   */
+  async hasCreditsMarker(): Promise<boolean> {
+    if (!this.isFullObject) {
+      await this.reload();
+    }
+  
+    return this.markers.some(marker => marker.type === 'credits');
   }
 
   protected override _loadData(data: EpisodeMetadata): void {
