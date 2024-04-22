@@ -8,16 +8,23 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
         with:
-          fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+          version: 8
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 'lts/*'
-      - name: Install dependencies
-        run: npm ci
+          node-version: 20
+          cache: "pnpm"
+
+      - name: lint
+        run: pnpm run lint
+
+      - name: install
+        run: pnpm install
+
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

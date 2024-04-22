@@ -16,17 +16,22 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - name: checkout
-        uses: actions/checkout@v3
-      - name: setup node
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
         with:
-          node-version: 16
-      - name: install dependencies
-        run: npm ci
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: install
+        run: pnpm install
 
       - name: lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Get PMS Docker image digest
         id: docker-digest
@@ -71,15 +76,15 @@ jobs:
           echo "PLEXAPI_AUTH_SERVER_TOKEN=${{ secrets.PLEXAPI_AUTH_SERVER_TOKEN }}" >> $GITHUB_ENV
 
       - name: Bootstrap Plex server
-        run: npm run bootstraptest -- \
+        run: pnpm run bootstraptest -- \
             --advertise-ip 127.0.0.1 \
             --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
 
       - name: test
-        run: npm run test:ci
+        run: pnpm run test:ci
 
       - name: Unlink PMS from MyPlex account
-        run: npm run teardowntest
+        run: pnpm run teardowntest
 
 
 

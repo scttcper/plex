@@ -34,39 +34,41 @@
     "test-cleanup": "node --loader ts-node/esm scripts/test-cleanup.ts"
   },
   "dependencies": {
-    "@ctrl/mac-address": "^3.0.2",
-    "got": "^12.5.2",
+    "@ctrl/mac-address": "^3.0.3",
+    "got": "^13.0.0",
     "p-any": "^4.0.0",
-    "type-fest": "^3.1.0",
-    "ws": "^8.10.0",
-    "xml2js": "^0.4.23"
+    "type-fest": "^4.15.0",
+    "ws": "^8.16.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@sindresorhus/tsconfig": "3.0.1",
-    "@ctrl/eslint-config": "3.5.4",
-    "@types/lodash": "4.14.186",
-    "@types/micromatch": "4.0.2",
-    "@types/node": "18.11.7",
-    "@types/ws": "8.5.3",
-    "@types/xml2js": "0.4.11",
-    "@types/yargs": "17.0.13",
-    "c8": "7.12.0",
-    "delay": "5.0.0",
-    "execa": "6.1.0",
-    "glob": "8.0.3",
-    "globby": "13.1.2",
+    "@ctrl/eslint-config": "4.0.14",
+    "@sindresorhus/tsconfig": "5.0.0",
+    "@types/lodash": "4.17.0",
+    "@types/micromatch": "4.0.7",
+    "@types/node": "20.12.7",
+    "@types/ws": "8.5.10",
+    "@types/xml2js": "0.4.14",
+    "@types/yargs": "17.0.32",
+    "@vitest/coverage-v8": "^1.5.0",
+    "delay": "6.0.0",
+    "execa": "8.0.1",
+    "glob": "10.3.12",
+    "globby": "14.0.1",
     "lodash": "4.17.21",
-    "make-dir": "3.1.0",
-    "ora": "6.1.2",
-    "p-retry": "5.1.1",
-    "ts-node": "10.9.1",
-    "typedoc": "0.23.19",
-    "typescript": "4.8.4",
-    "vitest": "0.24.3",
-    "yargs": "17.6.0"
+    "make-dir": "4.0.0",
+    "ora": "8.0.1",
+    "p-retry": "6.2.0",
+    "ts-node": "10.9.2",
+    "typedoc": "0.25.13",
+    "typescript": "5.4.5",
+    "vitest": "1.5.0",
+    "yargs": "17.7.2"
   },
   "release": {
-    "branches": ["master"]
+    "branches": [
+      "master"
+    ]
   },
   "engines": {
     "node": ">=16.10"
