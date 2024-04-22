@@ -13,8 +13,6 @@ jobs:
       PLEXAPI_AUTH_SERVER_BASEURL: http://127.0.0.1:32400
       PLEX_CONTAINER: plexinc/pms-docker
       PLEX_CONTAINER_TAG: latest
-    strategy:
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
 
@@ -80,11 +78,13 @@ jobs:
             --advertise-ip 127.0.0.1 \
             --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
 
+      - name: Unlink PMS from MyPlex account
+        uses: webiny/action-post-run@3.1.0
+        with:
+          run: pnpm run teardowntest
+
       - name: test
         run: pnpm run test:ci
-
-      - name: Unlink PMS from MyPlex account
-        run: pnpm run teardowntest
 
   publish:
     needs: build
