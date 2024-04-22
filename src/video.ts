@@ -195,10 +195,10 @@ export class Movie extends Video {
     if (!this.isFullObject) {
       await this.reload();
     }
-  
+
     return this.markers.some(marker => marker.type === 'intro');
   }
-  
+
   /**
    * Returns True if this movie has a credits marker
    */
@@ -206,9 +206,9 @@ export class Movie extends Video {
     if (!this.isFullObject) {
       await this.reload();
     }
-  
+
     return this.markers.some(marker => marker.type === 'credits');
-  }  
+  }
 
   protected override _loadData(data: MovieData): void {
     super._loadData(data);
@@ -511,7 +511,7 @@ export class Episode extends Video {
     if (!this.isFullObject) {
       await this.reload();
     }
-  
+
     return this.markers.some(marker => marker.type === 'credits');
   }
 
