@@ -74,8 +74,9 @@ export class Library {
   }
 
   async sectionByID(sectionId: string | number): Promise<Section> {
+    const sectionIdStr = sectionId.toString();
     const sections = await this.sections();
-    const section = sections.find(s => s.key);
+    const section = sections.find(s => s.key === sectionIdStr);
     if (!section) {
       throw new Error(`Invalid library section id: ${sectionId}`);
     }
