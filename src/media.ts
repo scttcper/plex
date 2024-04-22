@@ -207,7 +207,7 @@ export class Marker extends MediaTag {
   static override TAG = 'Marker' as const;
   FILTER = 'marker' as const;
 
-  type!: 'intro';
+  type!: 'intro' | 'credits';
   startTimeOffset!: number;
   endTimeOffset!: number;
 

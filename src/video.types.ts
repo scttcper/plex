@@ -119,7 +119,7 @@ export interface ChapterData extends MediaTagData {
 }
 
 export interface MarkerData extends MediaTagData {
-  type: 'intro';
+  type: 'intro' | 'credits';
   startTimeOffset: number;
   endTimeOffset: number;
 }
