@@ -82,6 +82,7 @@ jobs:
         run: pnpm run test:ci
 
   post_test:
+    needs: build
     runs-on: ubuntu-latest
     if: success() || failure()
     steps:
@@ -95,6 +96,9 @@ jobs:
         with:
           node-version: 20
           cache: "pnpm"
+
+      - name: install
+        run: pnpm install
 
       - name: Unlink PMS from MyPlex account
         run: pnpm run teardowntest
