@@ -2,7 +2,7 @@
 import { PlexServer, X_PLEX_IDENTIFIER } from '../src/index.js';
 
 async function main() {
-  const token = process.env.PLEX_TOKEN || process.env.PLEXAPI_AUTH_SERVER_TOKEN!;
+  const token = process.env.PLEX_TOKEN || process.env.PLEXAPI_AUTH_SERVER_TOKEN;
   const plex = new PlexServer('http://localhost:32400', token);
 
   const devices = await plex.myPlexAccount().devices();

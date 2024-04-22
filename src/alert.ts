@@ -8,7 +8,10 @@ export class AlertListener {
 
   _ws?: WebSocket;
 
-  constructor(private readonly server: PlexServer, public callback: (data: AlertTypes) => void) {}
+  constructor(
+    private readonly server: PlexServer,
+    public callback: (data: AlertTypes) => void,
+  ) {}
 
   async run(): Promise<void> {
     const url = this.server.url(this.key, true).toString().replace('http', 'ws');

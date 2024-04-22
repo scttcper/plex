@@ -33,7 +33,10 @@ export class Library {
   /** Second title (this is blank on my setup) */
   title2!: string;
 
-  constructor(private readonly server: PlexServer, data: LibraryRootResponse) {
+  constructor(
+    private readonly server: PlexServer,
+    data: LibraryRootResponse,
+  ) {
     this._loadData(data);
   }
 

@@ -13,7 +13,7 @@ it('should get all sections', async () => {
   const library = await plex.library();
   const sections = await library.sections();
   expect(sections.length).toBeGreaterThan(1);
-  expect(sections.find(section => section.type === 'movie')!.type).toBe('movie');
+  expect(sections.find(section => section.type === 'movie').type).toBe('movie');
 });
 
 it('should search for all unwatched movies', async () => {

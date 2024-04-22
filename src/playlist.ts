@@ -61,7 +61,7 @@ export class Playlist extends Playable {
       // return this._createSmart(server, title, options);
     }
 
-    return this._create(server, title, (options as any).items!);
+    return this._create(server, title, (options as any).items);
   }
 
   /** Create a smart playlist. */
