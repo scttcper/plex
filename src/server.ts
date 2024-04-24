@@ -353,14 +353,17 @@ export class PlexServer {
    * you're likley to recieve an authentication error calling this.
    */
   myPlexAccount(): MyPlexAccount {
-    this._myPlexAccount ||= new MyPlexAccount(
-      this.baseurl,
-      undefined,
-      undefined,
-      this.token,
-      this.timeout,
-      this,
-    );
+    // eslint-disable-next-line logical-assignment-operators
+    if (!this._myPlexAccount) {
+      this._myPlexAccount = new MyPlexAccount(
+        this.baseurl,
+        undefined,
+        undefined,
+        this.token,
+        this.timeout,
+        this,
+      );
+    }
 
     return this._myPlexAccount;
   }

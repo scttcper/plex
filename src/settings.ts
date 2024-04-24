@@ -74,7 +74,8 @@ export class Settings extends PlexObject {
 
   override _loadData(data: SettingResponse[]) {
     this._data = data;
-    this._settings ??= this._settings;
+    // eslint-disable-next-line logical-assignment-operators
+    this._settings = this._settings ?? {};
 
     for (const elem of data) {
       const id = lowerFirst(elem.id);

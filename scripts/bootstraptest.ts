@@ -143,7 +143,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
   const listener = new AlertListener(server, (data: AlertTypes) => {
     if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
       processedMedia += 1;
-      // console.log(`Finished ${processedMedia} ${section.name}`);
+      console.log(`Finished ${processedMedia} ${section.name}`);
     }
   });
 
