@@ -8,6 +8,7 @@ import { globby } from 'globby';
 import makeDir from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
+import pWaitFor from 'p-wait-for';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -176,9 +177,10 @@ async function createSection(section: Section, server: PlexServer): Promise<void
   }
 
   // Ensure all media is processed before resolving the function
-  while (processedMedia < section.expectedMediaCount) {
-    await delay(100); // Polling delay
-  }
+  await pWaitFor(() => processedMedia >= section.expectedMediaCount, {
+    interval: 1000,
+    timeout: 60000,
+  });
 
   listener.stop();
 }
