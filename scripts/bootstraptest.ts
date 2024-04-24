@@ -139,13 +139,16 @@ type Options = {
 };
 
 async function createSection(section: Section, server: PlexServer): Promise<void> {
-  let processedMedia = 0;
-  const listener = new AlertListener(server, (data: AlertTypes) => {
+  let finished = false;
+
+  const alertCallback = (data: AlertTypes) => {
     if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
-      processedMedia += 1;
-      console.log(`Finished ${processedMedia} ${section.name}`);
+      finished = true;
+      console.log(`Finished ${section.name}`);
     }
-  });
+  };
+
+  const listener = new AlertListener(server, alertCallback);
 
   await listener.run();
   await delay(4000);
@@ -177,9 +180,9 @@ async function createSection(section: Section, server: PlexServer): Promise<void
   }
 
   // Ensure all media is processed before resolving the function
-  await pWaitFor(() => processedMedia >= section.expectedMediaCount, {
+  await pWaitFor(() => finished, {
     interval: 1000,
-    timeout: 60000,
+    timeout: 60000 * 3,
   });
 
   listener.stop();
