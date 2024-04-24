@@ -11,7 +11,7 @@ import { getMAC, parseMAC } from '@ctrl/mac-address';
 export const PROJECT = 'PlexAPI';
 export const VERSION = '3.3.0';
 export const TIMEOUT = 30000;
-export const X_PLEX_CONTAINER_SIZE = 100 as const;
+export const X_PLEX_CONTAINER_SIZE = 100;
 export const X_PLEX_ENABLE_FAST_CONNECT = false as const;
 
 // Plex Header Configuation

@@ -371,9 +371,7 @@ export class MyPlexResource {
   }
 
   async connect(ssl: boolean | null = null, timeout?: number): Promise<PlexServer> {
-    const connections = [...this.connections].sort((a, b) => {
-      return Number(b.local) - Number(a.local);
-    });
+    const connections = [...this.connections].sort((a, b) => Number(b.local) - Number(a.local));
     const ownedOrUnownedNonLocal = (connection: ResourceConnection): boolean => {
       if (this.owned || (!this.owned && !connection.local)) {
         return true;

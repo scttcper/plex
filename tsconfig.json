@@ -4,7 +4,7 @@
     "outDir": "dist",
     "strictNullChecks": false,
     "noUnusedParameters": false,
-		"useDefineForClassFields": false,
+    "useDefineForClassFields": false,
     "noPropertyAccessFromIndexSignature": false,
     "noImplicitAny": false
   },

@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "ignore": ["dist/*", "package.json"]
+  },
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "noEmptyBlockStatements": "off"
+      },
+      "complexity": {
+        "noStaticOnlyClass": "off"
+      }
+    }
+  },
+  "extends": ["@ctrl/eslint-config-biome/biome"]
+}

@@ -353,16 +353,14 @@ export class PlexServer {
    * you're likley to recieve an authentication error calling this.
    */
   myPlexAccount(): MyPlexAccount {
-    if (!this._myPlexAccount) {
-      this._myPlexAccount = new MyPlexAccount(
-        this.baseurl,
-        undefined,
-        undefined,
-        this.token,
-        this.timeout,
-        this,
-      );
-    }
+    this._myPlexAccount ||= new MyPlexAccount(
+      this.baseurl,
+      undefined,
+      undefined,
+      this.token,
+      this.timeout,
+      this,
+    );
 
     return this._myPlexAccount;
   }
@@ -387,6 +385,7 @@ export class PlexServer {
 
     for (const server of response.MediaContainer.Server) {
       let { port } = server;
+      // eslint-disable-next-line logical-assignment-operators
       if (!port) {
         // TODO: print warning about doing weird port stuff
         port = Number(ports?.[server.machineIdentifier]);

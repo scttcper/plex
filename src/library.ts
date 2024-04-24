@@ -607,7 +607,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
 
   async collections(
     args: Record<string, number | string | boolean> = {},
-  ): Promise<Array<Collections<SectionVideoType>>> {
+  ): Promise<Collections<SectionVideoType>[]> {
     const collections = await this.search<Collections<SectionVideoType>>(
       { ...args, libtype: 'collection' },
       Collections,
