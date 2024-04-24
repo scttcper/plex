@@ -8,7 +8,6 @@ import { globby } from 'globby';
 import makeDir from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
-import pWaitFor from 'p-wait-for';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
