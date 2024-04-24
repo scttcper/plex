@@ -139,53 +139,51 @@ type Options = {
 };
 
 async function createSection(section: Section, server: PlexServer): Promise<void> {
-  let finished = false;
+  let processedMedia = 0;
+  let listener: AlertListener;
+  // biome-ignore lint/suspicious/noAsyncPromiseExecutor: <explanation>
+  return new Promise(async resolve => {
+    const alertCallback = (data: AlertTypes) => {
+      if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
+        processedMedia += 1;
+        // console.log(`Finished ${processedMedia} ${section.name}`);
+      }
 
-  const alertCallback = (data: AlertTypes) => {
-    if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
-      finished = true;
-      console.log(`Finished ${section.name}`);
+      if (processedMedia === section.expectedMediaCount) {
+        resolve();
+        listener.stop();
+      }
+    };
+
+    listener = new AlertListener(server, alertCallback);
+    await listener.run();
+
+    await delay(4000);
+
+    try {
+      // Add the specified section to our Plex instance. This tends to be a bit
+      // flaky, so we retry a few times here.
+      await pRetry(
+        async () => {
+          const library = await server.library();
+          await library.add(
+            section.name,
+            section.type,
+            section.agent,
+            section.scanner,
+            section.location,
+            section.language,
+          );
+        },
+        {
+          retries: 60,
+          onFailedAttempt: async () => delay(1000),
+        },
+      );
+    } catch {
+      throw new Error('Unable to create section');
     }
-  };
-
-  const listener = new AlertListener(server, alertCallback);
-
-  await listener.run();
-  await delay(4000);
-
-  try {
-    // Add the specified section to our Plex instance. This tends to be a bit
-    // flaky, so we retry a few times here.
-    await pRetry(
-      async () => {
-        const library = await server.library();
-        await library.add(
-          section.name,
-          section.type,
-          section.agent,
-          section.scanner,
-          section.location,
-          section.language,
-        );
-      },
-      {
-        retries: 60,
-        onFailedAttempt: async () => delay(1000),
-      },
-    );
-  } catch {
-    throw new Error('Unable to create section');
-  } finally {
-    listener.stop();
-  }
-
-  // Ensure all media is processed before resolving the function
-  await pWaitFor(() => finished, {
-    interval: 1000,
-    timeout: 60000 * 3,
   });
-
-  listener.stop();
 }
 
 async function setupMovies(moviePath: string): Promise<number> {
