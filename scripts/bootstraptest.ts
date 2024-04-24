@@ -140,7 +140,7 @@ type Options = {
 async function createSection(section: Section, server: PlexServer): Promise<void> {
   let processedMedia = 0;
   let listener: AlertListener;
-  // eslint-disable-next-line no-async-promise-executor
+  // biome-ignore lint/suspicious/noAsyncPromiseExecutor: <explanation>
   return new Promise(async resolve => {
     const alertCallback = (data: AlertTypes) => {
       if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
@@ -269,9 +269,7 @@ async function main() {
 
   await account.connect();
 
-  const connectServer = async () => {
-    return (await account.device(opts.hostname)).connect();
-  };
+  const connectServer = async () => (await account.device(opts.hostname)).connect();
 
   const waitServer = ora('Waiting for the server to appear in your account').start();
 

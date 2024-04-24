@@ -20,8 +20,12 @@
     "typescript"
   ],
   "scripts": {
-    "lint": "eslint --ext .ts .",
-    "lint:fix": "eslint --fix --ext .ts .",
+    "lint": "pnpm run '/^(lint:biome|lint:eslint)$/'",
+    "lint:biome": "biome check .",
+    "lint:eslint": "eslint --ext .ts,.tsx .",
+    "lint:fix": "pnpm run '/^(lint:biome|lint:eslint):fix$/'",
+    "lint:eslint:fix": "eslint --ext .ts,.tsx . --fix",
+    "lint:biome:fix": "biome check . --apply",
     "prepare": "npm run build",
     "build": "tsc",
     "build:docs": "typedoc",
@@ -37,12 +41,13 @@
     "@ctrl/mac-address": "^3.0.3",
     "got": "^13.0.0",
     "p-any": "^4.0.0",
-    "type-fest": "^4.15.0",
+    "type-fest": "^4.16.0",
     "ws": "^8.16.0",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@ctrl/eslint-config": "4.0.14",
+    "@biomejs/biome": "1.7.1",
+    "@ctrl/eslint-config-biome": "2.6.5",
     "@sindresorhus/tsconfig": "5.0.0",
     "@types/lodash": "4.17.0",
     "@types/micromatch": "4.0.7",
@@ -50,8 +55,9 @@
     "@types/ws": "8.5.10",
     "@types/xml2js": "0.4.14",
     "@types/yargs": "17.0.32",
-    "@vitest/coverage-v8": "^1.5.0",
+    "@vitest/coverage-v8": "1.5.0",
     "delay": "6.0.0",
+    "eslint": "8.57.0",
     "execa": "8.0.1",
     "glob": "10.3.12",
     "globby": "14.0.1",
@@ -71,6 +77,6 @@
     ]
   },
   "engines": {
-    "node": ">=16.10"
+    "node": ">=18"
   }
 }
