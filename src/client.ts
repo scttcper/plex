@@ -180,6 +180,7 @@ export class PlexClient {
     const headersObj: Record<string, string> = {
       ...BASE_HEADERS,
       ...headers,
+      accept: 'application/json',
     };
     if (this._token) {
       headersObj['X-Plex-Token'] = this._token;
