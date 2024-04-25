@@ -1,6 +1,6 @@
 import { URL, URLSearchParams } from 'url';
 
-import got from 'got';
+import { ofetch } from 'ofetch';
 
 import { fetchItem, fetchItems } from './baseFunctionality.js';
 import { PlexClient } from './client.js';
@@ -254,15 +254,13 @@ export class PlexServer {
     }
 
     const url = this.url(path);
-    const response = await got({
+    const response = await ofetch<T>(url.toString(), {
       method,
-      url,
       headers: requestHeaders,
-      timeout: { request: timeout ?? TIMEOUT },
-      ...(username ? { username } : {}),
-      ...(password ? { password } : {}),
-      retry: { limit: 0 },
-    }).json<T>();
+      timeout: timeout ?? TIMEOUT,
+      retry: 0,
+      responseType: 'json',
+    });
 
     return response;
   }

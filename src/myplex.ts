@@ -1,6 +1,6 @@
-import { URL, URLSearchParams } from 'url';
+import { URLSearchParams } from 'url';
 
-import got from 'got';
+import { ofetch } from 'ofetch';
 import pAny from 'p-any';
 import { parseStringPromise } from 'xml2js';
 
@@ -199,23 +199,21 @@ export class MyPlexAccount {
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
-    const promise = got({
+    const body = await ofetch<string>(url, {
       method,
-      url: new URL(url),
       headers: requestHeaders,
-      timeout: { request: timeout ?? TIMEOUT },
-      ...(username ? { username } : {}),
-      ...(password ? { password } : {}),
-      retry: { limit: 0 },
+      timeout: timeout ?? TIMEOUT,
+      retry: 0,
+      parseResponse: res => res,
+      // Can't seem to pass responseType
     });
 
     if (url.includes('xml')) {
-      const res = await promise;
-      const xml = await parseStringPromise(res.body);
+      const xml = await parseStringPromise(body);
       return xml;
     }
 
-    const res = await promise.json<T>();
+    const res = JSON.parse(body);
     return res;
   }
 
@@ -239,12 +237,11 @@ export class MyPlexAccount {
       ...BASE_HEADERS,
     });
     const url = `${this.baseUrl}/myplex/claim?${params.toString()}`;
-    return got({
-      method: 'POST',
-      url,
-      timeout: { request: TIMEOUT },
+    return ofetch(url, {
+      method: 'post',
+      timeout: TIMEOUT,
       headers: this._headers(),
-      retry: { limit: 0 },
+      retry: 0,
     });
   }
 
@@ -410,7 +407,7 @@ export class MyPlexResource {
   /** Remove this device from your account */
   async delete(): Promise<void> {
     const key = `https://plex.tv/api/servers/${this.clientIdentifier}?X-Plex-Client-Identifier=${BASE_HEADERS['X-Plex-Client-Identifier']}&X-Plex-Token=${this.accessToken}`;
-    await got.delete(key, { retry: { limit: 0 } });
+    await ofetch(key, { method: 'delete', retry: 0 });
   }
 
   private _loadData(data: ResourcesResponse): void {

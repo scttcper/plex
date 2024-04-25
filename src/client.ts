@@ -1,6 +1,6 @@
 import { URL, URLSearchParams } from 'url';
 
-import got from 'got';
+import { ofetch } from 'ofetch';
 
 import { Player } from './client.types.js';
 import { BASE_HEADERS, TIMEOUT } from './config.js';
@@ -128,13 +128,13 @@ export class PlexClient {
     timeout?: number,
   ): Promise<T> {
     const headersObj = this.headers(headers);
-    const response = await got({
+    const response = await ofetch<T>(this.url(path).toString(), {
       method,
-      url: this.url(path),
-      timeout: { request: timeout ?? TIMEOUT },
+      timeout: timeout ?? TIMEOUT,
       headers: headersObj,
-      retry: { limit: 0 },
-    }).json<T>();
+      responseType: 'json',
+      retry: 0,
+    });
 
     return response;
   }
