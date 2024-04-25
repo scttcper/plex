@@ -199,6 +199,10 @@ export class MyPlexAccount {
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
+    if (!url.includes('xml')) {
+      requestHeaders.accept = 'application/json';
+    }
+
     const body = await ofetch<string>(url, {
       method,
       headers: requestHeaders,

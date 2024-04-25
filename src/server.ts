@@ -254,6 +254,10 @@ export class PlexServer {
     }
 
     const url = this.url(path);
+    if (!url.toString().includes('xml')) {
+      requestHeaders.accept = 'application/json';
+    }
+
     const response = await ofetch<T>(url.toString(), {
       method,
       headers: requestHeaders,
