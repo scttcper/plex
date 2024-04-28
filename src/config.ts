@@ -10,7 +10,10 @@ import { getMAC, parseMAC } from '@ctrl/mac-address';
 // PlexAPI Settings
 export const PROJECT = 'PlexAPI';
 export const VERSION = '3.3.0';
-export const TIMEOUT = 30000;
+/**
+ * Default timeout for requests in milliseconds.
+ */
+export const TIMEOUT = 30_000;
 export const X_PLEX_CONTAINER_SIZE = 100;
 export const X_PLEX_ENABLE_FAST_CONNECT = false as const;
 

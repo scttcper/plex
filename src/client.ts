@@ -74,6 +74,7 @@ export class PlexClient {
   platform?: string;
   platformVersion?: string;
   title?: string;
+  timeout: number;
 
   constructor(options: PlexOptions = {}) {
     if (options.baseurl) {
@@ -86,6 +87,7 @@ export class PlexClient {
 
     this._baseurl = options.baseurl ?? 'http://localhost:32400';
     this._token = options.token ?? null;
+    this.timeout = options.timeout ?? TIMEOUT;
   }
 
   /**
@@ -94,13 +96,8 @@ export class PlexClient {
    * populated from a PlexServer.
    * @param timeout
    */
-  async connect(timeout?: number): Promise<void> {
-    const data = await this.query<MediaContainer<{ Player: Player }>>(
-      this.key,
-      undefined,
-      undefined,
-      timeout,
-    );
+  async connect(): Promise<void> {
+    const data = await this.query<MediaContainer<{ Player: Player }>>(this.key);
     this._loadData(data.MediaContainer.Player);
   }
 
@@ -125,12 +122,11 @@ export class PlexClient {
     path: string,
     method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
     headers?: Record<string, string>,
-    timeout?: number,
   ): Promise<T> {
     const headersObj = this.headers(headers);
     const response = await ofetch<T>(this.url(path).toString(), {
       method,
-      timeout: timeout ?? TIMEOUT,
+      timeout: this.timeout ?? TIMEOUT,
       headers: headersObj,
       responseType: 'json',
       retry: 0,

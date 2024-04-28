@@ -142,9 +142,13 @@ export class PlexServer {
   private _myPlexAccount?: MyPlexAccount;
 
   constructor(
-    public readonly baseurl: string,
-    public readonly token: string,
-    public readonly timeout?: number,
+    public baseurl: string,
+    public token: string,
+    /**
+     * Default request timeout in milliseconds.
+     * @default 30000
+     */
+    public timeout: number = TIMEOUT,
   ) {}
 
   async agents(mediaType?: number | string) {
@@ -157,12 +161,7 @@ export class PlexServer {
   }
 
   async connect(): Promise<void> {
-    const data = await this.query<MediaContainer<ServerRootResponse>>(
-      this.key,
-      undefined,
-      undefined,
-      this.timeout,
-    );
+    const data = await this.query<MediaContainer<ServerRootResponse>>(this.key);
     this._loadData(data.MediaContainer);
 
     // Attempt to prevent token from being logged accidentally
@@ -237,13 +236,11 @@ export class PlexServer {
    * @param path
    * @param method
    * @param headers
-   * @param timeout
    */
   async query<T = any>(
     path: string,
     method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
     headers?: any,
-    timeout?: number,
     username?: string,
     password?: string,
   ): Promise<T> {
@@ -261,7 +258,7 @@ export class PlexServer {
     const response = await ofetch<T>(url.toString(), {
       method,
       headers: requestHeaders,
-      timeout: timeout ?? TIMEOUT,
+      timeout: this.timeout ?? TIMEOUT,
       retry: 0,
       responseType: 'json',
     });

@@ -89,12 +89,12 @@ export class MyPlexAccount {
    * @param server not often available
    */
   constructor(
-    private readonly baseUrl: string | null = null,
+    public baseUrl: string | null = null,
     public username?: string,
-    private readonly password?: string,
+    public password?: string,
     public token?: string,
-    private readonly timeout = TIMEOUT,
-    private readonly server?: PlexServer,
+    public timeout = TIMEOUT,
+    public server?: PlexServer,
   ) {
     if (this.token) {
       Object.defineProperty(this, 'token', {
@@ -120,8 +120,7 @@ export class MyPlexAccount {
    */
   async connect(): Promise<MyPlexAccount> {
     if (!this.token) {
-      // log('Logging in with username', { username: this.username });
-      const data = await this._signin(this.username, this.password, this.timeout);
+      const data = await this._signin(this.username, this.password);
       this._loadData(data);
       return this;
     }
@@ -189,7 +188,6 @@ export class MyPlexAccount {
     url: string,
     method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
     headers?: any,
-    timeout?: number,
     username?: string,
     password?: string,
   ): Promise<T> {
@@ -206,7 +204,7 @@ export class MyPlexAccount {
     const body = await ofetch<string>(url, {
       method,
       headers: requestHeaders,
-      timeout: timeout ?? TIMEOUT,
+      timeout: this.timeout ?? TIMEOUT,
       retry: 0,
       parseResponse: res => res,
       // Can't seem to pass responseType
@@ -228,7 +226,7 @@ export class MyPlexAccount {
    */
   async claimToken(): Promise<string> {
     const url = 'https://plex.tv/api/claim/token.json';
-    const response = await this.query<{ token: string }>(url, 'get', undefined, TIMEOUT);
+    const response = await this.query<{ token: string }>(url, 'get', undefined);
     return response.token;
   }
 
@@ -261,16 +259,11 @@ export class MyPlexAccount {
     return headers;
   }
 
-  private async _signin(
-    username?: string,
-    password?: string,
-    timeout?: number,
-  ): Promise<UserResponse> {
+  private async _signin(username?: string, password?: string): Promise<UserResponse> {
     const data = await this.query<{ user: UserResponse }>(
       this.SIGNIN,
       'post',
       undefined,
-      timeout,
       username,
       password,
     );
@@ -366,7 +359,7 @@ export class MyPlexResource {
   constructor(
     public readonly account: MyPlexAccount,
     data: ResourcesResponse,
-    private readonly baseUrl: string | null = null,
+    private baseUrl: string | null = null,
   ) {
     this._loadData(data);
   }
