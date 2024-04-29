@@ -1,6 +1,6 @@
-import { URL, URLSearchParams } from 'url';
+import { URLSearchParams } from 'url';
 
-import got from 'got';
+import { ofetch } from 'ofetch';
 import pAny from 'p-any';
 import { parseStringPromise } from 'xml2js';
 
@@ -89,12 +89,12 @@ export class MyPlexAccount {
    * @param server not often available
    */
   constructor(
-    private readonly baseUrl: string | null = null,
+    public baseUrl: string | null = null,
     public username?: string,
-    private readonly password?: string,
+    public password?: string,
     public token?: string,
-    private readonly timeout = TIMEOUT,
-    private readonly server?: PlexServer,
+    public timeout = TIMEOUT,
+    public server?: PlexServer,
   ) {
     if (this.token) {
       Object.defineProperty(this, 'token', {
@@ -120,8 +120,7 @@ export class MyPlexAccount {
    */
   async connect(): Promise<MyPlexAccount> {
     if (!this.token) {
-      // log('Logging in with username', { username: this.username });
-      const data = await this._signin(this.username, this.password, this.timeout);
+      const data = await this._signin(this.username, this.password);
       this._loadData(data);
       return this;
     }
@@ -189,7 +188,6 @@ export class MyPlexAccount {
     url: string,
     method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
     headers?: any,
-    timeout?: number,
     username?: string,
     password?: string,
   ): Promise<T> {
@@ -199,23 +197,25 @@ export class MyPlexAccount {
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
-    const promise = got({
+    if (!url.includes('xml')) {
+      requestHeaders.accept = 'application/json';
+    }
+
+    const body = await ofetch<string>(url, {
       method,
-      url: new URL(url),
       headers: requestHeaders,
-      timeout: { request: timeout ?? TIMEOUT },
-      ...(username ? { username } : {}),
-      ...(password ? { password } : {}),
-      retry: { limit: 0 },
+      timeout: this.timeout ?? TIMEOUT,
+      retry: 0,
+      parseResponse: res => res,
+      // Can't seem to pass responseType
     });
 
     if (url.includes('xml')) {
-      const res = await promise;
-      const xml = await parseStringPromise(res.body);
+      const xml = await parseStringPromise(body);
       return xml;
     }
 
-    const res = await promise.json<T>();
+    const res = JSON.parse(body);
     return res;
   }
 
@@ -226,7 +226,7 @@ export class MyPlexAccount {
    */
   async claimToken(): Promise<string> {
     const url = 'https://plex.tv/api/claim/token.json';
-    const response = await this.query<{ token: string }>(url, 'get', undefined, TIMEOUT);
+    const response = await this.query<{ token: string }>(url, 'get', undefined);
     return response.token;
   }
 
@@ -239,12 +239,11 @@ export class MyPlexAccount {
       ...BASE_HEADERS,
     });
     const url = `${this.baseUrl}/myplex/claim?${params.toString()}`;
-    return got({
-      method: 'POST',
-      url,
-      timeout: { request: TIMEOUT },
+    return ofetch(url, {
+      method: 'post',
+      timeout: TIMEOUT,
       headers: this._headers(),
-      retry: { limit: 0 },
+      retry: 0,
     });
   }
 
@@ -260,16 +259,11 @@ export class MyPlexAccount {
     return headers;
   }
 
-  private async _signin(
-    username?: string,
-    password?: string,
-    timeout?: number,
-  ): Promise<UserResponse> {
+  private async _signin(username?: string, password?: string): Promise<UserResponse> {
     const data = await this.query<{ user: UserResponse }>(
       this.SIGNIN,
       'post',
       undefined,
-      timeout,
       username,
       password,
     );
@@ -365,7 +359,7 @@ export class MyPlexResource {
   constructor(
     public readonly account: MyPlexAccount,
     data: ResourcesResponse,
-    private readonly baseUrl: string | null = null,
+    private baseUrl: string | null = null,
   ) {
     this._loadData(data);
   }
@@ -410,7 +404,7 @@ export class MyPlexResource {
   /** Remove this device from your account */
   async delete(): Promise<void> {
     const key = `https://plex.tv/api/servers/${this.clientIdentifier}?X-Plex-Client-Identifier=${BASE_HEADERS['X-Plex-Client-Identifier']}&X-Plex-Token=${this.accessToken}`;
-    await got.delete(key, { retry: { limit: 0 } });
+    await ofetch(key, { method: 'delete', retry: 0 });
   }
 
   private _loadData(data: ResourcesResponse): void {
