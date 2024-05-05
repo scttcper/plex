@@ -48,6 +48,4 @@ media/config
 media/db
 media/transcode
 
-# temporary ignore
-examples
 .env
