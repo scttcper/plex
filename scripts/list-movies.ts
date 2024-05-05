@@ -3,8 +3,8 @@ import { MovieSection, MyPlexAccount } from '../src/index.js';
 async function listMovies() {
   const account = await new MyPlexAccount(
     'http://136.24.98.251:32400',
-    'scttcper@gmail.com',
-    'wqu@vky!vjg7RKA_dfk',
+    'xyz',
+    'password',
   ).connect();
   const resource = await account.resource('cooper-plex');
   const plex = await resource.connect();
