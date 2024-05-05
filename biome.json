@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["dist/*", "package.json"]
+    "ignore": ["dist/*", "package.json", "plex", "media"]
   },
   "linter": {
     "rules": {

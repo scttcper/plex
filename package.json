@@ -20,10 +20,10 @@
     "typescript"
   ],
   "scripts": {
-    "lint": "pnpm run '/^(lint:biome|lint:eslint)$/'",
+    "lint": "npm run lint:biome && npm run lint:eslint",
     "lint:biome": "biome check .",
     "lint:eslint": "eslint --ext .ts,.tsx .",
-    "lint:fix": "pnpm run '/^(lint:biome|lint:eslint):fix$/'",
+    "lint:fix": "npm run lint:biome:fix && npm run lint:eslint:fix",
     "lint:eslint:fix": "eslint --ext .ts,.tsx . --fix",
     "lint:biome:fix": "biome check . --apply",
     "prepare": "npm run build",

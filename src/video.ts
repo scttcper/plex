@@ -175,7 +175,7 @@ export class Movie extends Video {
   media!: Media[];
   guids!: Guid[];
   markers!: Marker[];
-  ratings!: Rating[];
+  ratings?: Rating[];
 
   get actors() {
     return this.roles;
