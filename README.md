@@ -98,3 +98,41 @@ Post testing, remove plex server from account. Warning this is destructive. Do n
 ```sh
 npm run test-cleanup
 ```
+
+
+### Running tests locally (mostly for myself)
+
+get a claim token from https://www.plex.tv/claim/
+export PLEX_CLAIM_TOKEN=claim-token
+
+```
+docker run -d \
+  --name=plex \
+  --net=host \
+  -h orbstack \
+  -p 32400:32400/tcp \
+  -p 32400:32400 \
+  -p 1900:1900/udp \
+  -p 5353:5353/udp \
+  -p 8324:8324 \
+  -p 32410:32410/udp \
+  -p 32412:32412/udp \
+  -p 32413:32413/udp \
+  -p 32414:32414/udp \
+  -p 32469:32469 \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=Etc/UTC \
+  -e VERSION=docker \
+  -e PLEX_CLAIM=$PLEX_CLAIM_TOKEN \
+  -v /Users/scooper/gh/plex/plex/media/db:/config \
+  -v /Users/scooper/gh/plex/plex/media/transcode:/transcode \
+  -v /Users/scooper/gh/plex/plex/media:/data \
+  --restart unless-stopped \
+  lscr.io/linuxserver/plex:latest
+```
+
+bootstrap media
+```
+NODE_OPTIONS="--loader ts-node/esm" node scripts/bootstraptest.ts --no-docker --server-name=orbstack`
+```

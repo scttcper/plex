@@ -280,3 +280,33 @@ class GuidTag extends PlexObject {
 export class Guid extends GuidTag {
   static override TAG = 'Guid' as const;
 }
+
+/**
+ * Represents a single Rating media tag.
+ */
+export class Rating extends PlexObject {
+  static override TAG = 'Rating' as const;
+
+  /**
+   * The uri for the rating image
+   * (e.g. ``imdb://image.rating``, ``rottentomatoes://image.rating.ripe``,
+   * ``rottentomatoes://image.rating.upright``, ``themoviedb://image.rating``).
+   */
+  image!: string;
+
+  /**
+   * The type of rating (e.g. audience or critic).
+   */
+  type!: 'audience' | 'critic';
+
+  /**
+   * The rating value.
+   */
+  value!: number;
+
+  protected _loadData(data: any) {
+    this.image = data.image;
+    this.type = data.type;
+    this.value = data.value;
+  }
+}
