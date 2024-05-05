@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import delay from 'delay';
 import { execa } from 'execa';
 import { globby } from 'globby';
-import makeDir from 'make-dir';
+import { makeDirectory } from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
 import yargs from 'yargs';
@@ -186,7 +186,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
 }
 
 async function setupMovies(moviePath: string): Promise<number> {
-  await makeDir(moviePath);
+  await makeDirectory(moviePath);
   const files = await globby(`${moviePath}/*.mkv`);
   const totalMovies = Object.keys(requiredMovies).length;
   if (files.length === totalMovies) {
@@ -198,7 +198,7 @@ async function setupMovies(moviePath: string): Promise<number> {
 }
 
 async function setupShows(showPath: string): Promise<number> {
-  await makeDir(showPath);
+  await makeDirectory(showPath);
   const files = await globby(`${showPath}/*.mkv`);
   const totalEpisodes = Object.values(requiredShows).flat(2).length;
 
@@ -227,7 +227,7 @@ async function main() {
   const claimToken = await account.claimToken();
   const destination = join(__dirname, '..', argv.destination);
   const mediaPath = join(destination, 'media');
-  await makeDir(mediaPath);
+  await makeDirectory(mediaPath);
   console.log({
     __dirname,
     destination,

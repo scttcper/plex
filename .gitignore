@@ -44,8 +44,10 @@ media/**/**.mp4
 
 # media garbage
 plex
+media/config
 media/db
 media/transcode
 
 # temporary ignore
 examples
+.env

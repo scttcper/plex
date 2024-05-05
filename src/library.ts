@@ -390,14 +390,14 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   _filterTypes?: FilteringType[];
   _fieldTypes?: FilteringFieldType[];
 
-  async all(sort = '') {
+  async all(sort = ''): Promise<SectionVideoType[]> {
     let sortStr = '';
     if (sort) {
       sortStr = `?sort=${sort}`;
     }
 
     const key = `/library/sections/${this.key}/all${sortStr}`;
-    const items = await fetchItems(this.server, key);
+    const items = await fetchItems(this.server, key, undefined, this.VIDEO_TYPE, this);
     return items;
   }
 

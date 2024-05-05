@@ -13,6 +13,7 @@ import {
   Marker,
   Media,
   Producer,
+  Rating,
   Role,
   Similar,
   Writer,
@@ -174,6 +175,7 @@ export class Movie extends Video {
   media!: Media[];
   guids!: Guid[];
   markers!: Marker[];
+  ratings?: Rating[];
 
   get actors() {
     return this.roles;
@@ -242,6 +244,7 @@ export class Movie extends Video {
     this.media = data.Media?.map(d => new Media(this.server, d, undefined, this)) ?? [];
     this.guids = data.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
     this.markers = data.Marker?.map(d => new Marker(this.server, d, undefined, this)) ?? [];
+    this.ratings = data.Rating?.map(d => new Rating(this.server, d, undefined, this)) ?? [];
   }
 
   protected _loadFullData(data: FullMovieResponse): void {

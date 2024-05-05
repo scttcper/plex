@@ -117,6 +117,7 @@ export interface MovieData {
   Extras?: ExtrasData[];
   Guid?: Guid[];
   Marker?: MarkerData[];
+  Rating?: MediaRating[];
 }
 
 export interface MediaTag {
@@ -262,4 +263,16 @@ interface ExtrasStream {
   extendedDisplayTitle: string;
   selected?: boolean;
   channels?: number;
+}
+
+interface MediaRating {
+  image: string;
+  /**
+   * ex 8.3
+   */
+  value: number;
+  /**
+   * ex 'audience'
+   */
+  type: string;
 }
