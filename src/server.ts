@@ -240,7 +240,7 @@ export class PlexServer {
   async query<T = any>(
     path: string,
     method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
-    headers?: any,
+    options: { headers?: Record<string, string>; body?: Uint8Array } = {},
     username?: string,
     password?: string,
   ): Promise<T> {
@@ -259,6 +259,7 @@ export class PlexServer {
       method,
       headers: requestHeaders,
       timeout: this.timeout ?? TIMEOUT,
+      body: options.body,
       retry: 0,
       responseType: 'json',
     });

@@ -310,3 +310,82 @@ export class Rating extends PlexObject {
     this.value = data.value;
   }
 }
+
+/**
+ * Base class for all Art, Poster, and Theme objects.
+ */
+abstract class BaseResource extends PlexObject {
+  /**
+   * The source of the resource. 'local' for local files (e.g. theme.mp3),
+   */
+  provider!: string;
+
+  /**
+   * Unique key identifying the resource.
+   */
+  ratingKey!: string;
+
+  /**
+   * True if the resource is currently selected.
+   */
+  selected!: boolean;
+
+  /**
+   * The URL to retrieve the resource thumbnail.
+   */
+  thumb!: string;
+
+  async select() {
+    const key = this.key.slice(0, -1);
+    const params = new URLSearchParams();
+    params.append('url', this.ratingKey);
+    return this.server.query(`${key}?${params.toString()}`, 'put');
+  }
+
+  resourceFilepath(): string {
+    if (this.ratingKey.startsWith('media://')) {
+      return `Media/localhost/${this.ratingKey.split('://')[1]}`;
+    }
+
+    const parent = this.parent?.deref();
+
+    if (this.ratingKey.startsWith('metadata://') && parent) {
+      return `${parent.metadataDirectory}/Contents/_combined/${this.ratingKey.split('://')[1]}`;
+    }
+
+    if (this.ratingKey.startsWith('upload://') && parent) {
+      return `${parent.metadataDirectory}/Uploads/${this.ratingKey.split('://')[1]}`;
+    }
+
+    return this.ratingKey;
+  }
+
+  protected _loadData(data: any) {
+    this.key = data.key;
+    this.provider = data.provider;
+    this.ratingKey = data.ratingKey;
+    this.selected = data.selected;
+    this.thumb = data.thumb;
+  }
+}
+
+/**
+ * Represents a single Art object.
+ */
+export class Art extends BaseResource {
+  static override TAG = 'Art';
+}
+
+/**
+ * Represents a single Poster object.
+ */
+export class Poster extends BaseResource {
+  static override TAG = 'Photo';
+}
+
+/**
+ * Represents a single Theme object.
+ */
+export class Theme extends BaseResource {
+  static override TAG = 'Theme';
+}

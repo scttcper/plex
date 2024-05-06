@@ -182,4 +182,12 @@ describe('Movies', () => {
     expect(extra.type).toBe('clip');
     expect((await extra.section()).title).toBe('Movies');
   });
+
+  it('should get video posters', async () => {
+    const posters = await movie.posters();
+    expect(posters.length).toBeGreaterThan(0);
+    expect(posters[0].provider).toBe('tmdb');
+    expect(posters[0].ratingKey).toContain('image.tmdb.org');
+    expect(posters[0].selected).toBe(false);
+  });
 });
