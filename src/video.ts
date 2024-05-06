@@ -12,6 +12,7 @@ import {
   Guid,
   Marker,
   Media,
+  Poster,
   Producer,
   Rating,
   Role,
@@ -108,6 +109,42 @@ abstract class Video extends Playable {
       this.server,
       this,
     );
+  }
+
+  /**
+   * Returns list of available Poster objects.
+   */
+  async posters(): Promise<Poster[]> {
+    return fetchItems(
+      this.server,
+      `/library/metadata/${this.ratingKey}/posters`,
+      undefined,
+      Poster,
+    );
+  }
+
+  /**
+   * Set the poster for a Plex object.
+   * @param poster The poster object to select.
+   */
+  async setPoster(poster: Poster) {
+    await poster.select();
+    return this;
+  }
+
+  /**
+   * I haven't tested this yet. It may not work.
+   */
+  async uploadPoster(url?: string, file?: Uint8Array): Promise<void> {
+    if (url) {
+      const key = `/library/metadata/${this.ratingKey}/posters?url=${encodeURIComponent(url)}`;
+      await this.server.query(key, 'post');
+    } else if (file) {
+      const key = `/library/metadata/${this.ratingKey}/posters`;
+      await this.server.query(key, 'post', {
+        body: file,
+      });
+    }
   }
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
