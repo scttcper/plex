@@ -41,6 +41,14 @@ abstract class Video extends Playable {
   viewCount?: number;
   art?: string;
   grandparentArt?: string;
+  /**
+   * BlurHash string for artwork image.
+   */
+  artBlurHash?: string;
+  /**
+   * BlurHash string for thumbnail image.
+   */
+  thumbBlurHash?: string;
 
   /**
    * Returns True if this video is watched.
@@ -120,6 +128,9 @@ abstract class Video extends Playable {
     this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.viewCount = (data as MovieData).viewCount;
     this.playlistItemID = (data as any).playlistItemID;
+    // todo: update one of them with this property
+    this.artBlurHash = (data as any).artBlurHash;
+    this.thumbBlurHash = (data as any).thumbBlurHash;
   }
 }
 
