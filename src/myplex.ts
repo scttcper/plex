@@ -6,9 +6,9 @@ import { parseStringPromise } from 'xml2js';
 
 import { PlexObject } from './base/plexObject.js';
 import { BASE_HEADERS, TIMEOUT } from './config.js';
-import { Connection, Device, ResourcesResponse, UserResponse } from './myplex.types.js';
+import { Connection, Device, ResourcesResponse, UserResponse, WebLogin } from './myplex.types.js';
 import { PlexServer } from './server.js';
-import { MediaContainer } from './util.js';
+import { MediaContainer, sleep } from './util.js';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -19,6 +19,94 @@ import { MediaContainer } from './util.js';
  */
 export class MyPlexAccount {
   static key = 'https://plex.tv/api/v2/user';
+
+  /**
+   * This follows the outline described in https://forums.plex.tv/t/authenticating-with-plex/609370
+   * to fetch a token and potentially compromise username and password. To use first call `getWebLogin()`
+   * and present the returned uri to a user to go to, then await `webLoginCheck()`. If you pass in a
+   * `forwardUrl`, then send the user to the returned uri, and when a request comes in on the passed in
+   * url, then await `webLoginCheck()`.
+   */
+  static async getWebLogin(forwardUrl: string | null = null): Promise<WebLogin> {
+    const appName = BASE_HEADERS['X-Plex-Product'];
+    const clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'];
+    const pin = await ofetch<Omit<WebLogin, 'uri'>>('https://plex.tv/api/v2/pins', {
+      method: 'post',
+      headers: {
+        Accept: 'application/json'
+      },
+      query: {
+        strong: 'true',
+        'X-Plex-Product': appName,
+        'X-Plex-Client-Identifier': clientIdentifier,
+      },
+    });
+    return {...pin,
+      uri: `https://app.plex.tv/auth#?clientID=${
+        encodeURIComponent(clientIdentifier)
+      }&code=${
+        encodeURIComponent(pin.code)
+      }&context%5Bdevice%5D%5Bproduct%5D=${
+        encodeURIComponent(appName)
+      }${forwardUrl ?
+        '&forwardUrl=' + encodeURIComponent(forwardUrl) :
+        ''
+      }`
+    };
+  }
+
+  /**
+   * Pass in the `webLogin` object obtained from `getWebLogin()` and this will poll Plex to see if
+   * the user agreed. It returns a connected `MyPlexAccount` or throws an error.
+   */
+  static async webLoginCheck(webLogin: WebLogin, timeoutSeconds = 60): Promise<MyPlexAccount> {
+    const recheckMs = 3000;
+    const clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'];
+    const uri = `https://plex.tv/api/v2/pins/${webLogin.id}`;
+    const startTime = Date.now();
+    while (Date.now() < startTime + (timeoutSeconds * 1000)) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const tokenResponse = await ofetch(uri, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+          },
+          query: {
+            code: webLogin.code,
+            'X-Plex-Client-Identifier': clientIdentifier,
+          },
+          timeout: recheckMs,
+          retry: 5,
+          retryDelay: recheckMs,
+        });
+        if (tokenResponse.authToken) {
+          const myPlexAccount = new MyPlexAccount(null, '', '', tokenResponse.authToken);
+          // eslint-disable-next-line no-await-in-loop
+          return await myPlexAccount.connect();
+        }
+
+        console.error('sleeping');
+
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(recheckMs);
+      } catch (err) {
+        if ((err as Error).message.includes('aborted')) {
+          continue;
+        }
+
+        if ((err as Error).message.includes('429')) {
+          // eslint-disable-next-line no-await-in-loop
+          await sleep(recheckMs);
+          continue;
+        }
+
+        throw err;
+      }
+    }
+
+    throw new Error('Timeout');
+  }
 
   FRIENDINVITE = 'https://plex.tv/api/servers/{machineId}/shared_servers'; // post with data
   HOMEUSERCREATE = 'https://plex.tv/api/home/users?title={title}'; // post with data

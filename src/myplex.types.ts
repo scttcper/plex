@@ -134,3 +134,9 @@ export interface Device {
   };
   Connection?: Array<{ $: { uri: string } }>;
 }
+
+export interface WebLogin {
+  id: number;
+  code: string;
+  uri: string;
+}
