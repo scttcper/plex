@@ -95,12 +95,6 @@ export class MyPlexAccount {
           continue;
         }
 
-        if ((err as Error).message.includes('429')) {
-          // eslint-disable-next-line no-await-in-loop
-          await sleep(recheckMs);
-          continue;
-        }
-
         throw err;
       }
     }
