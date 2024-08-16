@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, expect, it } from 'vitest';
 
-import { Movie, MovieSection, Playlist, PlexServer } from '../src/index.js';
+import { type Movie, type MovieSection, Playlist, type PlexServer } from '../src/index.js';
 
 import { createClient } from './test-client.js';
 
@@ -8,15 +8,19 @@ let plex: PlexServer;
 let playlist: Playlist | undefined;
 let buckBunny: Movie;
 let ghostbusters: Movie;
+
 beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
   [buckBunny] = await section.search({ title: 'Bunny' });
   [ghostbusters] = await section.search({ title: 'Ghostbusters' });
+  // biome-ignore lint/nursery/noMisplacedAssertion: whatever
   expect(buckBunny).toBeDefined();
+  // biome-ignore lint/nursery/noMisplacedAssertion: whatever
   expect(ghostbusters).toBeDefined();
 });
+
 afterEach(async () => {
   await playlist?.delete();
   playlist = undefined;

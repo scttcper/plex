@@ -258,7 +258,6 @@ export class Library {
     const results: any[] = [];
     const sections = await this.sections();
     for (const section of sections) {
-      // eslint-disable-next-line no-await-in-loop
       const items = await section.all();
       for (const item of items) {
         results.push(item);
@@ -274,7 +273,6 @@ export class Library {
   async emptyTrash() {
     const sections = await this.sections();
     for (const section of sections) {
-      // eslint-disable-next-line no-await-in-loop
       await section.emptyTrash();
     }
   }

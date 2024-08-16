@@ -161,10 +161,9 @@ export class Playlist extends Playable {
     }
 
     for (const item of items) {
-      // eslint-disable-next-line no-await-in-loop
       const playlistItemId = await this._getPlaylistItemID(item);
       const key = `${this.key}/items/${playlistItemId}`;
-      // eslint-disable-next-line no-await-in-loop
+
       await this.server.query(key, 'delete');
     }
   }

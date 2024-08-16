@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 

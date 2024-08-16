@@ -11,13 +11,9 @@ async function listLibraries(account: MyPlexAccount) {
   }
 }
 
-MyPlexAccount.getWebLogin().then(
-  webLogin => {
-    console.log('Got to', webLogin.uri);
-    MyPlexAccount.webLoginCheck(webLogin).then(
-      account => listLibraries(account).then(
-        () => console.log('done')
-      )
-    );
-  }
-);
+MyPlexAccount.getWebLogin().then(webLogin => {
+  console.log('Got to', webLogin.uri);
+  MyPlexAccount.webLoginCheck(webLogin).then(account =>
+    listLibraries(account).then(() => console.log('done')),
+  );
+});

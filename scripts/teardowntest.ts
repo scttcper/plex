@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { PlexServer, X_PLEX_IDENTIFIER } from '../src/index.js';
 
 async function main() {

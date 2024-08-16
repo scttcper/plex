@@ -30,7 +30,6 @@ async function listMovies() {
   const movies = await movieSection.all();
 
   for (const movie of movies) {
-    // eslint-disable-next-line no-await-in-loop
     await movie.reload();
     console.log('---');
     console.log(movie.title);

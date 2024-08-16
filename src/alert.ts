@@ -17,7 +17,6 @@ export class AlertListener {
     const url = this.server.url(this.key, true).toString().replace('http', 'ws');
     this._ws = new WebSocket(url);
 
-    // eslint-disable-next-line @typescript-eslint/ban-types
     this._ws.on('message', (buffer: Buffer) => {
       try {
         const data: NotificationContainer<AlertTypes> = JSON.parse(buffer.toString());

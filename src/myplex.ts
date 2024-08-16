@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import { ofetch } from 'ofetch';
 import pAny from 'p-any';
@@ -6,9 +6,15 @@ import { parseStringPromise } from 'xml2js';
 
 import { PlexObject } from './base/plexObject.js';
 import { BASE_HEADERS, TIMEOUT } from './config.js';
-import { Connection, Device, ResourcesResponse, UserResponse, WebLogin } from './myplex.types.js';
+import type {
+  Connection,
+  Device,
+  ResourcesResponse,
+  UserResponse,
+  WebLogin,
+} from './myplex.types.js';
 import { PlexServer } from './server.js';
-import { MediaContainer, sleep } from './util.js';
+import { type MediaContainer } from './util.js';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -33,7 +39,7 @@ export class MyPlexAccount {
     const pin = await ofetch<Omit<WebLogin, 'uri'>>('https://plex.tv/api/v2/pins', {
       method: 'post',
       headers: {
-        Accept: 'application/json'
+        Accept: 'application/json',
       },
       query: {
         strong: 'true',
@@ -41,17 +47,15 @@ export class MyPlexAccount {
         'X-Plex-Client-Identifier': clientIdentifier,
       },
     });
-    return {...pin,
-      uri: `https://app.plex.tv/auth#?clientID=${
-        encodeURIComponent(clientIdentifier)
-      }&code=${
-        encodeURIComponent(pin.code)
-      }&context%5Bdevice%5D%5Bproduct%5D=${
-        encodeURIComponent(appName)
-      }${forwardUrl ?
-        '&forwardUrl=' + encodeURIComponent(forwardUrl) :
-        ''
-      }`
+    return {
+      ...pin,
+      uri: `https://app.plex.tv/auth#?clientID=${encodeURIComponent(
+        clientIdentifier,
+      )}&code=${encodeURIComponent(
+        pin.code,
+      )}&context%5Bdevice%5D%5Bproduct%5D=${encodeURIComponent(appName)}${
+        forwardUrl ? '&forwardUrl=' + encodeURIComponent(forwardUrl) : ''
+      }`,
     };
   }
 
@@ -64,9 +68,8 @@ export class MyPlexAccount {
     const clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'];
     const uri = `https://plex.tv/api/v2/pins/${webLogin.id}`;
     const startTime = Date.now();
-    while (Date.now() < startTime + (timeoutSeconds * 1000)) {
+    while (Date.now() < startTime + timeoutSeconds * 1000) {
       try {
-        // eslint-disable-next-line no-await-in-loop
         const tokenResponse = await ofetch(uri, {
           method: 'GET',
           headers: {
@@ -82,13 +85,10 @@ export class MyPlexAccount {
         });
         if (tokenResponse.authToken) {
           const myPlexAccount = new MyPlexAccount(null, '', '', tokenResponse.authToken);
-          // eslint-disable-next-line no-await-in-loop
+
           return await myPlexAccount.connect();
         }
 
-        console.error('sleeping');
-
-        // eslint-disable-next-line no-await-in-loop
         await sleep(recheckMs);
       } catch (err) {
         if ((err as Error).message.includes('aborted')) {
@@ -99,7 +99,7 @@ export class MyPlexAccount {
       }
     }
 
-    throw new Error('Timeout');
+    throw new Error('Failed to authenticate before timeout');
   }
 
   FRIENDINVITE = 'https://plex.tv/api/servers/{machineId}/shared_servers'; // post with data
@@ -441,7 +441,7 @@ export class MyPlexResource {
   constructor(
     public readonly account: MyPlexAccount,
     data: ResourcesResponse,
-    private baseUrl: string | null = null,
+    private readonly baseUrl: string | null = null,
   ) {
     this._loadData(data);
   }

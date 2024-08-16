@@ -6,7 +6,6 @@ async function cleanup(): Promise<void> {
   console.log(`${resources.length} servers found`);
   for (const resource of resources) {
     try {
-      // eslint-disable-next-line no-await-in-loop
       await resource.delete();
     } catch {
       // pass

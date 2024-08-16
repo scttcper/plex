@@ -319,7 +319,7 @@ export class PlexServer {
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
       key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
-      // eslint-disable-next-line no-await-in-loop
+
       raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
       results = results.concat(raw.MediaContainer.Metadata);
     }
@@ -353,7 +353,6 @@ export class PlexServer {
    * you're likley to recieve an authentication error calling this.
    */
   myPlexAccount(): MyPlexAccount {
-    // eslint-disable-next-line logical-assignment-operators
     if (!this._myPlexAccount) {
       this._myPlexAccount = new MyPlexAccount(
         this.baseurl,
@@ -388,7 +387,7 @@ export class PlexServer {
 
     for (const server of response.MediaContainer.Server) {
       let { port } = server;
-      // eslint-disable-next-line logical-assignment-operators
+
       if (!port) {
         // TODO: print warning about doing weird port stuff
         port = Number(ports?.[server.machineIdentifier]);
