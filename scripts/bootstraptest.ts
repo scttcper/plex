@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises'
 
-import delay from 'delay';
 import { execa } from 'execa';
 import { globby } from 'globby';
 import { makeDirectory } from 'make-dir';
@@ -156,7 +156,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
     listener = new AlertListener(server, alertCallback);
     await listener.run();
 
-    await delay(4000);
+    await sleep(4000);
 
     try {
       // Add the specified section to our Plex instance. This tends to be a bit
@@ -175,7 +175,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
         },
         {
           retries: 60,
-          onFailedAttempt: async () => delay(1000),
+          onFailedAttempt: async () => sleep(1000),
         },
       );
     } catch {
@@ -276,7 +276,7 @@ async function main() {
   try {
     plexServer = await pRetry(connectServer, {
       retries: 20,
-      onFailedAttempt: async () => delay(1000),
+      onFailedAttempt: async () => sleep(1000),
     });
   } catch (err) {
     console.error(err);

@@ -1,10 +1,9 @@
+import { setTimeout as sleep } from 'node:timers/promises'
+
 import { PlexServer } from '../src/index.js';
 import { createClient } from '../test/test-client.js';
 
-const delay = async (ms: number) =>
-  new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
+
 
 export async function addMedia(): Promise<void> {
   let server: PlexServer;
@@ -32,7 +31,7 @@ export async function addMedia(): Promise<void> {
       'prefs[augmentWithProviderContent]': '0',
     },
   );
-  await delay(10000);
+  await sleep(10000);
   await library.add(
     'Movies',
     'movie',
@@ -49,7 +48,7 @@ export async function addMedia(): Promise<void> {
     },
   );
 
-  await delay(25000);
+  await sleep(25000);
 }
 
 if (!module.parent) {
