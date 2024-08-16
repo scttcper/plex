@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises'
+import { setTimeout as sleep } from 'node:timers/promises';
 
 import { execa } from 'execa';
 import { globby } from 'globby';
