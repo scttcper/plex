@@ -277,6 +277,7 @@ class GuidTag extends PlexObject {
   }
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class Guid extends GuidTag {
   static override TAG = 'Guid' as const;
 }
@@ -372,6 +373,7 @@ abstract class BaseResource extends PlexObject {
 /**
  * Represents a single Art object.
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class Art extends BaseResource {
   static override TAG = 'Art';
 }
@@ -379,6 +381,7 @@ export class Art extends BaseResource {
 /**
  * Represents a single Poster object.
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class Poster extends BaseResource {
   static override TAG = 'Photo';
 }
@@ -386,6 +389,7 @@ export class Poster extends BaseResource {
 /**
  * Represents a single Theme object.
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: <explanation>
 export class Theme extends BaseResource {
   static override TAG = 'Theme';
 }
