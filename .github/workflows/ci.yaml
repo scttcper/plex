@@ -17,19 +17,12 @@ jobs:
       PLEX_CONTAINER: plexinc/pms-docker
       PLEX_CONTAINER_TAG: latest
     steps:
+      # https://github.com/actions/checkout
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - name: install
-        run: pnpm install
+      # https://github.com/wyvox/action-setup-pnpm
+      - uses: wyvox/action-setup-pnpm@v3
+        with: { node-version: 22, pnpm-version: 9 }
 
       - name: lint
         run: pnpm run lint
@@ -99,21 +92,12 @@ jobs:
       pull-requests: write # to be able to comment on released pull requests
       id-token: write # to enable use of OIDC for npm provenance
     steps:
+      # https://github.com/actions/checkout
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - name: install
-        run: pnpm install
+      # https://github.com/wyvox/action-setup-pnpm
+      - uses: wyvox/action-setup-pnpm@v3
+        with: { node-version: 22, pnpm-version: 9 }
 
       - name: release
         run: npx semantic-release
