@@ -630,7 +630,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   }
 
   /**
-   * Returns a list of available {@link FilteringFields} for a specified libtype.
+   * Returns a list of available {@link FilteringField} for a specified libtype.
    * This is the list of options in the custom filter dropdown menu
    */
   async listFields(libtype: Libtype = this.type) {
