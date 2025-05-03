@@ -1,8 +1,8 @@
 import { URLSearchParams } from 'url';
 
 import { SearchResult, searchType } from '../search.js';
-import { MatchSearchResult } from '../search.types.js';
-import { getAgentIdentifier, ltrim, MediaContainer, tagHelper } from '../util.js';
+import type { MatchSearchResult } from '../search.types.js';
+import { getAgentIdentifier, ltrim, type MediaContainer, tagHelper } from '../util.js';
 
 import { PlexObject } from './plexObject.js';
 

@@ -1,5 +1,5 @@
 import type { PlexServer } from './server.js';
-import { MediaContainer } from './util.js';
+import type { MediaContainer } from './util.js';
 
 export const OPERATORS = {
   exact: (v: string | number, q: string | number) => v === q,

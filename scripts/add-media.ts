@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { PlexServer } from '../src/index.js';
+import type { PlexServer } from '../src/index.js';
 import { createClient } from '../test/test-client.js';
 
 export async function addMedia(): Promise<void> {

@@ -1,12 +1,12 @@
 import { URLSearchParams } from 'url';
 
-import { Class } from 'type-fest';
+import type { Class } from 'type-fest';
 
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
-import {
+import type {
   CollectionData,
   LibraryRootResponse,
   Location,
@@ -14,11 +14,11 @@ import {
   SectionsResponse,
 } from './library.types.js';
 import { Playlist } from './playlist.js';
-import { Agent, searchType, SEARCHTYPES } from './search.js';
-import { SearchResult } from './search.types.js';
+import { type Agent, searchType, type SEARCHTYPES } from './search.js';
+import type { SearchResult } from './search.types.js';
 import type { PlexServer } from './server.js';
-import { MediaContainer } from './util.js';
-import { Movie, Show, VideoType } from './video.js';
+import type { MediaContainer } from './util.js';
+import { Movie, Show, type VideoType } from './video.js';
 
 export type Section = MovieSection | ShowSection;
 
@@ -643,7 +643,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     if (!filter) {
       throw new NotFound(
         `Unknown libtype "${libtype}" for this library.
-        Available libtypes: ${filterTypes.join(', ')}`,
+        Available libtypes: ${filterTypes.map(f => f.type).join(', ')}`,
       );
     }
 

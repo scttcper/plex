@@ -10,7 +10,7 @@ import pRetry from 'p-retry';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { AlertListener, AlertTypes, MyPlexAccount, PlexServer } from '../src/index.js';
+import { AlertListener, type AlertTypes, MyPlexAccount, type PlexServer } from '../src/index.js';
 
 import { prepareMovieDir, prepareTvDir, requiredMovies, requiredShows } from './create-media.js';
 

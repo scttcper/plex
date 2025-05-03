@@ -1,4 +1,4 @@
-import { ChapterSource, MarkerData, MediaTagData } from './video.types.js';
+import type { ChapterSource, MarkerData, MediaTagData } from './video.types.js';
 
 export interface LibraryRootResponse {
   size: number;

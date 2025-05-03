@@ -1,7 +1,7 @@
-import { ValueOf } from 'type-fest';
+import type { ValueOf } from 'type-fest';
 
 import { PlexObject } from './base/plexObject.js';
-import { MatchSearchResult } from './search.types.js';
+import type { MatchSearchResult } from './search.types.js';
 import { rsplit } from './util.js';
 
 export class SearchResult extends PlexObject {

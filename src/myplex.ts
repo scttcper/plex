@@ -14,7 +14,7 @@ import type {
   WebLogin,
 } from './myplex.types.js';
 import { PlexServer } from './server.js';
-import { type MediaContainer } from './util.js';
+import type { MediaContainer } from './util.js';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on

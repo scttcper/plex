@@ -15,9 +15,9 @@ beforeAll(async () => {
   const section = await library.section<MovieSection>('Movies');
   [buckBunny] = await section.search({ title: 'Bunny' });
   [ghostbusters] = await section.search({ title: 'Ghostbusters' });
-  // biome-ignore lint/nursery/noMisplacedAssertion: whatever
+  // biome-ignore lint/suspicious/noMisplacedAssertion: <explanation>
   expect(buckBunny).toBeDefined();
-  // biome-ignore lint/nursery/noMisplacedAssertion: whatever
+  // biome-ignore lint/suspicious/noMisplacedAssertion: <explanation>
   expect(ghostbusters).toBeDefined();
 });
 
