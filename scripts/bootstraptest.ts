@@ -123,6 +123,7 @@ type Section = {
   scanner: string;
   language: string;
   expectedMediaCount: number;
+  prefs?: Record<string, string>;
 };
 
 type Options = {
@@ -171,6 +172,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
             section.scanner,
             section.location,
             section.language,
+            section.prefs,
           );
         },
         {
@@ -333,6 +335,11 @@ async function main() {
       scanner: 'Plex TV Series',
       language: 'en-US',
       expectedMediaCount: numMovies,
+      prefs: {
+        // disable intro and credits markers to speed up tests
+        'prefs[enableIntroMarkerGeneration]': '0',
+        'prefs[enableCreditsMarkerGeneration]': '0',
+      },
     });
   }
 
