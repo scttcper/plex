@@ -117,10 +117,10 @@ export class MediaPart extends PlexObject {
   exists?: boolean;
 
   /**
-   * Set the selected {@link MediaPartStream} for this MediaPart.
+   * Set the selected {@link AudioStream} for this MediaPart.
    * @param stream Audio stream or stream ID to set as selected.
    */
-  async setSelectedAudioStream(stream: MediaPartStream | number): Promise<this> {
+  async setSelectedAudioStream(stream: AudioStream | number): Promise<this> {
     const key = `/library/parts/${this.id}`;
     const params = new URLSearchParams({ allParts: '1' });
     const streamId = typeof stream === 'number' ? stream : stream.id;
@@ -140,6 +140,13 @@ export class MediaPart extends PlexObject {
     params.set('subtitleStreamID', streamId.toString());
     await this.server.query(key + '?' + params.toString(), 'put');
     return this;
+  }
+
+  /**
+   * Returns a list of {@link AudioStream} objects in this MediaPart.
+   */
+  audioStreams(): AudioStream[] {
+    return this.streams.filter((stream): stream is AudioStream => stream instanceof AudioStream);
   }
 
   /**
@@ -514,4 +521,86 @@ export class Poster extends BaseResource {
  */
 export class Theme extends BaseResource {
   static override TAG = 'Theme';
+}
+
+/**
+ * Represents a single Audio stream within a {@link MediaPart}.
+ */
+export class AudioStream extends MediaPartStream {
+  static override TAG = 'Stream' as const;
+  static STREAMTYPE = 2;
+  /** The audio channel layout of the audio stream (ex: 5.1(side)). */
+  audioChannelLayout?: string;
+  /** The bit depth of the audio stream (ex: 16). */
+  bitDepth?: number;
+  /** The bitrate mode of the audio stream (ex: cbr). */
+  bitrateMode?: string;
+  /** The number of audio channels of the audio stream (ex: 6). */
+  channels?: number;
+  /** The duration of audio stream in milliseconds. */
+  duration?: number;
+  /** The profile of the audio stream. */
+  profile?: string;
+  /** The sampling rate of the audio stream (ex: 48000) */
+  samplingRate?: number;
+  /** The stream identifier of the audio stream. */
+  streamIdentifier?: number;
+  /** True if this is a visually impaired (AD) audio stream. */
+  visualImpaired!: boolean;
+
+  // Track only attributes
+  /** The gain for the album. */
+  albumGain?: number;
+  /** The peak for the album. */
+  albumPeak?: number;
+  /** The range for the album. */
+  albumRange?: number;
+  /** The end ramp for the track. */
+  endRamp?: string;
+  /** The gain for the track. */
+  gain?: number;
+  /** The loudness for the track. */
+  loudness?: number;
+  /** The lra for the track. */
+  lra?: number;
+  /** The peak for the track. */
+  peak?: number;
+  /** The start ramp for the track. */
+  startRamp?: string;
+
+  /**
+   * Sets this audio stream as the selected audio stream.
+   * Alias for {@link MediaPart.setSelectedAudioStream}.
+   */
+  async setSelected(): Promise<void> {
+    const parent = this.parent?.deref() as MediaPart;
+    if (!parent) {
+      throw new Error('AudioStream must have a parent MediaPart');
+    }
+    await parent.setSelectedAudioStream(this);
+  }
+
+  protected override _loadData(data: any): void {
+    super._loadData(data);
+    this.audioChannelLayout = data.audioChannelLayout;
+    this.bitDepth = data.bitDepth ? parseInt(data.bitDepth, 10) : undefined;
+    this.bitrateMode = data.bitrateMode;
+    this.channels = data.channels ? parseInt(data.channels, 10) : undefined;
+    this.duration = data.duration ? parseInt(data.duration, 10) : undefined;
+    this.profile = data.profile;
+    this.samplingRate = data.samplingRate ? parseInt(data.samplingRate, 10) : undefined;
+    this.streamIdentifier = data.streamIdentifier ? parseInt(data.streamIdentifier, 10) : undefined;
+    this.visualImpaired = Boolean(parseInt(data.visualImpaired ?? '0', 10));
+
+    // Track only attributes
+    this.albumGain = data.albumGain ? parseFloat(data.albumGain) : undefined;
+    this.albumPeak = data.albumPeak ? parseFloat(data.albumPeak) : undefined;
+    this.albumRange = data.albumRange ? parseFloat(data.albumRange) : undefined;
+    this.endRamp = data.endRamp;
+    this.gain = data.gain ? parseFloat(data.gain) : undefined;
+    this.loudness = data.loudness ? parseFloat(data.loudness) : undefined;
+    this.lra = data.lra ? parseFloat(data.lra) : undefined;
+    this.peak = data.peak ? parseFloat(data.peak) : undefined;
+    this.startRamp = data.startRamp;
+  }
 }
