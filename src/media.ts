@@ -116,6 +116,48 @@ export class MediaPart extends PlexObject {
   streams!: MediaPartStream[];
   exists?: boolean;
 
+  /**
+   * Set the selected {@link MediaPartStream} for this MediaPart.
+   * @param stream Audio stream or stream ID to set as selected.
+   */
+  async setSelectedAudioStream(stream: MediaPartStream | number): Promise<this> {
+    const key = `/library/parts/${this.id}`;
+    const params = new URLSearchParams({ allParts: '1' });
+    const streamId = typeof stream === 'number' ? stream : stream.id;
+    params.set('audioStreamID', streamId.toString());
+    await this.server.query(key + '?' + params.toString(), 'put');
+    return this;
+  }
+
+  /**
+   * Set the selected {@link SubtitleStream} for this MediaPart.
+   * @param stream Subtitle stream or stream ID to set as selected.
+   */
+  async setSelectedSubtitleStream(stream: SubtitleStream | number): Promise<this> {
+    const key = `/library/parts/${this.id}`;
+    const params = new URLSearchParams({ allParts: '1' });
+    const streamId = typeof stream === 'number' ? stream : stream.id;
+    params.set('subtitleStreamID', streamId.toString());
+    await this.server.query(key + '?' + params.toString(), 'put');
+    return this;
+  }
+
+  /**
+   * Returns a list of {@link SubtitleStream} objects in this MediaPart.
+   */
+  subtitleStreams(): SubtitleStream[] {
+    return this.streams.filter(
+      (stream): stream is SubtitleStream => stream instanceof SubtitleStream,
+    );
+  }
+
+  /**
+   * Returns a list of {@link LyricStream} objects in this MediaPart.
+   */
+  lyricStreams(): LyricStream[] {
+    return this.streams.filter((stream): stream is LyricStream => stream instanceof LyricStream);
+  }
+
   protected _loadData(data: MediaPartData) {
     this.container = data.container;
     this.duration = data.duration;
@@ -150,6 +192,90 @@ export class MediaPartStream extends PlexObject {
     this.languageCode = data.languageCode;
     this.selected = data.selected;
     this.streamType = data.streamType;
+  }
+}
+
+/**
+ * Represents a single Subtitle stream within a {@link MediaPart}.
+ */
+export class SubtitleStream extends MediaPartStream {
+  static override TAG = 'Stream' as const;
+  static STREAMTYPE = 3;
+  /** True if the subtitle stream can be auto synced. */
+  canAutoSync?: boolean;
+  /** The container of the subtitle stream. */
+  container?: string;
+  /** True if this is a forced subtitle. */
+  forced!: boolean;
+  /** The format of the subtitle stream (ex: srt). */
+  format?: string;
+  /** The header compression of the subtitle stream. */
+  headerCompression?: string;
+  /** True if this is a hearing impaired (SDH) subtitle. */
+  hearingImpaired!: boolean;
+  /** True if the on-demand subtitle is a perfect match. */
+  perfectMatch?: boolean;
+  /** The provider title where the on-demand subtitle is downloaded from. */
+  providerTitle?: string;
+  /** The match score (download count) of the on-demand subtitle. */
+  score?: number;
+  /** The source key of the on-demand subtitle. */
+  sourceKey?: string;
+  /** Unknown. */
+  transient?: string;
+  /** The user id of the user that downloaded the on-demand subtitle. */
+  userID?: number;
+
+  /**
+   * Sets this subtitle stream as the selected subtitle stream.
+   * Alias for `MediaPart.setSelectedSubtitleStream`.
+   */
+  async setSelected(): Promise<void> {
+    const parent = this.parent?.deref() as MediaPart;
+    if (!parent) {
+      throw new Error('SubtitleStream must have a parent MediaPart');
+    }
+    await parent.setSelectedSubtitleStream(this);
+  }
+
+  protected override _loadData(data: any): void {
+    super._loadData(data);
+    this.canAutoSync = Boolean(data.canAutoSync); // Use !! for boolean casting from potential string/number
+    this.container = data.container;
+    this.forced = Boolean(parseInt(data.forced ?? '0', 10));
+    this.format = data.format;
+    this.headerCompression = data.headerCompression;
+    this.hearingImpaired = Boolean(parseInt(data.hearingImpaired ?? '0', 10));
+    this.perfectMatch = Boolean(data.perfectMatch);
+    this.providerTitle = data.providerTitle;
+    this.score = data.score ? parseInt(data.score, 10) : undefined;
+    this.sourceKey = data.sourceKey;
+    this.transient = data.transient;
+    this.userID = data.userID ? parseInt(data.userID, 10) : undefined;
+  }
+}
+
+/**
+ * Represents a single Lyric stream within a {@link MediaPart}.
+ */
+export class LyricStream extends MediaPartStream {
+  static override TAG = 'Stream' as const;
+  static STREAMTYPE = 4;
+  /** The format of the lyric stream (ex: lrc). */
+  format?: string;
+  /** The minimum number of lines in the (timed) lyric stream. */
+  minLines?: number;
+  /** The provider of the lyric stream (ex: com.plexapp.agents.lyricfind). */
+  provider?: string;
+  /** True if the lyrics are timed to the track. */
+  timed!: boolean;
+
+  protected override _loadData(data: any): void {
+    super._loadData(data);
+    this.format = data.format;
+    this.minLines = data.minLines ? parseInt(data.minLines, 10) : undefined;
+    this.provider = data.provider;
+    this.timed = Boolean(parseInt(data.timed ?? '0', 10));
   }
 }
 
