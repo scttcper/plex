@@ -207,7 +207,6 @@ export class MyPlexAccount {
       return this;
     }
 
-    // log('Logging in with token');
     const data = await this.query<UserResponse>(MyPlexAccount.key);
     this._loadData(data);
     return this;
