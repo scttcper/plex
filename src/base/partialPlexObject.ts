@@ -8,25 +8,25 @@ import { PlexObject } from './plexObject.js';
 
 export abstract class PartialPlexObject extends PlexObject {
   override _INCLUDES = {
-    checkFiles: 1,
-    includeAllConcerts: 1,
+    checkFiles: 0,
+    includeAllConcerts: 0,
     includeBandwidths: 1,
     includeChapters: 1,
-    includeChildren: 1,
-    includeConcerts: 1,
-    includeExternalMedia: 1,
-    includeExtras: 1,
+    includeChildren: 0,
+    includeConcerts: 0,
+    includeExternalMedia: 0,
+    includeExtras: 0,
     includeFields: 'thumbBlurHash,artBlurHash',
     includeGeolocation: 1,
     includeLoudnessRamps: 1,
     includeMarkers: 1,
-    includeOnDeck: 1,
-    includePopularLeaves: 1,
-    includePreferences: 1,
-    includeRelated: 1,
-    includeRelatedCount: 1,
-    includeReviews: 1,
-    includeStations: 1,
+    includeOnDeck: 0,
+    includePopularLeaves: 0,
+    includePreferences: 0,
+    includeRelated: 0,
+    includeRelatedCount: 0,
+    includeReviews: 0,
+    includeStations: 0,
   };
 
   ratingKey?: string;
