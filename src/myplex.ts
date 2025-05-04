@@ -14,7 +14,7 @@ import type {
   WebLogin,
 } from './myplex.types.js';
 import { PlexServer } from './server.js';
-import { type MediaContainer } from './util.js';
+import type { MediaContainer } from './util.js';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -207,7 +207,6 @@ export class MyPlexAccount {
       return this;
     }
 
-    // log('Logging in with token');
     const data = await this.query<UserResponse>(MyPlexAccount.key);
     this._loadData(data);
     return this;

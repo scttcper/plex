@@ -6,18 +6,18 @@ import { fetchItem, fetchItems } from './baseFunctionality.js';
 import { PlexClient } from './client.js';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.js';
 import { Hub, Library } from './library.js';
-import { LibraryRootResponse } from './library.types.js';
+import type { LibraryRootResponse } from './library.types.js';
 import { Optimized } from './media.js';
 import { MyPlexAccount } from './myplex.js';
 import { Agent, SEARCHTYPES } from './search.js';
-import {
+import type {
   ConnectionInfo,
   HistoryMediaContainer,
   HistoryMetadatum,
   ServerRootResponse,
 } from './server.types.js';
-import { SettingResponse, Settings } from './settings.js';
-import { MediaContainer } from './util.js';
+import { type SettingResponse, Settings } from './settings.js';
+import type { MediaContainer } from './util.js';
 
 /**
  * This is the main entry point to interacting with a Plex server. It allows you to

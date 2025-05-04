@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 
-import { MovieSection, MyPlexAccount } from '../src/index.js';
+import { type MovieSection, MyPlexAccount } from '../src/index.js';
 
 const {
   values: { username, password, host },

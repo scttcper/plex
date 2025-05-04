@@ -105,7 +105,8 @@ npm run test-cleanup
 get a claim token from https://www.plex.tv/claim/
 export PLEX_CLAIM_TOKEN=claim-token
 
-```
+start plex container for testing
+```console
 docker run -d \
   --name=plex \
   --net=host \
@@ -132,7 +133,12 @@ docker run -d \
   lscr.io/linuxserver/plex:latest
 ```
 
-bootstrap media
+Pull latest plex container if needed
+```console
+docker pull lscr.io/linuxserver/plex:latest
 ```
-NODE_OPTIONS="--loader ts-node/esm" node scripts/bootstraptest.ts --no-docker --server-name=orbstack`
+
+bootstrap plex server with test media
+```console
+NODE_OPTIONS="--loader ts-node/esm" node scripts/bootstraptest.ts --no-docker --server-name=orbstack --password=$PLEX_PASSWORD --username=$PLEX_USERNAME
 ```

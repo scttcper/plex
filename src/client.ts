@@ -2,9 +2,9 @@ import { URL, URLSearchParams } from 'url';
 
 import { ofetch } from 'ofetch';
 
-import { Player } from './client.types.js';
+import type { Player } from './client.types.js';
 import { BASE_HEADERS, TIMEOUT } from './config.js';
-import { MediaContainer } from './util.js';
+import type { MediaContainer } from './util.js';
 
 export interface PlexOptions {
   /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */

@@ -1,8 +1,8 @@
-import { URL } from 'url';
+import type { URL } from 'url';
 
 import { Playable } from './base/playable.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
-import { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.js';
+import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.js';
 import {
   Chapter,
   Collection,
@@ -19,7 +19,7 @@ import {
   Similar,
   Writer,
 } from './media.js';
-import { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
+import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
 
 export type VideoType = Movie | Show;
 

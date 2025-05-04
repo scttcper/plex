@@ -8,6 +8,7 @@ export default [
   {
     rules: {
       'max-params': 'off',
+      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
     },
   },
 ];

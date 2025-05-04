@@ -22,7 +22,7 @@ jobs:
 
       # https://github.com/wyvox/action-setup-pnpm
       - uses: wyvox/action-setup-pnpm@v3
-        with: { node-version: 22, pnpm-version: 9 }
+        with: { node-version: 22 }
 
       - name: lint
         run: pnpm run lint
@@ -48,7 +48,7 @@ jobs:
 
       - name: Cache PMS Docker image
         id: docker-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cache/docker/plexinc
           key: ${{ runner.os }}-docker-pms-${{ steps.docker-digest.outputs.digest }}
@@ -97,7 +97,7 @@ jobs:
 
       # https://github.com/wyvox/action-setup-pnpm
       - uses: wyvox/action-setup-pnpm@v3
-        with: { node-version: 22, pnpm-version: 9 }
+        with: { node-version: 22 }
 
       - name: release
         run: npx semantic-release

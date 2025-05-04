@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src/index.js';
+import type { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src/index.js';
 
 import { createClient } from './test-client.js';
 

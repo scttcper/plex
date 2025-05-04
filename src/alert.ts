@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 
-import { AlertTypes, NotificationContainer } from './alert.types.js';
-import { PlexServer } from './server.js';
+import type { AlertTypes, NotificationContainer } from './alert.types.js';
+import type { PlexServer } from './server.js';
 
 export class AlertListener {
   key = '/:/websockets/notifications';
