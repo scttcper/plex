@@ -386,6 +386,34 @@ export class Optimized extends PlexObject {
   target!: any;
   targetTagID!: any;
 
+  // TODO: Implement items()
+
+  /**
+   * Remove this Optimized item.
+   */
+  async remove(): Promise<void> {
+    const key = `${this.key}/${this.id}`;
+    await this.server.query(key, 'delete');
+  }
+
+  /**
+   * Rename this Optimized item.
+   * @param title New title for the item.
+   */
+  async rename(title: string): Promise<void> {
+    const key = `${this.key}/${this.id}?Item[title]=${encodeURIComponent(title)}`;
+    await this.server.query(key, 'put');
+  }
+
+  /**
+   * Reprocess a removed Conversion item that is still a listed Optimize item.
+   * @param ratingKey The rating key of the item to reprocess.
+   */
+  async reprocess(ratingKey: string | number): Promise<void> {
+    const key = `${this.key}/${this.id}/${ratingKey}/enable`;
+    await this.server.query(key, 'put');
+  }
+
   protected _loadData(data: any) {
     this.id = data.id;
     this.composite = data.composite;
