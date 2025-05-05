@@ -21,8 +21,6 @@ import {
 } from './media.js';
 import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
 
-export type VideoType = Movie | Show;
-
 abstract class Video extends Playable {
   /** Datetime this item was added to the library. */
   addedAt!: Date;

@@ -54,8 +54,13 @@ export class Audio extends PartialPlexObject {
    * @param data The raw data object received from the Plex API.
    * @param initpath The path used to fetch this item initially.
    */
-  constructor(server: PlexServer, data: any, initpath?: string) {
-    super(server, data, initpath);
+  constructor(
+    server: PlexServer,
+    data: any,
+    initpath: string | undefined,
+    parent: PlexObject | undefined,
+  ) {
+    super(server, data, initpath, parent);
     this._loadData(data);
   }
 
@@ -162,7 +167,7 @@ export class Audio extends PartialPlexObject {
    * @protected
    */
   protected _loadData(data: any): void {
-    this._data = data; // Store raw data for potential lazy loading
+    this._data = data;
 
     const addedAtTimestamp = data.addedAt ? parseInt(data.addedAt, 10) : NaN;
     this.addedAt = isNaN(addedAtTimestamp) ? undefined : new Date(addedAtTimestamp * 1000);
@@ -235,8 +240,8 @@ export class Track extends Audio {
 
   // Track specific properties
   audienceRating?: number;
-  // chapters defined via getter
   chapterSource?: string;
+  // chapters defined via getter
   // collections defined via getter
   duration?: number;
   // genres defined via getter
@@ -273,9 +278,13 @@ export class Track extends Audio {
   // theme inherited from Audio
 
   // Constructor calls super and _loadData
-  constructor(server: PlexServer, data: any, initpath?: string, parent?: PlexObject) {
-    super(server, data, initpath);
-    // this._parent = parent;
+  constructor(
+    server: PlexServer,
+    data: any,
+    initpath: string | undefined,
+    parent: PlexObject | undefined,
+  ) {
+    super(server, data, initpath, parent);
     // Ensure _loadData is called after constructor logic completes
     // super constructor already calls _loadData, but we need to override it
     // to load Track specific data AFTER Audio data is loaded.
@@ -467,6 +476,8 @@ export class Artist extends Audio {
   // Artist specific properties
   albumSort?: number; // -1: Library default, 0: Newest, 1: Oldest, 2: Name
   audienceRating?: number;
+  rating?: number;
+  theme?: string;
   // collections defined via getter
   // countries defined via getter
   // get countries(): Country[] {
@@ -508,7 +519,6 @@ export class Artist extends Audio {
   //   return findItems(this._data, undefined, PlexObject as any)[0];
   // }
 
-  // theme inherited from Audio?
   // ultraBlurColors defined via getter
 
   // Constructor calls super and _loadData
@@ -518,9 +528,7 @@ export class Artist extends Audio {
     initpath?: string,
     parent?: PlexObject, // Allow parent like LibrarySection
   ) {
-    super(server, data, initpath);
-    // // Known Linter Issue: Linter incorrectly flags _parent access.
-    // this._parent = parent;
+    super(server, data, initpath, parent);
     // super constructor already calls _loadData, call again to apply Artist specifics
     this._loadData(data);
   }
@@ -529,29 +537,33 @@ export class Artist extends Audio {
   //   return findItems(this._data, undefined, PlexObject as any);
   // }
 
-  /**
-   * Returns the Album that matches the specified title for this artist.
-   * @param title Title of the album to return.
-   */
-  async album(title: string): Promise<Album | undefined> {
-    const section = await this.section();
-    if (!section || typeof (section as any).search !== 'function') {
-      console.error('Cannot search for album without a valid section');
-      return undefined;
-    }
-    const results = await (section as any).search(
-      { libtype: 'album', title, 'artist.id': this.ratingKey }, // Using simplistic title match, might need refinement
-      PlexObject as any, // Placeholder for Album class
-    );
-    // Assuming search returns an array, find exact match if needed
-    return results.find((alb: Album) => alb.title === title);
-  }
+  // /**
+  //  * Returns the Album that matches the specified title for this artist.
+  //  * @param title Title of the album to return.
+  //  */
+  // async album(title: string): Promise<Album | undefined> {
+  //   const section = await this.section();
+  //   if (!section || typeof (section as any).search !== 'function') {
+  //     console.error('Cannot search for album without a valid section');
+  //     return undefined;
+  //   }
+  //   const results = await section.search(
+  //     { libtype: 'album', title, 'artist.id': this.ratingKey },
+  //     Album,
+  //   );
+  //   // Assuming search returns an array, find exact match if needed
+  //   return results.find(alb => alb.title === title);
+  // }
 
   /**
    * Returns a list of Album objects by the artist.
    * @param kwargs Additional search options.
    */
   async albums(kwargs: Record<string, any> = {}): Promise<Album[]> {
+    if (!this.librarySectionID) {
+      await this.reload();
+    }
+
     const section = await this.section();
     if (!section || typeof (section as any).search !== 'function') {
       console.error('Cannot search for albums without a valid section');
@@ -560,10 +572,7 @@ export class Artist extends Audio {
     // Combine artist filter with any provided filters
     const filters = { ...(kwargs.filters ?? {}), 'artist.id': this.ratingKey };
     delete kwargs.filters;
-    return (section as any).search(
-      { libtype: 'album', ...kwargs, filters },
-      PlexObject as any, // Placeholder for Album class
-    );
+    return section.search({ libtype: 'album', ...kwargs, filters }, Album);
   }
 
   /**
@@ -678,10 +687,14 @@ export class Artist extends Audio {
    */
   override _loadData(data: any): void {
     super._loadData(data);
-    this.albumSort = data.albumSort ?? -1;
-    this.audienceRating = data.audienceRating;
+    const albumSortInt = data.albumSort ? parseInt(data.albumSort, 10) : NaN;
+    this.albumSort = isNaN(albumSortInt) ? -1 : albumSortInt;
+    const audienceRatingFloat = data.audienceRating ? parseFloat(data.audienceRating) : NaN;
+    this.audienceRating = isNaN(audienceRatingFloat) ? undefined : audienceRatingFloat;
     this.key = data.key?.replace('/children', '');
-    // this.rating = data.rating;
+    const ratingFloat = data.rating ? parseFloat(data.rating) : NaN;
+    this.rating = isNaN(ratingFloat) ? undefined : ratingFloat;
+    this.theme = data.theme;
   }
 }
 
@@ -689,7 +702,6 @@ export class Artist extends Audio {
  * Represents a single Album.
  */
 export class Album extends Audio {
-  /* implements SplitMergeMixin, UnmatchMatchMixin, RatingMixin, ArtMixin, PosterMixin, ThemeUrlMixin, AlbumEditMixins */
   static override TAG = 'Directory';
   static override TYPE = 'album';
 
@@ -731,11 +743,10 @@ export class Album extends Audio {
   constructor(
     server: PlexServer,
     data: any,
-    initpath?: string,
-    parent?: PlexObject, // Allow parent like LibrarySection or Artist
+    initpath: string | undefined,
+    parent: PlexObject | undefined,
   ) {
-    super(server, data, initpath);
-    // this._parent = parent;
+    super(server, data, initpath, parent);
     // super constructor already calls _loadData, call again to apply Album specifics
     this._loadData(data);
   }
@@ -782,17 +793,7 @@ export class Album extends Audio {
       throw new Error('Missing argument: title or track number is required');
     }
 
-    try {
-      // Add parentTitle filter for robustness? Python version does for index lookup.
-      // query.parentTitle__iexact = this.title;
-      return await fetchItem(this.server, key, query, PlexObject as any); // Placeholder for Track class
-    } catch (e: any) {
-      if (e.constructor.name === 'NotFound') {
-        return undefined;
-      }
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
-      throw e;
-    }
+    return fetchItem(this.server, key, query, Track);
   }
 
   /**
@@ -801,7 +802,7 @@ export class Album extends Audio {
    */
   async tracks(kwargs: Record<string, any> = {}): Promise<Track[]> {
     const key = `${this.key}/children`;
-    return fetchItems(this.server, key, kwargs, PlexObject as any, this); // Placeholder for Track class
+    return fetchItems(this.server, key, kwargs, Track, this);
   }
 
   /** Alias of track(). */
