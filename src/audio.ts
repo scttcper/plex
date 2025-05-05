@@ -3,34 +3,7 @@ import { URLSearchParams } from 'url';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
-import type { LibrarySection } from './library.js';
 import type { PlexServer } from './server.js';
-
-// Placeholder types for now - Assuming these will be defined elsewhere (e.g., media.ts)
-type Field = any;
-type Image = any;
-type Mood = any;
-type Chapter = any;
-type Collection = any;
-type Genre = any;
-type Guid = any;
-type Label = any;
-type Media = any;
-type Part = { file: string };
-
-// TODO: Define Album and Artist classes in this file
-// type Album = any; // Removed placeholder
-// type Artist = any; // Removed duplicate placeholder
-// Additional Placeholders
-type Country = any;
-type Similar = any;
-type Style = any;
-type UltraBlurColors = any;
-type Playlist = any; // For station()
-
-// Placeholders for Album
-type Format = any;
-type Subformat = any;
 
 /**
  * Base class for all audio objects including Artist, Album, and Track.
@@ -83,37 +56,36 @@ export class Audio extends PartialPlexObject {
    */
   constructor(server: PlexServer, data: any, initpath?: string) {
     super(server, data, initpath);
-    // Initial minimal load from data potentially available in lists
     this._loadData(data);
   }
 
-  /** List of field objects. */
-  get fields(): Field[] {
-    // Assumes fields are stored under the 'Field' key in the raw data
-    return (
-      this._data?.Field?.map((fieldData: any) => new (PlexObject as any)(this.server, fieldData)) ??
-      []
-    );
-  }
+  // /** List of field objects. */
+  // get fields(): Field[] {
+  //   // Assumes fields are stored under the 'Field' key in the raw data
+  //   return (
+  //     this._data?.Field?.map((fieldData: any) => new (PlexObject as any)(this.server, fieldData)) ??
+  //     []
+  //   );
+  // }
 
-  /** List of image objects. */
-  get images(): Image[] {
-    // Assumes images are stored under the 'Image' key in the raw data
-    // Instantiate actual Image objects
-    return (
-      this._data?.Image?.map((imageData: any) => new (PlexObject as any)(this.server, imageData)) ??
-      []
-    );
-  }
+  // /** List of image objects. */
+  // get images(): Image[] {
+  //   // Assumes images are stored under the 'Image' key in the raw data
+  //   // Instantiate actual Image objects
+  //   return (
+  //     this._data?.Image?.map((imageData: any) => new (PlexObject as any)(this.server, imageData)) ??
+  //     []
+  //   );
+  // }
 
-  /** List of mood objects. */
-  get moods(): Mood[] {
-    // Assumes moods are stored under the 'Mood' key in the raw data
-    // Instantiate actual Mood objects
-    return (
-      this._data?.Mood?.map((moodData: any) => new (PlexObject as any)(this.server, moodData)) ?? []
-    );
-  }
+  // /** List of mood objects. */
+  // get moods(): Mood[] {
+  //   // Assumes moods are stored under the 'Mood' key in the raw data
+  //   // Instantiate actual Mood objects
+  //   return (
+  //     this._data?.Mood?.map((moodData: any) => new (PlexObject as any)(this.server, moodData)) ?? []
+  //   );
+  // }
 
   /**
    * Returns the full URL for a given part (like a media stream) relative to the item's key.
@@ -311,38 +283,38 @@ export class Track extends Audio {
     this._loadData(data);
   }
 
-  // Public Getters/Methods first
-  get chapters(): Chapter[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // // Public Getters/Methods first
+  // get chapters(): Chapter[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get collections(): Collection[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get collections(): Collection[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get genres(): Genre[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get genres(): Genre[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get guids(): Guid[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get guids(): Guid[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get labels(): Label[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get labels(): Label[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get media(): Media[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get media(): Media[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  /**
-   * @returns List of file paths where the track is found on disk.
-   */
-  get locations(): string[] {
-    const parts: Part[] = this.iterParts();
-    return parts.map(part => part.file).filter(Boolean);
-  }
+  // /**
+  //  * @returns List of file paths where the track is found on disk.
+  //  */
+  // get locations(): string[] {
+  //   const parts: Part[] = this.iterParts();
+  //   return parts.map(part => part.file).filter(Boolean);
+  // }
 
   /**
    * @returns The track number.
@@ -351,12 +323,12 @@ export class Track extends Audio {
     return this.index;
   }
 
-  /**
-   * @returns File paths for all parts of this media item.
-   */
-  iterParts(): Part[] {
-    return this.media?.flatMap(media => media.Part ?? []) ?? [];
-  }
+  // /**
+  //  * @returns File paths for all parts of this media item.
+  //  */
+  // iterParts(): Part[] {
+  //   return this.media?.flatMap(media => media.Part ?? []) ?? [];
+  // }
 
   /**
    * @returns A filename for use in download.
@@ -418,9 +390,6 @@ export class Track extends Audio {
    */
   async sonicAdventure(to: Track): Promise<Track[]> {
     const section = this.section();
-    if (!section) {
-      throw new Error('Track does not belong to a library section');
-    }
     // Ensure the section has the sonicAdventure method (which MusicSection should)
     if (typeof (section as any).sonicAdventure !== 'function') {
       throw new Error('Section does not support sonicAdventure');
@@ -500,25 +469,25 @@ export class Artist extends Audio {
   audienceRating?: number;
   // collections defined via getter
   // countries defined via getter
-  get countries(): Country[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get countries(): Country[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  // genres defined via getter
-  get genres(): Genre[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // // genres defined via getter
+  // get genres(): Genre[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  // guids defined via getter
-  get guids(): Guid[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // // guids defined via getter
+  // get guids(): Guid[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  // key inherited from Audio
-  // labels defined via getter
-  get labels(): Label[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // // key inherited from Audio
+  // // labels defined via getter
+  // get labels(): Label[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
   // locations defined via getter
   get locations(): string[] {
@@ -526,18 +495,18 @@ export class Artist extends Audio {
     return this._data?.Location?.map((loc: any) => loc.path).filter(Boolean) ?? [];
   }
 
-  get similar(): Similar[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get similar(): Similar[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get styles(): Style[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get styles(): Style[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get ultraBlurColors(): UltraBlurColors | undefined {
-    // findItem returns a single item or undefined
-    return findItems(this._data, undefined, PlexObject as any)[0];
-  }
+  // get ultraBlurColors(): UltraBlurColors | undefined {
+  //   // findItem returns a single item or undefined
+  //   return findItems(this._data, undefined, PlexObject as any)[0];
+  // }
 
   // theme inherited from Audio?
   // ultraBlurColors defined via getter
@@ -550,23 +519,22 @@ export class Artist extends Audio {
     parent?: PlexObject, // Allow parent like LibrarySection
   ) {
     super(server, data, initpath);
-    // Known Linter Issue: Linter incorrectly flags _parent access.
-    this._parent = parent;
+    // // Known Linter Issue: Linter incorrectly flags _parent access.
+    // this._parent = parent;
     // super constructor already calls _loadData, call again to apply Artist specifics
     this._loadData(data);
   }
 
-  // --- Public Getters for Lazy Properties ---
-  get collections(): Collection[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get collections(): Collection[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
   /**
    * Returns the Album that matches the specified title for this artist.
    * @param title Title of the album to return.
    */
   async album(title: string): Promise<Album | undefined> {
-    const section = this.section();
+    const section = await this.section();
     if (!section || typeof (section as any).search !== 'function') {
       console.error('Cannot search for album without a valid section');
       return undefined;
@@ -625,6 +593,7 @@ export class Artist extends Audio {
       if (e.constructor.name === 'NotFound') {
         return undefined;
       }
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw e;
     }
   }
@@ -645,76 +614,74 @@ export class Artist extends Audio {
     return this.track(args);
   }
 
-  /**
-   * Returns a list of popular tracks by the artist.
-   */
-  async popularTracks(): Promise<Track[]> {
-    const section = this.section();
-    if (!section || typeof (section as any).search !== 'function') {
-      console.error('Cannot search for popular tracks without a valid section');
-      return [];
-    }
-    const filters = {
-      'album.subformat!': 'Compilation,Live',
-      'artist.id': this.ratingKey,
-      group: 'title',
-      'ratingCount>>': 0,
-    };
-    return (section as any).search(
-      { libtype: 'track', filters, sort: 'ratingCount:desc', limit: 100 },
-      PlexObject as any, // Placeholder for Track class
-    );
-  }
+  // /**
+  //  * Returns a list of popular tracks by the artist.
+  //  */
+  // async popularTracks(): Promise<Track[]> {
+  //   const section = await this.section();
+  //   if (!section || typeof (section as any).search !== 'function') {
+  //     console.error('Cannot search for popular tracks without a valid section');
+  //     return [];
+  //   }
+  //   const filters = {
+  //     'album.subformat!': 'Compilation,Live',
+  //     'artist.id': this.ratingKey,
+  //     group: 'title',
+  //     'ratingCount>>': 0,
+  //   };
+  //   return (section as any).search(
+  //     { libtype: 'track', filters, sort: 'ratingCount:desc', limit: 100 },
+  //     PlexObject as any, // Placeholder for Track class
+  //   );
+  // }
 
-  /**
-   * Returns the artist radio station Playlist or undefined.
-   */
-  async station(): Promise<Playlist | undefined> {
-    const key = `${this.key}?includeStations=1`;
-    try {
-      const stations = await fetchItems(
-        this.server,
-        key,
-        undefined,
-        PlexObject as any,
-        this,
-        'Stations',
-      );
-      return stations[0]; // fetchItems with rtag extracts the items under that tag
-    } catch (e) {
-      console.error('Failed to fetch artist station', e);
-      return undefined;
-    }
-  }
+  // /**
+  //  * Returns the artist radio station Playlist or undefined.
+  //  */
+  // async station(): Promise<Playlist | undefined> {
+  //   const key = `${this.key}?includeStations=1`;
+  //   try {
+  //     const stations = await fetchItems(
+  //       this.server,
+  //       key,
+  //       undefined,
+  //       PlexObject as any,
+  //       this,
+  //       'Stations',
+  //     );
+  //     return stations[0]; // fetchItems with rtag extracts the items under that tag
+  //   } catch (e) {
+  //     console.error('Failed to fetch artist station', e);
+  //     return undefined;
+  //   }
+  // }
 
-  // Known Linter Issue: Signature mismatch / override requirement incorrectly reported.
-  section(): LibrarySection | undefined {
-    // Known Linter Issue: Linter incorrectly flags _parent access.
-    let parent = this._parent;
-    while (parent) {
-      if (parent instanceof PlexObject && parent.key?.startsWith('/library/sections/')) {
-        return parent as LibrarySection;
-      }
-      if (!('_parent' in parent) || !parent._parent) {
-        break;
-      }
-      parent = parent._parent as PlexObject | undefined;
-    }
-    return undefined;
-  }
+  // // Known Linter Issue: Signature mismatch / override requirement incorrectly reported.
+  // section(): LibrarySection | undefined {
+  //   // Known Linter Issue: Linter incorrectly flags _parent access.
+  //   let parent = this._parent;
+  //   while (parent) {
+  //     if (parent instanceof PlexObject && parent.key?.startsWith('/library/sections/')) {
+  //       return parent as LibrarySection;
+  //     }
+  //     if (!('_parent' in parent) || !parent._parent) {
+  //       break;
+  //     }
+  //     parent = parent._parent as PlexObject | undefined;
+  //   }
+  //   return undefined;
+  // }
 
-  // --- Protected Methods ---
   /**
    * Load attribute values from Plex XML response.
    * @protected
    */
   override _loadData(data: any): void {
     super._loadData(data);
-    this.albumSort = this.parseAttribute(data.albumSort, Number, -1);
-    this.audienceRating = this.parseAttribute(data.audienceRating, Number);
-    this.key = data.key?.replace('/children', ''); // Apply FIX_BUG_50
-    this.rating = this.parseAttribute(data.rating, Number);
-    // theme is likely loaded by super._loadData
+    this.albumSort = data.albumSort ?? -1;
+    this.audienceRating = data.audienceRating;
+    this.key = data.key?.replace('/children', '');
+    // this.rating = data.rating;
   }
 }
 
@@ -730,17 +697,17 @@ export class Album extends Audio {
   audienceRating?: number;
   // collections defined via getter
   // formats defined via getter
-  get formats(): Format[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get formats(): Format[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get genres(): Genre[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get genres(): Genre[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get guids(): Guid[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get guids(): Guid[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
   // key inherited from Audio
   // labels defined via getter
@@ -773,29 +740,26 @@ export class Album extends Audio {
     this._loadData(data);
   }
 
-  // --- Public Getters for Lazy Properties ---
   get collections(): Collection[] {
     return findItems(this._data, undefined, PlexObject as any);
   }
 
-  get labels(): Label[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get labels(): Label[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  override get styles(): Style[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // override get styles(): Style[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  get subformats(): Subformat[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get subformats(): Subformat[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
-  override get ultraBlurColors(): UltraBlurColors | undefined {
-    // findItem returns a single item or undefined
-    return findItems(this._data, undefined, PlexObject as any)[0];
-  }
-
-  // --- Public Methods ---
+  // override get ultraBlurColors(): UltraBlurColors | undefined {
+  //   // findItem returns a single item or undefined
+  //   return findItems(this._data, undefined, PlexObject as any)[0];
+  // }
 
   /**
    * Returns the Track that matches the specified criteria.
@@ -864,7 +828,6 @@ export class Album extends Audio {
   // section() method - Albums typically don't directly need this,
   // but could be inherited or implemented if needed to find parent section.
 
-  // --- Protected Methods ---
   /**
    * Load attribute values from Plex XML response.
    * @protected
