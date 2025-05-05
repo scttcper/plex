@@ -4,6 +4,7 @@ import type { Class } from 'type-fest';
 
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
+import { Album, Artist, Track } from './audio.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
 import type {
@@ -20,7 +21,7 @@ import type { PlexServer } from './server.js';
 import type { MediaContainer } from './util.js';
 import { Movie, Show, type VideoType } from './video.js';
 
-export type Section = MovieSection | ShowSection;
+export type Section = MovieSection | ShowSection | MusicSection;
 
 export class Library {
   static key = '/library';
@@ -47,8 +48,12 @@ export class Library {
     const key = '/library/sections';
     const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
     const sections: Section[] = [];
+    if (!elems.MediaContainer.Directory) {
+      return sections;
+    }
+
     for (const elem of elems.MediaContainer.Directory) {
-      for (const cls of [MovieSection, ShowSection]) {
+      for (const cls of [MovieSection, ShowSection, MusicSection]) {
         if (cls.TYPE === elem.type) {
           // eslint-disable-next-line new-cap
           const instance = new cls(this.server, elem, key);
@@ -901,6 +906,73 @@ export class ShowSection extends LibrarySection<Show> {
    */
   async recentlyAdded(args: any, libtype = 'episode', maxresults = 50) {
     return this.search({ libtype, maxresults, sort: 'episode.addedAt:desc', ...args });
+  }
+}
+
+export class MusicSection extends LibrarySection<Track> {
+  static override TYPE = 'artist';
+  static override TAG = 'Directory';
+  METADATA_TYPE = 'track';
+  override CONTENT_TYPE = 'audio';
+  override readonly VIDEO_TYPE = Track;
+
+  /** Returns a list of Album objects in this section. */
+  async albums(): Promise<Album[]> {
+    const key = `/library/sections/${this.key}/albums`;
+    return fetchItems<Album>(this.server, key, undefined, Album, this);
+  }
+
+  /**
+   * Returns the music stations Hub for this section, if available.
+   * TODO: Investigate how to return actual station items (Playlists?) from the Hub.
+   */
+  async stations(): Promise<Hub | undefined> {
+    const hubs = await this.hubs();
+    return hubs.find(hub => hub.hubIdentifier === 'hub.music.stations');
+  }
+
+  /** Search for an artist. */
+  async searchArtists(args: Partial<SearchArgs> = {}): Promise<Artist[]> {
+    return this.search({ ...args, libtype: 'artist' }, Artist);
+  }
+
+  /** Search for an album. */
+  async searchAlbums(args: Partial<SearchArgs> = {}): Promise<Album[]> {
+    return this.search({ ...args, libtype: 'album' }, Album);
+  }
+
+  /** Search for a track. */
+  async searchTracks(args: Partial<SearchArgs> = {}): Promise<Track[]> {
+    return this.search({ ...args, libtype: 'track' }, Track);
+  }
+
+  /** Returns a list of recently added artists from this library section. */
+  async recentlyAddedArtists(maxresults = 50): Promise<Artist[]> {
+    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'artist' }, Artist);
+  }
+
+  /** Returns a list of recently added albums from this library section. */
+  async recentlyAddedAlbums(maxresults = 50): Promise<Album[]> {
+    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'album' }, Album);
+  }
+
+  /** Returns a list of recently added tracks from this library section. */
+  async recentlyAddedTracks(maxresults = 50): Promise<Track[]> {
+    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'track' }, Track);
+  }
+
+  /**
+   * Returns a list of tracks from this library section that are part of a sonic adventure.
+   * IDs should be of a track; other IDs will return an empty list or an error.
+   * @param start The Track or ID of the first track in the sonic adventure.
+   * @param end The Track or ID of the last track in the sonic adventure.
+   * @returns A list of tracks that are part of a sonic adventure.
+   */
+  async sonicAdventure(start: Track | number, end: Track | number): Promise<Track[]> {
+    const startID = typeof start === 'number' ? start : start.ratingKey;
+    const endID = typeof end === 'number' ? end : end.ratingKey;
+    const key = `/library/sections/${this.key}/computePath?startID=${startID}&endID=${endID}`;
+    return fetchItems<Track>(this.server, key, undefined, Track, this);
   }
 }
 

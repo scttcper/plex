@@ -632,3 +632,44 @@ export class AudioStream extends MediaPartStream {
     this.startRamp = data.startRamp;
   }
 }
+
+/** Represents a single Image media tag. */
+export class Image extends PlexObject {
+  static override TAG = 'Image' as const;
+
+  /** The alt text for the image. */
+  alt?: string;
+  /** The type of image (e.g. coverPoster, background, snapshot). */
+  type?: string;
+  /** The API URL (/library/metadata/<ratingKey>/thumb/<thumbid>). */
+  url?: string;
+
+  protected _loadData(data: any): void {
+    this.alt = data.alt;
+    this.type = data.type;
+    // Assuming server.url is needed to make this a complete URL
+    this.url = data.url ? this.server.url(data.url, true)?.toString() : undefined;
+  }
+}
+
+/** Represents a single Field. */
+export class Field extends PlexObject {
+  static override TAG = 'Field' as const;
+
+  /** True if the field is locked. */
+  locked!: boolean;
+  /** The name of the field. */
+  name!: string;
+
+  protected _loadData(data: any): void {
+    // Convert potential string '1' or '0' to boolean
+    this.locked = data.locked === '1' || data.locked === true;
+    this.name = data.name;
+  }
+}
+
+/** Represents a single Mood media tag. */
+export class Mood extends MediaTag {
+  static override TAG = 'Mood' as const;
+  override FILTER = 'mood' as const;
+}
