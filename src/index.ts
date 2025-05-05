@@ -8,5 +8,6 @@ export * from './myplex.js';
 export * from './playlist.js';
 export * from './server.js';
 export * from './video.js';
+export * from './audio.js';
 export { X_PLEX_IDENTIFIER } from './config.js';
 export { SearchResult, Agent, SEARCHTYPES } from './search.js';

@@ -7,6 +7,11 @@ async function main() {
   const devices = await plex.myPlexAccount().devices();
   console.log(`${devices.length} devices exist`);
   for (const device of devices) {
+    if (!device.name) {
+      // Device is not connectable?
+      continue;
+    }
+
     if (device.name.startsWith('plex-test-docker')) {
       console.log(`Removing device "${device.name}", with id "${device.clientIdentifier}"`);
       await device.delete();
