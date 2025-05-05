@@ -2,7 +2,7 @@ import { URLSearchParams } from 'url';
 
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
-import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
+import { fetchItem, fetchItems } from './baseFunctionality.js';
 import type { PlexServer } from './server.js';
 
 /**
@@ -552,7 +552,7 @@ export class Artist extends Audio {
    * @param kwargs Additional search options.
    */
   async albums(kwargs: Record<string, any> = {}): Promise<Album[]> {
-    const section = this.section();
+    const section = await this.section();
     if (!section || typeof (section as any).search !== 'function') {
       console.error('Cannot search for albums without a valid section');
       return [];
@@ -735,14 +735,14 @@ export class Album extends Audio {
     parent?: PlexObject, // Allow parent like LibrarySection or Artist
   ) {
     super(server, data, initpath);
-    this._parent = parent;
+    // this._parent = parent;
     // super constructor already calls _loadData, call again to apply Album specifics
     this._loadData(data);
   }
 
-  get collections(): Collection[] {
-    return findItems(this._data, undefined, PlexObject as any);
-  }
+  // get collections(): Collection[] {
+  //   return findItems(this._data, undefined, PlexObject as any);
+  // }
 
   // get labels(): Label[] {
   //   return findItems(this._data, undefined, PlexObject as any);
@@ -790,6 +790,7 @@ export class Album extends Audio {
       if (e.constructor.name === 'NotFound') {
         return undefined;
       }
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw e;
     }
   }
