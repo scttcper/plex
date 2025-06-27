@@ -33,6 +33,9 @@ importers:
       '@ctrl/eslint-config-biome':
         specifier: 5.0.0
         version: 5.0.0(@typescript-eslint/utils@8.35.0(eslint@9.29.0)(typescript@5.8.3))(eslint@9.29.0)(typescript@5.8.3)
+      '@ctrl/video-filename-parser':
+        specifier: ^5.2.2
+        version: 5.2.2
       '@sindresorhus/tsconfig':
         specifier: 7.0.0
         version: 7.0.0
@@ -175,6 +178,10 @@ packages:
   '@ctrl/mac-address@3.1.0':
     resolution: {integrity: sha512-sYPB1AwHwoSdbKQGfujs7tvFYdfRDfn6yRCAYXrucphTGHc7Ngbzcvcmm1yph3sejGZiXVCFEDjGJJuqVuEvSQ==}
     engines: {node: '>=14.16'}
+
+  '@ctrl/video-filename-parser@5.2.2':
+    resolution: {integrity: sha512-AxKl+jKsoyanoqW6WRGcAqAURVFQ6h6LWGoTe5f5/VMosTELJuiVpin++GQMU8eLVVlM2MZF+5uNs9iexdnYdw==}
+    engines: {node: '>=18'}
 
   '@emnapi/core@1.4.3':
     resolution: {integrity: sha512-4m62DuCE07lw01soJwPiBGC0nAww0Q+RY70VZ+n49yDIO13yyinhbWCeNnaob0lakDtWQzSdtNWzJeOJt2ma+g==}
@@ -1944,6 +1951,8 @@ snapshots:
       - typescript
 
   '@ctrl/mac-address@3.1.0': {}
+
+  '@ctrl/video-filename-parser@5.2.2': {}
 
   '@emnapi/core@1.4.3':
     dependencies:

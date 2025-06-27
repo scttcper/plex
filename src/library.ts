@@ -342,6 +342,10 @@ interface SearchArgs {
    * return {@link Movie} objects)
    */
   libtype: Libtype;
+  /**
+   * Return only results that have duplicates.
+   */
+  duplicate: number;
 }
 
 /**
