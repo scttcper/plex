@@ -2,7 +2,12 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["dist/*", "package.json", "./plex/media/*"]
+    "includes": ["**", "!**/package.json", "!plex/media/**/*"]
   },
-  "extends": ["@ctrl/eslint-config-biome/biome"]
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "extends": ["./node_modules/@ctrl/eslint-config-biome/biome.json"]
 }
