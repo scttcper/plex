@@ -6,7 +6,9 @@ const __dirname = new URL('.', import.meta.url).pathname;
 const mediaDir = path.join(__dirname, '../media/');
 const moviesDir = path.join(mediaDir, './movies/');
 const tvDir = path.join(mediaDir, './shows/');
+const audioDir = path.join(mediaDir, './music/');
 const videoStubPath = path.join(__dirname, '../test/data/video_stub.mp4');
+const audioStubPath = path.join(__dirname, '../test/data/audio_stub.mp3');
 
 export async function downloadVideoFile(): Promise<void> {
   console.log('Downloading video_stub.mp4..');
@@ -73,10 +75,38 @@ export async function prepareTvDir(showPath = tvDir): Promise<void> {
   }
 }
 
+export const requiredAudio = {
+  Ladytron: {
+    'Light & Magic': ['2 - Seventeen.mp3'],
+  },
+};
+
+export async function prepareAudioDir(audioPath = audioDir): Promise<void> {
+  for (const [artist, albums] of Object.entries(requiredAudio)) {
+    const artistDir = path.join(audioPath, artist);
+    if (!fs.existsSync(artistDir)) {
+      fs.mkdirSync(artistDir);
+    }
+
+    for (const [album, songs] of Object.entries(albums)) {
+      const albumDir = path.join(artistDir, album);
+      if (!fs.existsSync(albumDir)) {
+        fs.mkdirSync(albumDir);
+      }
+
+      for (const song of songs) {
+        const songPath = path.join(albumDir, song);
+        fs.copyFileSync(audioStubPath, songPath);
+      }
+    }
+  }
+}
+
 export async function createAll(): Promise<void> {
   await downloadVideoFile();
   await prepareMovieDir();
   await prepareTvDir();
+  await prepareAudioDir();
 }
 
 // if (!module.parent) {
