@@ -378,6 +378,30 @@ export class Collection extends MediaTag {
   FILTER = 'collection' as const;
 }
 
+/** Represents a single Label media tag. */
+export class Label extends MediaTag {
+  static override TAG = 'Label' as const;
+  FILTER = 'label' as const;
+}
+
+/** Represents a single Style media tag. */
+export class Style extends MediaTag {
+  static override TAG = 'Style' as const;
+  FILTER = 'style' as const;
+}
+
+/** Represents a single Format media tag. */
+export class Format extends MediaTag {
+  static override TAG = 'Format' as const;
+  FILTER = 'format' as const;
+}
+
+/** Represents a single Subformat media tag. */
+export class Subformat extends MediaTag {
+  static override TAG = 'Subformat' as const;
+  FILTER = 'subformat' as const;
+}
+
 export class Optimized extends PlexObject {
   static override TAG = 'Item';
   id!: string;

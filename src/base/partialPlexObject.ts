@@ -1,5 +1,6 @@
 import { URLSearchParams } from 'url';
 
+import type { Section } from '../library.js';
 import { SearchResult, searchType } from '../search.js';
 import type { MatchSearchResult } from '../search.types.js';
 import { getAgentIdentifier, ltrim, type MediaContainer, tagHelper } from '../util.js';
@@ -200,7 +201,7 @@ export abstract class PartialPlexObject extends PlexObject {
     return this.server.history(maxresults, mindate, this.ratingKey);
   }
 
-  async section() {
+  async section(): Promise<Section> {
     return (await this.server.library()).sectionByID(this.librarySectionID);
   }
 

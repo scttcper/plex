@@ -328,7 +328,7 @@ export class Library {
 type Libtype = keyof typeof SEARCHTYPES;
 
 interface SearchArgs {
-  [key: string]: number | string | boolean | string[];
+  [key: string]: number | string | boolean | string[] | Record<string, string | number | boolean>;
   /** General string query to search for. Partial string matches are allowed. */
   title: string;
   /** A string of comma separated sort fields or a list of sort fields in the format ``column:dir``. */
@@ -351,6 +351,8 @@ interface SearchArgs {
    * Return only results that have duplicates.
    */
   duplicate: number;
+  /** Advanced filters object used by music searches. */
+  filters?: Record<string, string | number | boolean>;
 }
 
 export type SectionType = Movie | Show | Artist | Album | Track;
@@ -487,10 +489,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * TLDR: This is untested but seems to work. Use library section search when you can.
    * @param args Search using a number of different attributes
    */
-  async search<T = SType>(
-    args: Partial<SearchArgs> = {},
-    Cls: any = this.SECTION_TYPE,
-  ): Promise<T[]> {
+  async search<C = SType>(args: Partial<SearchArgs> = {}, Cls?: Class<C>): Promise<C[]> {
     const params = new URLSearchParams();
 
     for (const [key, value] of Object.entries(args)) {
@@ -511,7 +510,8 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     }
 
     const key = `/library/sections/${this.key}/all?${params.toString()}`;
-    const data = await fetchItems(this.server, key, undefined, Cls, this);
+    const ClsToUse = Cls ?? (this.SECTION_TYPE as unknown as Class<C>);
+    const data = await fetchItems(this.server, key, undefined, ClsToUse, this);
     return data;
   }
 
