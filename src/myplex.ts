@@ -182,6 +182,7 @@ export class MyPlexAccount {
     if (this.token) {
       Object.defineProperty(this, 'token', {
         enumerable: false,
+        configurable: true,
         value: this.token,
       });
     }
@@ -189,6 +190,7 @@ export class MyPlexAccount {
     if (this.password) {
       Object.defineProperty(this, 'password', {
         enumerable: false,
+        configurable: true,
         value: this.password,
       });
     }
@@ -356,6 +358,7 @@ export class MyPlexAccount {
     // Attempt to prevent token from being logged accidentally
     Object.defineProperty(this, 'token', {
       enumerable: false,
+      configurable: true,
       value: user.authToken,
     });
     this.authenticationToken = this.token;
@@ -608,6 +611,7 @@ export class MyPlexDevice extends PlexObject {
     // Attempt to prevent token from being logged accidentally
     Object.defineProperty(this, 'token', {
       enumerable: false,
+      configurable: true,
       value: data.$.token,
     });
     this.screenResolution = data.$.screenResolution;

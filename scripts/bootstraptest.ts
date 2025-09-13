@@ -10,9 +10,22 @@ import pRetry from 'p-retry';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-import { AlertListener, type AlertTypes, MyPlexAccount, type PlexServer } from '../src/index.js';
+import {
+  AlertListener,
+  type AlertTypes,
+  MyPlexAccount,
+  type PlexServer,
+  SEARCHTYPES,
+} from '../src/index.js';
 
-import { prepareMovieDir, prepareTvDir, requiredMovies, requiredShows } from './create-media.js';
+import {
+  prepareAudioDir,
+  prepareMovieDir,
+  prepareTvDir,
+  requiredAudio,
+  requiredMovies,
+  requiredShows,
+} from './create-media.js';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 
@@ -58,6 +71,11 @@ const yarg = yargs(hideBin(process.argv))
   .option('create-shows', {
     type: 'boolean',
     desc: 'Create Shows section',
+    default: true,
+  })
+  .option('create-audio', {
+    type: 'boolean',
+    desc: 'Create Audio section',
     default: true,
   });
 
@@ -140,15 +158,34 @@ type Options = {
 async function createSection(section: Section, server: PlexServer): Promise<void> {
   let processedMedia = 0;
   let listener: AlertListener;
+
+  let expectedMediaTypes: number[];
+  switch (section.type) {
+    case 'show':
+      expectedMediaTypes = [SEARCHTYPES.show, SEARCHTYPES.season, SEARCHTYPES.episode];
+      break;
+    case 'artist':
+      expectedMediaTypes = [SEARCHTYPES.artist, SEARCHTYPES.album, SEARCHTYPES.track];
+      break;
+    default:
+      // Assume single type matches section type (e.g., movie)
+      expectedMediaTypes = [SEARCHTYPES[section.type as keyof typeof SEARCHTYPES]];
+      break;
+  }
+
   // oxlint-disable-next-line no-async-promise-executor
   return new Promise(async resolve => {
     const alertCallback = (data: AlertTypes) => {
       if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
-        processedMedia += 1;
-        // console.log(`Finished ${processedMedia} ${section.name}`);
+        const entry = data.TimelineEntry[0];
+        // Check if the entry type is one we expect for this section
+        if (expectedMediaTypes.includes(entry.type)) {
+          processedMedia += 1;
+          // console.log(`Finished ${processedMedia} ${section.name}`);
+        }
       }
 
-      if (processedMedia === section.expectedMediaCount) {
+      if (processedMedia >= section.expectedMediaCount) {
         resolve();
         listener.stop();
       }
@@ -211,6 +248,20 @@ async function setupShows(showPath: string): Promise<number> {
   return totalEpisodes;
 }
 
+async function setupAudio(audioPath: string): Promise<number> {
+  await makeDirectory(audioPath);
+  await prepareAudioDir(audioPath);
+
+  let totalTracks = 0;
+  for (const artist of Object.values(requiredAudio)) {
+    for (const album of Object.values(artist)) {
+      totalTracks += album.length;
+    }
+  }
+
+  return totalTracks;
+}
+
 async function main() {
   const argv = await Promise.resolve(yarg.argv);
   const token = argv.token || process.env.PLEXAPI_AUTH_SERVER_TOKEN;
@@ -229,10 +280,7 @@ async function main() {
   const destination = join(__dirname, '..', argv.destination);
   const mediaPath = join(destination, 'media');
   await makeDirectory(mediaPath);
-  console.log({
-    __dirname,
-    destination,
-  });
+  console.log({ mediaPath });
 
   const opts: Options = {
     destination,
@@ -319,6 +367,10 @@ async function main() {
       scanner: 'Plex Movie',
       language: 'en-US',
       expectedMediaCount: numMovies,
+      prefs: {
+        'prefs[enableBIFGeneration]': '0',
+        'prefs[enableCreditsMarkerGeneration]': '0',
+      },
     });
   }
 
@@ -340,6 +392,22 @@ async function main() {
         'prefs[enableIntroMarkerGeneration]': '0',
         'prefs[enableCreditsMarkerGeneration]': '0',
       },
+    });
+  }
+
+  if (argv['create-audio']) {
+    const audioPath = join(mediaPath, 'Music');
+    const setupAudioProgress = ora(`Setup audio files`).start();
+    const numTracks = await setupAudio(audioPath);
+    setupAudioProgress.succeed();
+    sections.push({
+      name: 'Music',
+      type: 'artist',
+      location: '/data/Music',
+      agent: 'tv.plex.agents.music',
+      scanner: 'Plex Music',
+      language: 'en-US',
+      expectedMediaCount: numTracks,
     });
   }
 

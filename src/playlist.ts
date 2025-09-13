@@ -4,10 +4,10 @@ import { Playable } from './base/playable.js';
 
 import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
-import type { Section } from './library.js';
+import type { Section, SectionType } from './library.js';
 import type { PlaylistResponse } from './playlist.types.js';
 import type { PlexServer } from './server.js';
-import { Episode, Movie, type VideoType } from './video.js';
+import { Episode, Movie } from './video.js';
 
 /**
  * Map media types to their respective class
@@ -27,7 +27,7 @@ interface CreateRegularPlaylistOptions {
   /** True to create a smart playlist */
   smart?: false;
   /** Regular playlists only */
-  items?: VideoType[];
+  items?: SectionType[];
 }
 
 interface CreateSmartPlaylistOptions {
@@ -68,7 +68,7 @@ export class Playlist extends Playable {
   /** Create a smart playlist. */
   // private static _createSmart(server: PlexServer, title: string, options: CreatePlaylistOptions) {}
 
-  private static async _create(server: PlexServer, title: string, items: VideoType[]) {
+  private static async _create(server: PlexServer, title: string, items: SectionType[]) {
     if (!items || items.length === 0) {
       throw new BadRequest('Must include items to add when creating new playlist.');
     }

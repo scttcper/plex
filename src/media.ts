@@ -378,6 +378,30 @@ export class Collection extends MediaTag {
   FILTER = 'collection' as const;
 }
 
+/** Represents a single Label media tag. */
+export class Label extends MediaTag {
+  static override TAG = 'Label' as const;
+  FILTER = 'label' as const;
+}
+
+/** Represents a single Style media tag. */
+export class Style extends MediaTag {
+  static override TAG = 'Style' as const;
+  FILTER = 'style' as const;
+}
+
+/** Represents a single Format media tag. */
+export class Format extends MediaTag {
+  static override TAG = 'Format' as const;
+  FILTER = 'format' as const;
+}
+
+/** Represents a single Subformat media tag. */
+export class Subformat extends MediaTag {
+  static override TAG = 'Subformat' as const;
+  FILTER = 'subformat' as const;
+}
+
 export class Optimized extends PlexObject {
   static override TAG = 'Item';
   id!: string;
@@ -632,4 +656,45 @@ export class AudioStream extends MediaPartStream {
     this.peak = data.peak ? parseFloat(data.peak) : undefined;
     this.startRamp = data.startRamp;
   }
+}
+
+/** Represents a single Image media tag. */
+export class Image extends PlexObject {
+  static override TAG = 'Image' as const;
+
+  /** The alt text for the image. */
+  alt?: string;
+  /** The type of image (e.g. coverPoster, background, snapshot). */
+  type?: string;
+  /** The API URL (/library/metadata/<ratingKey>/thumb/<thumbid>). */
+  url?: string;
+
+  protected _loadData(data: any): void {
+    this.alt = data.alt;
+    this.type = data.type;
+    // Assuming server.url is needed to make this a complete URL
+    this.url = data.url ? this.server.url(data.url, true)?.toString() : undefined;
+  }
+}
+
+/** Represents a single Field. */
+export class Field extends PlexObject {
+  static override TAG = 'Field' as const;
+
+  /** True if the field is locked. */
+  locked!: boolean;
+  /** The name of the field. */
+  name!: string;
+
+  protected _loadData(data: any): void {
+    // Convert potential string '1' or '0' to boolean
+    this.locked = data.locked === '1' || data.locked === true;
+    this.name = data.name;
+  }
+}
+
+/** Represents a single Mood media tag. */
+export class Mood extends MediaTag {
+  static override TAG = 'Mood' as const;
+  override FILTER = 'mood' as const;
 }

@@ -4,6 +4,7 @@ import { URLSearchParams } from 'url';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
 
+import { Album, Artist, Track } from './audio.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
 import type {
@@ -18,9 +19,9 @@ import { type Agent, searchType, type SEARCHTYPES } from './search.js';
 import type { SearchResult } from './search.types.js';
 import type { PlexServer } from './server.js';
 import type { MediaContainer } from './util.js';
-import { Movie, Show, type VideoType } from './video.js';
+import { Movie, Show } from './video.js';
 
-export type Section = MovieSection | ShowSection;
+export type Section = MovieSection | ShowSection | MusicSection;
 
 export class Library {
   static key = '/library';
@@ -47,8 +48,12 @@ export class Library {
     const key = '/library/sections';
     const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
     const sections: Section[] = [];
+    if (!elems.MediaContainer.Directory) {
+      return sections;
+    }
+
     for (const elem of elems.MediaContainer.Directory) {
-      for (const cls of [MovieSection, ShowSection]) {
+      for (const cls of [MovieSection, ShowSection, MusicSection]) {
         if (cls.TYPE === elem.type) {
           // eslint-disable-next-line new-cap
           const instance = new cls(this.server, elem, key);
@@ -323,7 +328,7 @@ export class Library {
 type Libtype = keyof typeof SEARCHTYPES;
 
 interface SearchArgs {
-  [key: string]: number | string | boolean | string[];
+  [key: string]: number | string | boolean | string[] | Record<string, string | number | boolean>;
   /** General string query to search for. Partial string matches are allowed. */
   title: string;
   /** A string of comma separated sort fields or a list of sort fields in the format ``column:dir``. */
@@ -346,12 +351,16 @@ interface SearchArgs {
    * Return only results that have duplicates.
    */
   duplicate: number;
+  /** Advanced filters object used by music searches. */
+  filters?: Record<string, string | number | boolean>;
 }
+
+export type SectionType = Movie | Show | Artist | Album | Track;
 
 /**
  * Base class for a single library section.
  */
-export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexObject {
+export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   static ALLOWED_FILTERS: string[] = [];
   static ALLOWED_SORT: string[] = [];
   static BOOLEAN_FILTERS = ['unwatched', 'duplicate'];
@@ -387,19 +396,19 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
   /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
   uuid!: string;
   CONTENT_TYPE!: string;
-  readonly VIDEO_TYPE!: Class<SectionVideoType>;
+  readonly SECTION_TYPE!: Class<SType>;
 
   _filterTypes?: FilteringType[];
   _fieldTypes?: FilteringFieldType[];
 
-  async all(sort = ''): Promise<SectionVideoType[]> {
+  async all(sort = ''): Promise<SType[]> {
     let sortStr = '';
     if (sort) {
       sortStr = `?sort=${sort}`;
     }
 
     const key = `/library/sections/${this.key}/all${sortStr}`;
-    const items = await fetchItems(this.server, key, undefined, this.VIDEO_TYPE, this);
+    const items = await fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
     return items;
   }
 
@@ -411,10 +420,10 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    * @param title Title of the item to return.
    * @returns the media item with the specified title.
    */
-  async get(title: string): Promise<SectionVideoType> {
+  async get(title: string): Promise<SType> {
     const key = `/library/sections/${this.key}/all?includeGuids=1&title=${title}`;
     const data = await fetchItem(this.server, key, { title__iexact: title });
-    return new this.VIDEO_TYPE(this.server, data, key, this);
+    return new this.SECTION_TYPE(this.server, data, key, this);
   }
 
   /**
@@ -442,7 +451,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    * 				result2 = guidLookup['tmdb://1399']
    * 				result3 = guidLookup['tvdb://121361']
    */
-  async getGuid(guid: string): Promise<SectionVideoType> {
+  async getGuid(guid: string): Promise<SType> {
     const key = `/library/sections/${this.key}/all?includeGuids=1`;
     return fetchItem(this.server, key, { Guid__id__iexact: guid });
   }
@@ -480,10 +489,7 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
    * TLDR: This is untested but seems to work. Use library section search when you can.
    * @param args Search using a number of different attributes
    */
-  async search<T = SectionVideoType>(
-    args: Partial<SearchArgs> = {},
-    Cls: any = this.VIDEO_TYPE,
-  ): Promise<T[]> {
+  async search<C = SType>(args: Partial<SearchArgs> = {}, Cls?: Class<C>): Promise<C[]> {
     const params = new URLSearchParams();
 
     for (const [key, value] of Object.entries(args)) {
@@ -504,7 +510,8 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
     }
 
     const key = `/library/sections/${this.key}/all?${params.toString()}`;
-    const data = await fetchItems(this.server, key, undefined, Cls, this);
+    const ClsToUse = Cls ?? (this.SECTION_TYPE as unknown as Class<C>);
+    const data = await fetchItems(this.server, key, undefined, ClsToUse, this);
     return data;
   }
 
@@ -609,13 +616,13 @@ export abstract class LibrarySection<SectionVideoType = VideoType> extends PlexO
 
   async collections(
     args: Record<string, number | string | boolean> = {},
-  ): Promise<Collections<SectionVideoType>[]> {
-    const collections = await this.search<Collections<SectionVideoType>>(
+  ): Promise<Collections<SType>[]> {
+    const collections = await this.search<Collections<SType>>(
       { ...args, libtype: 'collection' },
       Collections,
     );
     collections.forEach(collection => {
-      collection.VIDEO_TYPE = this.VIDEO_TYPE;
+      collection.VIDEO_TYPE = this.SECTION_TYPE;
     });
     return collections;
   }
@@ -843,7 +850,7 @@ export class MovieSection extends LibrarySection<Movie> {
   static override TAG = 'Directory';
   METADATA_TYPE = 'movie';
   override CONTENT_TYPE = 'video';
-  override readonly VIDEO_TYPE = Movie;
+  override readonly SECTION_TYPE = Movie;
 }
 
 export class ShowSection extends LibrarySection<Show> {
@@ -888,7 +895,7 @@ export class ShowSection extends LibrarySection<Show> {
   static override TAG = 'Directory';
   METADATA_TYPE = 'episode';
   override CONTENT_TYPE = 'video';
-  override readonly VIDEO_TYPE = Show;
+  override readonly SECTION_TYPE = Show;
 
   // TODO: figure out how to return episode objects
   // /**
@@ -905,6 +912,73 @@ export class ShowSection extends LibrarySection<Show> {
    */
   async recentlyAdded(args: any, libtype = 'episode', maxresults = 50) {
     return this.search({ libtype, maxresults, sort: 'episode.addedAt:desc', ...args });
+  }
+}
+
+export class MusicSection extends LibrarySection<Track> {
+  static override TYPE = 'artist';
+  static override TAG = 'Directory';
+  METADATA_TYPE = 'track';
+  override CONTENT_TYPE = 'audio';
+  override readonly SECTION_TYPE = Track;
+
+  /** Returns a list of Album objects in this section. */
+  async albums(): Promise<Album[]> {
+    const key = `/library/sections/${this.key}/albums`;
+    return fetchItems<Album>(this.server, key, undefined, Album, this);
+  }
+
+  /**
+   * Returns the music stations Hub for this section, if available.
+   * TODO: Investigate how to return actual station items (Playlists?) from the Hub.
+   */
+  async stations(): Promise<Hub | undefined> {
+    const hubs = await this.hubs();
+    return hubs.find(hub => hub.hubIdentifier === 'hub.music.stations');
+  }
+
+  /** Search for an artist. */
+  async searchArtists(args: Partial<SearchArgs> = {}): Promise<Artist[]> {
+    return this.search({ ...args, libtype: 'artist' }, Artist);
+  }
+
+  /** Search for an album. */
+  async searchAlbums(args: Partial<SearchArgs> = {}): Promise<Album[]> {
+    return this.search({ ...args, libtype: 'album' }, Album);
+  }
+
+  /** Search for a track. */
+  async searchTracks(args: Partial<SearchArgs> = {}): Promise<Track[]> {
+    return this.search({ ...args, libtype: 'track' }, Track);
+  }
+
+  /** Returns a list of recently added artists from this library section. */
+  async recentlyAddedArtists(maxresults = 50): Promise<Artist[]> {
+    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'artist' }, Artist);
+  }
+
+  /** Returns a list of recently added albums from this library section. */
+  async recentlyAddedAlbums(maxresults = 50): Promise<Album[]> {
+    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'album' }, Album);
+  }
+
+  /** Returns a list of recently added tracks from this library section. */
+  async recentlyAddedTracks(maxresults = 50): Promise<Track[]> {
+    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'track' }, Track);
+  }
+
+  /**
+   * Returns a list of tracks from this library section that are part of a sonic adventure.
+   * IDs should be of a track; other IDs will return an empty list or an error.
+   * @param start The Track or ID of the first track in the sonic adventure.
+   * @param end The Track or ID of the last track in the sonic adventure.
+   * @returns A list of tracks that are part of a sonic adventure.
+   */
+  async sonicAdventure(start: Track | number, end: Track | number): Promise<Track[]> {
+    const startID = typeof start === 'number' ? start : start.ratingKey;
+    const endID = typeof end === 'number' ? end : end.ratingKey;
+    const key = `/library/sections/${this.key}/computePath?startID=${startID}&endID=${endID}`;
+    return fetchItems<Track>(this.server, key, undefined, Track, this);
   }
 }
 
@@ -954,7 +1028,7 @@ export class Folder extends PlexObject {
   }
 }
 
-export class Collections<CollectionVideoType = VideoType> extends PartialPlexObject {
+export class Collections<CollectionVideoType = SectionType> extends PartialPlexObject {
   static override TAG = 'Directory';
   TYPE = 'collection';
 
