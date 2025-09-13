@@ -27,10 +27,10 @@
     "build:docs": "typedoc",
     "test": "vitest run",
     "test:ci": "vitest run --coverage --reporter=default --reporter=junit --outputFile=./junit.xml",
-    "bootstraptest": "node --loader ts-node/esm scripts/bootstraptest.ts",
-    "teardowntest": "node --loader ts-node/esm scripts/teardowntest.ts",
-    "add-media": "node --loader ts-node/esm scripts/add-media.ts",
-    "test-cleanup": "node --loader ts-node/esm scripts/test-cleanup.ts"
+    "bootstraptest": "tsx scripts/bootstraptest.ts",
+    "teardowntest": "tsx scripts/teardowntest.ts",
+    "add-media": "tsx scripts/add-media.ts",
+    "test-cleanup": "tsx scripts/test-cleanup.ts"
   },
   "dependencies": {
     "@ctrl/mac-address": "^3.1.0",
@@ -41,7 +41,7 @@
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@ctrl/oxlint-config": "^1.2.3",
+    "@ctrl/oxlint-config": "1.2.3",
     "@ctrl/video-filename-parser": "5.4.1",
     "@sindresorhus/tsconfig": "8.0.1",
     "@trivago/prettier-plugin-sort-imports": "5.2.2",
@@ -56,8 +56,8 @@
     "ora": "8.2.0",
     "oxlint": "1.15.0",
     "p-retry": "7.0.0",
-    "prettier": "^3.6.2",
-    "ts-node": "10.9.2",
+    "prettier": "3.6.2",
+    "tsx": "4.20.5",
     "typedoc": "0.28.12",
     "typescript": "5.9.2",
     "vitest": "3.2.4",
