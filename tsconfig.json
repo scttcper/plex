@@ -6,9 +6,7 @@
     "noUnusedParameters": false,
     "useDefineForClassFields": false,
     "noPropertyAccessFromIndexSignature": false,
-    "noImplicitAny": false
-  },
-  "ts-node": {
-    "transpileOnly": true
+    "noImplicitAny": false,
+    "erasableSyntaxOnly": false
   }
 }

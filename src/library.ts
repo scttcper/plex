@@ -1,9 +1,9 @@
-import { URLSearchParams } from 'url';
-
 import type { Class } from 'type-fest';
+import { URLSearchParams } from 'url';
 
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
+
 import { Album, Artist, Track } from './audio.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
@@ -347,6 +347,10 @@ interface SearchArgs {
    * return {@link Movie} objects)
    */
   libtype: Libtype;
+  /**
+   * Return only results that have duplicates.
+   */
+  duplicate: number;
 }
 
 export type SectionType = Movie | Show | Artist | Album | Track;

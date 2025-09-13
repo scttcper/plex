@@ -1,28 +1,11 @@
-import { parseArgs } from 'node:util';
-
 import { type MovieSection, MyPlexAccount } from '../src/index.js';
 
-const {
-  values: { username, password, host },
-} = parseArgs({
-  options: {
-    username: {
-      type: 'string',
-      short: 'u',
-    },
-    password: {
-      type: 'string',
-      short: 'p',
-    },
-    host: {
-      type: 'string',
-      short: 'h',
-    },
-  },
-});
-
 async function listMovies() {
-  const account = await new MyPlexAccount(host, username, password).connect();
+  const account = await new MyPlexAccount(
+    process.env.PLEX_HOST,
+    process.env.PLEX_USERNAME,
+    process.env.PLEX_PASSWORD,
+  ).connect();
   const resource = await account.resource('cooper-plex');
   const plex = await resource.connect();
   const library = await plex.library();

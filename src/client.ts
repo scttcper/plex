@@ -1,6 +1,5 @@
-import { URL, URLSearchParams } from 'url';
-
 import { ofetch } from 'ofetch';
+import { URL, URLSearchParams } from 'url';
 
 import type { Player } from './client.types.js';
 import { BASE_HEADERS, TIMEOUT } from './config.js';

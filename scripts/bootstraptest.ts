@@ -173,7 +173,7 @@ async function createSection(section: Section, server: PlexServer): Promise<void
       break;
   }
 
-  // biome-ignore lint/suspicious/noAsyncPromiseExecutor: <explanation>
+  // oxlint-disable-next-line no-async-promise-executor
   return new Promise(async resolve => {
     const alertCallback = (data: AlertTypes) => {
       if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {

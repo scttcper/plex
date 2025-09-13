@@ -22,7 +22,7 @@ jobs:
 
       # https://github.com/wyvox/action-setup-pnpm
       - uses: wyvox/action-setup-pnpm@v3
-        with: { node-version: 22 }
+        with: { node-version: 24 }
 
       - name: lint
         run: pnpm run lint
@@ -71,8 +71,8 @@ jobs:
 
       - name: Bootstrap Plex server
         run: pnpm run bootstraptest -- \
-            --advertise-ip 127.0.0.1 \
-            --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
+          --advertise-ip 127.0.0.1 \
+          --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
 
       - name: Unlink PMS from MyPlex account
         uses: webiny/action-post-run@3.1.0
@@ -97,7 +97,7 @@ jobs:
 
       # https://github.com/wyvox/action-setup-pnpm
       - uses: wyvox/action-setup-pnpm@v3
-        with: { node-version: 22 }
+        with: { node-version: 24 }
 
       - name: release
         run: npx semantic-release

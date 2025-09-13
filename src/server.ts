@@ -1,6 +1,5 @@
-import { URL, URLSearchParams } from 'url';
-
 import { ofetch } from 'ofetch';
+import { URL, URLSearchParams } from 'url';
 
 import { fetchItem, fetchItems } from './baseFunctionality.js';
 import { PlexClient } from './client.js';
