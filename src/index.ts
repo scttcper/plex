@@ -6,6 +6,7 @@ export * from './library.js';
 export * from './media.js';
 export * from './myplex.js';
 export * from './playlist.js';
+export * from './playqueue.js';
 export * from './server.js';
 export * from './video.js';
 export * from './audio.js';

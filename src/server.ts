@@ -1,6 +1,8 @@
 import { ofetch } from 'ofetch';
 import { URL, URLSearchParams } from 'url';
 
+import { Playable } from './base/playable.js';
+
 import { fetchItem, fetchItems } from './baseFunctionality.js';
 import { PlexClient } from './client.js';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.js';
@@ -8,6 +10,9 @@ import { Hub, Library } from './library.js';
 import type { LibraryRootResponse } from './library.types.js';
 import { Optimized } from './media.js';
 import { MyPlexAccount } from './myplex.js';
+import type { Playlist } from './playlist.js';
+import { PlayQueue } from './playqueue.js';
+import type { CreatePlayQueueOptions } from './playqueue.types.js';
 import { Agent, SEARCHTYPES } from './search.js';
 import type {
   ConnectionInfo,
@@ -345,6 +350,20 @@ export class PlexServer {
   //   const data = this.query('/playlists');
   //   console.log(JSON.stringify(data));
   // }
+
+  /**
+   * Creates and returns a new PlayQueue.
+   *
+   * @param item Media item or playlist to add to PlayQueue
+   * @param options Creation options for the PlayQueue
+   * @returns New PlayQueue instance
+   */
+  async createPlayQueue(
+    item: Playable | Playable[] | Playlist,
+    options: CreatePlayQueueOptions = {},
+  ): Promise<PlayQueue> {
+    return PlayQueue.create(this, item, options);
+  }
 
   /**
    * Returns a :class:`~plexapi.myplex.MyPlexAccount` object using the same

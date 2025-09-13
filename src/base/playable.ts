@@ -1,3 +1,7 @@
+import { PlayQueue } from '../playqueue.js';
+import type { PlayQueue as PlayQueueType } from '../playqueue.js';
+import type { CreatePlayQueueOptions } from '../playqueue.types.js';
+
 import { PartialPlexObject } from './partialPlexObject.js';
 
 /**
@@ -20,4 +24,14 @@ export abstract class Playable extends PartialPlexObject {
   viewedAt: any;
   /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
   playlistItemID?: number;
+
+  /**
+   * Returns a new PlayQueue from this media item.
+   *
+   * @param options Options for creating the PlayQueue
+   * @returns New PlayQueue instance
+   */
+  async createPlayQueue(options: CreatePlayQueueOptions = {}): Promise<PlayQueueType> {
+    return PlayQueue.create(this.server, this, options);
+  }
 }

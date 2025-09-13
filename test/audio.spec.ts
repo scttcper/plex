@@ -30,7 +30,6 @@ describe('Audio Class Tests', () => {
     const album = albums[0];
     expect(album.type).toBe('album');
     expect(album.title).toBe('Light & Magic');
-    console.log({ album: album.parent?.deref() });
 
     const tracks = await album.tracks();
     expect(tracks.length).toBeGreaterThan(0);
