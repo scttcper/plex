@@ -4,10 +4,10 @@ import { Playable } from './base/playable.js';
 
 import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
-import type { Section } from './library.js';
+import type { Section, SectionType } from './library.js';
 import type { PlaylistResponse } from './playlist.types.js';
 import type { PlexServer } from './server.js';
-import { Episode, Movie, type SectionType } from './video.js';
+import { Episode, Movie } from './video.js';
 
 /**
  * Map media types to their respective class
