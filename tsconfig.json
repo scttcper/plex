@@ -8,8 +8,5 @@
     "noPropertyAccessFromIndexSignature": false,
     "noImplicitAny": false,
     "erasableSyntaxOnly": false
-  },
-  "ts-node": {
-    "transpileOnly": true
   }
 }

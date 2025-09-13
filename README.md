@@ -1,9 +1,8 @@
 # @ctrl/plex
 
 [![npm](https://badgen.net/npm/v/@ctrl/plex)](https://www.npmjs.com/package/@ctrl/plex)
-[![coverage](https://badgen.net/codecov/c/github/scttcper/plex)](https://codecov.io/gh/scttcper/plex)
 
-> A TypeScript [Plex](https://www.plex.tv/) API client based on [pkkid/python-plexapi](https://github.com/pkkid/python-plexapi)
+> A TypeScript [Plex](https://www.plex.tv/) API client using [ofetch](https://github.com/unjs/ofetch) based on [pkkid/python-plexapi](https://github.com/pushingkarmaorg/python-plexapi)
 
 ### Install
 
@@ -110,7 +109,7 @@ npm run test-cleanup
 get a claim token from https://www.plex.tv/claim/
 export PLEX_CLAIM_TOKEN=claim-token
 
-start plex container for testing
+Start plex container for testing. Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
 
 ```console
 docker run -d \
@@ -145,8 +144,8 @@ Pull latest plex container if needed
 docker pull lscr.io/linuxserver/plex:latest
 ```
 
-bootstrap plex server with test media
+bootstrap plex server with test media. This assumes you have set the `PLEX_PASSWORD` and `PLEX_USERNAME` environment variables.
 
 ```console
-NODE_OPTIONS="--loader ts-node/esm" node scripts/bootstraptest.ts --no-docker --server-name=orbstack --password=$PLEX_PASSWORD --username=$PLEX_USERNAME
+npx tsx scripts/bootstraptest.ts --no-docker --server-name=orbstack --password=$PLEX_PASSWORD --username=$PLEX_USERNAME
 ```
