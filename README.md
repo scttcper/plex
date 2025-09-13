@@ -13,11 +13,12 @@ npm install @ctrl/plex
 
 ### Docs
 
-https://ctrl-plex.vercel.app 
+https://ctrl-plex.vercel.app
 
 ### Use
 
 Create a plex connection
+
 ```ts
 import { MyPlexAccount } from '@ctrl/plex';
 
@@ -28,6 +29,7 @@ const library = await plex.library();
 ```
 
 ###### Example 1: List all unwatched movies.
+
 ```ts
 import { MovieSection } from '@ctrl/plex';
 
@@ -38,6 +40,7 @@ const results = await section.search({ unwatched: true });
 ```
 
 ###### Example 2: Search for a list of movies containing a title
+
 ```ts
 const library = await plex.library();
 const section = await library.section<MovieSection>('Movies');
@@ -45,6 +48,7 @@ const results = await section.search({ title: 'Rush Hour' });
 ```
 
 ###### Example 3: List all content containing a specific query
+
 ```ts
 const results = await plex.search('Arnold');
 // Each hub represents a single Hub (or category) in the PlexServer search (movie, actor, etc)
@@ -55,6 +59,7 @@ for (const hub of results) {
 ```
 
 ###### Example 4: List all episodes of a tv show.
+
 ```ts
 import { ShowSection } from '@ctrl/plex';
 
@@ -66,7 +71,8 @@ const episodes = await results[0].episodes();
 ```
 
 ### Differences from python plex client
-JS is a different language and some methods of the api were not possible. 
+
+JS is a different language and some methods of the api were not possible.
 Chaining functions with requests must be awaited mostly individually. Constructors in JS don't typically make requests
 and accessing properties normally cannot make requests either.
 
@@ -99,13 +105,13 @@ Post testing, remove plex server from account. Warning this is destructive. Do n
 npm run test-cleanup
 ```
 
-
 ### Running tests locally (mostly for myself)
 
 get a claim token from https://www.plex.tv/claim/
 export PLEX_CLAIM_TOKEN=claim-token
 
 start plex container for testing
+
 ```console
 docker run -d \
   --name=plex \
@@ -134,11 +140,13 @@ docker run -d \
 ```
 
 Pull latest plex container if needed
+
 ```console
 docker pull lscr.io/linuxserver/plex:latest
 ```
 
 bootstrap plex server with test media
+
 ```console
 NODE_OPTIONS="--loader ts-node/esm" node scripts/bootstraptest.ts --no-docker --server-name=orbstack --password=$PLEX_PASSWORD --username=$PLEX_USERNAME
 ```

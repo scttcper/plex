@@ -1,7 +1,6 @@
 /**
  * A simple script that compares the resolution of plex duplicate movies
  */
-
 import { filenameParse, type ParsedMovie } from '@ctrl/video-filename-parser';
 
 import { type MovieSection, MyPlexAccount } from '../src/index.js';

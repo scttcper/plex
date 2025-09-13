@@ -1,9 +1,9 @@
-import { URLSearchParams } from 'url';
-
 import type { Class } from 'type-fest';
+import { URLSearchParams } from 'url';
 
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
+
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
 import type {

@@ -1,6 +1,7 @@
 import { URLSearchParams } from 'url';
 
 import { PlexObject } from './base/plexObject.js';
+
 import { NotFound } from './exceptions.js';
 import { lowerFirst } from './util.js';
 

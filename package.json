@@ -20,12 +20,8 @@
     "typescript"
   ],
   "scripts": {
-    "lint": "pnpm run '/^(lint:biome|lint:eslint)$/'",
-    "lint:biome": "biome check .",
-    "lint:eslint": "eslint .",
-    "lint:fix": "pnpm run '/^(lint:biome|lint:eslint):fix$/'",
-    "lint:eslint:fix": "eslint . --fix",
-    "lint:biome:fix": "biome check . --write",
+    "lint": "oxlint . && prettier --check . --experimental-cli",
+    "lint:fix": "oxlint . --fix && prettier --write . --log-level=error --experimental-cli",
     "prepare": "npm run build",
     "build": "tsc",
     "build:docs": "typedoc",
@@ -40,29 +36,30 @@
     "@ctrl/mac-address": "^3.1.0",
     "ofetch": "^1.4.1",
     "p-any": "^4.0.0",
-    "type-fest": "^4.41.0",
-    "ws": "^8.18.2",
+    "type-fest": "^5.0.0",
+    "ws": "^8.18.3",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.0.5",
-    "@ctrl/eslint-config-biome": "5.0.0",
-    "@ctrl/video-filename-parser": "^5.2.2",
-    "@sindresorhus/tsconfig": "7.0.0",
-    "@types/node": "24.0.4",
+    "@ctrl/oxlint-config": "^1.2.3",
+    "@ctrl/video-filename-parser": "5.4.1",
+    "@sindresorhus/tsconfig": "8.0.1",
+    "@trivago/prettier-plugin-sort-imports": "5.2.2",
+    "@types/node": "24.3.3",
     "@types/ws": "8.18.1",
     "@types/xml2js": "0.4.14",
     "@types/yargs": "17.0.33",
     "@vitest/coverage-v8": "3.2.4",
-    "eslint": "9.29.0",
     "execa": "9.6.0",
     "globby": "14.1.0",
-    "make-dir": "5.0.0",
+    "make-dir": "5.1.0",
     "ora": "8.2.0",
-    "p-retry": "6.2.1",
+    "oxlint": "1.15.0",
+    "p-retry": "7.0.0",
+    "prettier": "^3.6.2",
     "ts-node": "10.9.2",
-    "typedoc": "0.28.5",
-    "typescript": "5.8.3",
+    "typedoc": "0.28.12",
+    "typescript": "5.9.2",
     "vitest": "3.2.4",
     "yargs": "18.0.0"
   },
@@ -71,8 +68,28 @@
       "master"
     ]
   },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all",
+    "arrowParens": "avoid",
+    "semi": true,
+    "printWidth": 100,
+    "plugins": [
+      "@trivago/prettier-plugin-sort-imports"
+    ],
+    "importOrder": [
+      "^node:.*$",
+      "<THIRD_PARTY_MODULES>",
+      "^(@ctrl)(/.*|$)",
+      "^\\.\\./(?!.*\\.css$)",
+      "^\\./(?!.*\\.css$)(?=.*/)",
+      "^\\./(?!.*\\.css$)(?!.*/)"
+    ],
+    "importOrderSeparation": true,
+    "importOrderSortSpecifiers": false
+  },
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "pnpm@10.12.4"
+  "packageManager": "pnpm@10.16.0"
 }
