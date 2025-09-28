@@ -1,12 +1,10 @@
-# @ctrl/plex
-
-[![npm](https://badgen.net/npm/v/@ctrl/plex)](https://www.npmjs.com/package/@ctrl/plex)
+# @ctrl/plex [![npm](https://badgen.net/npm/v/@ctrl/plex)](https://www.npmjs.com/package/@ctrl/plex)
 
 > A TypeScript [Plex](https://www.plex.tv/) API client using [ofetch](https://github.com/unjs/ofetch) based on [pkkid/python-plexapi](https://github.com/pushingkarmaorg/python-plexapi)
 
 ### Install
 
-```
+```console
 npm install @ctrl/plex
 ```
 

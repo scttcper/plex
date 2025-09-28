@@ -36,16 +36,16 @@
     "@ctrl/mac-address": "^3.1.0",
     "ofetch": "^1.4.1",
     "p-any": "^4.0.0",
-    "type-fest": "^5.0.0",
+    "type-fest": "^5.0.1",
     "ws": "^8.18.3",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@ctrl/oxlint-config": "1.2.3",
+    "@ctrl/oxlint-config": "1.2.6",
     "@ctrl/video-filename-parser": "5.4.1",
     "@sindresorhus/tsconfig": "8.0.1",
     "@trivago/prettier-plugin-sort-imports": "5.2.2",
-    "@types/node": "24.3.3",
+    "@types/node": "24.5.2",
     "@types/ws": "8.18.1",
     "@types/xml2js": "0.4.14",
     "@types/yargs": "17.0.33",
@@ -53,12 +53,12 @@
     "execa": "9.6.0",
     "globby": "14.1.0",
     "make-dir": "5.1.0",
-    "ora": "8.2.0",
-    "oxlint": "1.15.0",
+    "ora": "9.0.0",
+    "oxlint": "1.18.0",
     "p-retry": "7.0.0",
     "prettier": "3.6.2",
-    "tsx": "4.20.5",
-    "typedoc": "0.28.12",
+    "tsx": "4.20.6",
+    "typedoc": "0.28.13",
     "typescript": "5.9.2",
     "vitest": "3.2.4",
     "yargs": "18.0.0"
@@ -91,5 +91,5 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "pnpm@10.16.0"
+  "packageManager": "pnpm@10.17.1"
 }
