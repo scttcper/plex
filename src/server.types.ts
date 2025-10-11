@@ -72,6 +72,8 @@ export interface HistoryMediaContainer {
 
 export interface HistoryMetadatum {
   key: string;
+  ratingKey: string;
+  historyKey: string;
   parentKey?: string;
   grandparentKey?: string;
   title: string;
@@ -87,6 +89,7 @@ export interface HistoryMetadatum {
   viewedAt: number;
   accountID: number;
   deviceID: number;
+  librarySectionID: string;
 }
 
 export interface PlaylistMediaContainer {

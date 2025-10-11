@@ -303,7 +303,7 @@ export class PlexServer {
     }
 
     if (mindate !== undefined) {
-      args['viewedAt>'] = mindate.getTime().toString();
+      args['viewedAt>'] = Math.floor(mindate.getTime() / 1000).toString();
     }
 
     args['X-Plex-Container-Start'] = '0';
