@@ -2,6 +2,7 @@ import { URLSearchParams } from 'url';
 
 import { Playable } from './base/playable.js';
 
+import { Album, Artist, Track } from './audio.js';
 import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
 import type { Section, SectionType } from './library.js';
@@ -18,8 +19,14 @@ function contentClass(data: any) {
       return Episode;
     case 'movie':
       return Movie;
+    case 'track':
+      return Track;
+    case 'album':
+      return Album;
+    case 'artist':
+      return Artist;
     default:
-      throw new Error('Media type not implemented');
+      throw new Error(`Media type '${data.type}' not implemented`);
   }
 }
 
@@ -51,7 +58,7 @@ interface CreateSmartPlaylistOptions {
 }
 
 type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
-type PlaylistContent = Episode | Movie;
+type PlaylistContent = Episode | Movie | Track | Album | Artist;
 
 export class Playlist extends Playable {
   static override TAG = 'Playlist';
@@ -205,6 +212,7 @@ export class Playlist extends Playable {
       throw new NotFound(`Item with title "${item.title}" not found in the playlist`);
     }
 
-    return playlistItem.playlistItemID;
+    // playlistItemID is added dynamically by Plex API for playlist items
+    return (playlistItem as any).playlistItemID;
   }
 }
