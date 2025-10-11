@@ -60,7 +60,7 @@ describe('Audio Playlist Tests', () => {
     [album1, album2] = albums;
 
     // Get some artists from the test library
-    const artists = await musicSection.search<Artist>({
+    [artist1, artist2] = await musicSection.search<Artist>({
       libtype: 'artist',
       limit: 2,
     });
@@ -70,7 +70,8 @@ describe('Audio Playlist Tests', () => {
     expect(track3).toBeDefined();
     expect(album1).toBeDefined();
     expect(album2).toBeDefined();
-    expect(artists[0]).toBeDefined();
+    expect(artist1).toBeDefined();
+    expect(artist2).toBeDefined();
   }, 60000);
 
   afterEach(async () => {
