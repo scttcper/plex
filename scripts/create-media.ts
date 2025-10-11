@@ -77,7 +77,7 @@ export async function prepareTvDir(showPath = tvDir): Promise<void> {
 
 export const requiredAudio = {
   Ladytron: {
-    'Light & Magic': ['2 - Seventeen.mp3'],
+    'Light & Magic': ['2 - Seventeen.mp3', '3 - Flicking Your Switch.mp3', '9 - Evil.mp3'],
   },
 };
 
