@@ -77,7 +77,7 @@ export class Library {
     return section;
   }
 
-  async sectionByID(sectionId: string | number): Promise<Section> {
+  async sectionByID<T extends Section = Section>(sectionId: string | number): Promise<T> {
     const sectionIdStr = sectionId.toString();
     const sections = await this.sections();
     const section = sections.find(s => s.key === sectionIdStr);
@@ -85,7 +85,7 @@ export class Library {
       throw new Error(`Invalid library section id: ${sectionId}`);
     }
 
-    return section;
+    return section as T;
   }
 
   /**

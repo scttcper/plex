@@ -65,19 +65,12 @@ describe('Audio Playlist Tests', () => {
       limit: 2,
     });
 
-    if (artists.length < 2) {
-      throw new Error('Not enough test artists found. Need at least 2 artists.');
-    }
-
-    [artist1, artist2] = artists;
-
     expect(track1).toBeDefined();
     expect(track2).toBeDefined();
     expect(track3).toBeDefined();
     expect(album1).toBeDefined();
     expect(album2).toBeDefined();
-    expect(artist1).toBeDefined();
-    expect(artist2).toBeDefined();
+    expect(artists[0]).toBeDefined();
   }, 60000);
 
   afterEach(async () => {

@@ -67,7 +67,7 @@ export interface HistoryMediaContainer {
   size: number;
   totalSize: number;
   offset: number;
-  Metadata: HistoryResult[];
+  Metadata?: Array<HistoryResult | null | undefined>;
 }
 
 export interface HistoryResult {
