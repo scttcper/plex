@@ -18,7 +18,7 @@ jobs:
       PLEX_CONTAINER_TAG: latest
     steps:
       # https://github.com/actions/checkout
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # https://github.com/wyvox/action-setup-pnpm
       - uses: wyvox/action-setup-pnpm@v3
@@ -72,7 +72,7 @@ jobs:
       - name: Bootstrap Plex server
         run: pnpm run bootstraptest -- \
           --advertise-ip 127.0.0.1 \
-          --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
+          --docker-tag ${{ env.PLEX_CONTAINER_TAG }}
 
       - name: Unlink PMS from MyPlex account
         uses: webiny/action-post-run@3.1.0

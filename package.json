@@ -41,25 +41,25 @@
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@ctrl/oxlint-config": "1.2.6",
+    "@ctrl/oxlint-config": "1.2.8",
     "@ctrl/video-filename-parser": "5.4.1",
     "@sindresorhus/tsconfig": "8.0.1",
     "@trivago/prettier-plugin-sort-imports": "5.2.2",
-    "@types/node": "24.5.2",
+    "@types/node": "24.7.2",
     "@types/ws": "8.18.1",
     "@types/xml2js": "0.4.14",
     "@types/yargs": "17.0.33",
     "@vitest/coverage-v8": "3.2.4",
     "execa": "9.6.0",
-    "globby": "14.1.0",
+    "globby": "15.0.0",
     "make-dir": "5.1.0",
     "ora": "9.0.0",
-    "oxlint": "1.18.0",
-    "p-retry": "7.0.0",
+    "oxlint": "1.22.0",
+    "p-retry": "7.1.0",
     "prettier": "3.6.2",
     "tsx": "4.20.6",
-    "typedoc": "0.28.13",
-    "typescript": "5.9.2",
+    "typedoc": "0.28.14",
+    "typescript": "5.9.3",
     "vitest": "3.2.4",
     "yargs": "18.0.0"
   },
@@ -91,5 +91,5 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "pnpm@10.17.1"
+  "packageManager": "pnpm@10.18.2"
 }
