@@ -46,6 +46,12 @@ describe('History API Tests', () => {
     const hasNonTracks = musicHistory.some(item => item.type !== 'track');
     expect(hasNonTracks).toBe(false);
 
+    // Verify all items have the correct librarySectionID in response
+    const allHaveCorrectSection = musicHistory.every(
+      item => item.librarySectionID === musicSectionId,
+    );
+    expect(allHaveCorrectSection).toBe(true);
+
     // If there are multiple media types in all history but only tracks in music history, filter worked
     const allTypes = new Set(allHistory.map(h => h.type));
     if (allTypes.size > 1) {
@@ -63,12 +69,10 @@ describe('History API Tests', () => {
     }
 
     const firstItem = allHistory[0];
-    // Extract ratingKey from key (format: /library/metadata/12345)
-    const keyMatch = firstItem.key?.match(/\/library\/metadata\/(\d+)/);
-    const ratingKey = keyMatch?.[1];
+    const ratingKey = firstItem.ratingKey;
 
     if (!ratingKey) {
-      console.log('First history item has no parseable ratingKey');
+      console.log('First history item has no ratingKey');
       return;
     }
 
@@ -77,11 +81,13 @@ describe('History API Tests', () => {
 
     console.log(`Filtered by ratingKey ${ratingKey}: ${filteredHistory.length} items`);
 
-    // All items should have keys referencing the same ratingKey
-    const allSameKey = filteredHistory.every(item => {
-      const match = item.key?.match(/\/library\/metadata\/(\d+)/);
-      return match?.[1] === ratingKey;
-    });
+    // All items should have the same ratingKey
+    const allSameKey = filteredHistory.every(item => item.ratingKey === ratingKey);
     expect(allSameKey).toBe(true);
+
+    // Each history entry should have a unique historyKey
+    const historyKeys = filteredHistory.map(item => item.historyKey);
+    const uniqueHistoryKeys = new Set(historyKeys);
+    expect(uniqueHistoryKeys.size).toBe(filteredHistory.length);
   }, 30000);
 });
