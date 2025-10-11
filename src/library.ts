@@ -55,7 +55,6 @@ export class Library {
     for (const elem of elems.MediaContainer.Directory) {
       for (const cls of [MovieSection, ShowSection, MusicSection]) {
         if (cls.TYPE === elem.type) {
-          // eslint-disable-next-line new-cap
           const instance = new cls(this.server, elem, key);
           sections.push(instance);
         }

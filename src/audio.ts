@@ -565,7 +565,6 @@ export class Artist extends Audio {
       if (e.constructor.name === 'NotFound') {
         return undefined;
       }
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
       throw e;
     }
   }

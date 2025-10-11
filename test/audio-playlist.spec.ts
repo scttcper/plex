@@ -71,19 +71,12 @@ describe('Audio Playlist Tests', () => {
 
     [artist1, artist2] = artists;
 
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(track1).toBeDefined();
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(track2).toBeDefined();
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(track3).toBeDefined();
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(album1).toBeDefined();
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(album2).toBeDefined();
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(artist1).toBeDefined();
-    // biome-ignore lint/suspicious/noMisplacedAssertion: Need to verify test data exists
     expect(artist2).toBeDefined();
   }, 60000);
 
