@@ -17,7 +17,7 @@ import { Agent, SEARCHTYPES } from './search.js';
 import type {
   ConnectionInfo,
   HistoryMediaContainer,
-  HistoryMetadatum,
+  HistoryResult,
   ServerRootResponse,
 } from './server.types.js';
 import { type SettingResponse, Settings } from './settings.js';
@@ -288,7 +288,7 @@ export class PlexServer {
     ratingKey?: number | string,
     accountId?: number | string,
     librarySectionId?: number | string,
-  ): Promise<HistoryMetadatum[]> {
+  ): Promise<HistoryResult[]> {
     const args: Record<string, string> = { sort: 'viewedAt:desc' };
     if (ratingKey !== undefined) {
       args.metadataItemID = ratingKey.toString();
@@ -309,7 +309,7 @@ export class PlexServer {
     args['X-Plex-Container-Start'] = '0';
     args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxresults).toString();
 
-    let results: HistoryMetadatum[] = [];
+    let results: HistoryResult[] = [];
     let key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
     let raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
     const totalResults = raw.MediaContainer.totalSize;

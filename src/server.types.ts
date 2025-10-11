@@ -67,10 +67,10 @@ export interface HistoryMediaContainer {
   size: number;
   totalSize: number;
   offset: number;
-  Metadata: HistoryMetadatum[];
+  Metadata: HistoryResult[];
 }
 
-export interface HistoryMetadatum {
+export interface HistoryResult {
   key: string;
   ratingKey: string;
   historyKey: string;

@@ -8,7 +8,7 @@ export * from './myplex.js';
 export * from './playlist.js';
 export * from './playqueue.js';
 export * from './server.js';
-export type { HistoryMetadatum } from './server.types.js';
+export type { HistoryResult } from './server.types.js';
 export * from './video.js';
 export * from './audio.js';
 export { X_PLEX_IDENTIFIER } from './config.js';

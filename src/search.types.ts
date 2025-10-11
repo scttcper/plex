@@ -7,7 +7,7 @@ export interface MatchSearchResult {
   lifespanEnded: boolean;
 }
 
-export interface SearchResult {
+export interface SearchResultContainer {
   title: string;
   type: string;
   hubIdentifier: string;
@@ -16,7 +16,7 @@ export interface SearchResult {
   more: boolean;
   style: string;
   Directory?: Directory[];
-  Metadata?: Metadatum[];
+  Metadata?: SearchResult[];
 }
 
 export interface Directory {
@@ -37,7 +37,7 @@ export interface Directory {
   thumb?: string;
 }
 
-interface Metadatum {
+interface SearchResult {
   librarySectionTitle: string;
   ratingKey: string;
   key: string;

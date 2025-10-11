@@ -16,7 +16,7 @@ import type {
 } from './library.types.js';
 import { Playlist } from './playlist.js';
 import { type Agent, searchType, type SEARCHTYPES } from './search.js';
-import type { SearchResult } from './search.types.js';
+import type { SearchResultContainer } from './search.types.js';
 import type { PlexServer } from './server.js';
 import type { MediaContainer } from './util.js';
 import { Movie, Show } from './video.js';
@@ -990,10 +990,10 @@ export class Hub extends PlexObject {
   size!: number;
   title!: string;
   type!: string;
-  Directory: SearchResult['Directory'];
-  Metadata: SearchResult['Metadata'];
+  Directory: SearchResultContainer['Directory'];
+  Metadata: SearchResultContainer['Metadata'];
 
-  protected _loadData(data: SearchResult) {
+  protected _loadData(data: SearchResultContainer) {
     this.hubIdentifier = data.hubIdentifier;
     this.size = data.size;
     this.title = data.title;
