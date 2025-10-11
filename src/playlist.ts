@@ -53,6 +53,13 @@ interface CreateSmartPlaylistOptions {
 type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
 type PlaylistContent = Episode | Movie;
 
+export interface UpdatePlaylistOptions {
+  /** New title for the playlist */
+  title?: string;
+  /** New summary/description for the playlist */
+  summary?: string;
+}
+
 export class Playlist extends Playable {
   static override TAG = 'Playlist';
 
@@ -63,6 +70,42 @@ export class Playlist extends Playable {
     }
 
     return this._create(server, title, (options as any).items);
+  }
+
+  /**
+   * Update a playlist's metadata by ratingKey without fetching the full playlist first.
+   *
+   * @param server - The Plex server instance
+   * @param ratingKey - The playlist's ratingKey
+   * @param options - Fields to update (title and/or summary)
+   *
+   * @example
+   * ```typescript
+   * await Playlist.update(server, '12345', {
+   *   title: 'My Updated Playlist',
+   *   summary: 'A new description'
+   * });
+   * ```
+   */
+  static async update(
+    server: PlexServer,
+    ratingKey: string,
+    options: UpdatePlaylistOptions,
+  ): Promise<void> {
+    if (!options.title && !options.summary) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (options.title) {
+      params.set('title', options.title);
+    }
+    if (options.summary) {
+      params.set('summary', options.summary);
+    }
+
+    const key = `/playlists/${ratingKey}?${params.toString()}`;
+    await server.query(key, 'put');
   }
 
   /** Create a smart playlist. */
