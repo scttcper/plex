@@ -58,3 +58,25 @@ it('should edit a playlist', async () => {
   expect(playlist.title).toBe(new_title);
   expect(playlist.summary).toBe(new_summary);
 });
+
+it('should update a playlist by ratingKey without fetching it first', async () => {
+  const title = 'test_playlist_static_update';
+  const new_title = 'test_playlist_updated_title';
+  const new_summary = 'Updated via static method';
+
+  // Create playlist
+  playlist = await Playlist.create(plex, title, { items: [buckBunny] });
+  expect(playlist.title).toBe(title);
+  expect(playlist.summary).toBe('');
+
+  // Update using static method with just the ratingKey (no fetch required)
+  await Playlist.update(plex, playlist.ratingKey, {
+    title: new_title,
+    summary: new_summary,
+  });
+
+  // Fetch and verify updates
+  await playlist.reload();
+  expect(playlist.title).toBe(new_title);
+  expect(playlist.summary).toBe(new_summary);
+});
