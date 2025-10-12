@@ -172,7 +172,7 @@ export class Playlist extends Playable {
     return matched ?? null;
   }
 
-  async items() {
+  async items<T extends PlaylistContent>(): Promise<T[]> {
     if (this._items === null) {
       const key = `/playlists/${this.ratingKey}/items`;
       const items = await fetchItems(this.server, key);
@@ -182,7 +182,7 @@ export class Playlist extends Playable {
       });
     }
 
-    return this._items;
+    return this._items as T[];
   }
 
   /** Add items to a playlist. */

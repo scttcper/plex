@@ -1,6 +1,6 @@
 import { URLSearchParams } from 'url';
 
-import { PartialPlexObject } from './base/partialPlexObject.js';
+import { Playable } from './base/playable.js';
 import { PlexObject } from './base/plexObject.js';
 
 import type { AlbumData, ArtistData, TrackData } from './audio.types.js';
@@ -26,7 +26,7 @@ import type { PlexServer } from './server.js';
 /**
  * Base class for all audio objects including Artist, Album, and Track.
  */
-export class Audio extends PartialPlexObject {
+export class Audio extends Playable {
   /** Default metadata type for audio sync items. */
   static METADATA_TYPE = 'track';
 
@@ -197,6 +197,8 @@ export class Audio extends PartialPlexObject {
     this.musicAnalysisVersion = isNaN(musicAnalysisVersionInt)
       ? undefined
       : musicAnalysisVersionInt;
+    this.playlistItemID = data.playlistItemID;
+    this.ratingKey = data.ratingKey;
     const ratingKeyInt = data.ratingKey ? parseInt(data.ratingKey, 10) : NaN;
     this.ratingKey = isNaN(ratingKeyInt) ? this.ratingKey : ratingKeyInt.toString();
     this.summary = data.summary;
