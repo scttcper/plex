@@ -112,6 +112,7 @@ export PLEX_CLAIM_TOKEN=claim-token
 Start plex container for testing. Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
 
 #### Step 2
+
 Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
 
 ```console

@@ -37,7 +37,7 @@ describe('History API Tests', () => {
         const key = `/:/scrobble?key=${track.ratingKey}&identifier=com.plexapp.plugins.library`;
         await plex.query(key);
         await sleep(2000); // Wait for history to be updated
-      } catch (err) {
+      } catch {
         // Ignore errors - tests will handle empty history gracefully
       }
     }
