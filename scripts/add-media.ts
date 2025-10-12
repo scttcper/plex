@@ -43,6 +43,7 @@ export async function addMedia(): Promise<void> {
       'prefs[useExternalExtras]': '0',
       'prefs[enableBIFGeneration]': '0',
       'prefs[augmentWithProviderContent]': '0',
+      'prefs[enableVoiceActivityGeneration]': '0',
     },
   );
 

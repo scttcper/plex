@@ -80,13 +80,8 @@ export const requiredAudio = {
     'Light & Magic': ['2 - Seventeen.mp3', '3 - Flicking Your Switch.mp3', '9 - Evil.mp3'],
     'Witching Hour': ['2 - Destroy Everything You Touch.mp3'],
   },
-  'The Chemical Brothers': {
-    'Dig Your Own Hole': [
-      '1 - Block Rockin Beats.mp3',
-      '2 - Dig Your Own Hole.mp3',
-      '3 - Elektrobank.mp3',
-    ],
-    Surrender: ['2 - Under the Influence.mp3', '9 - Hey Boy Hey Girl.mp3'],
+  Radiohead: {
+    'OK Computer': ['6 - Karma Police.mp3'],
   },
 };
 

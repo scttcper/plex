@@ -84,30 +84,35 @@ export PLEX_USERNAME=email
 export PLEX_PASSWORD=password
 ```
 
-Claim server and setup test content (once)
+Setup test content (once)
 
 ```sh
-npm run claim-server && npm run add-media
+pnpm run add-media
 ```
 
 Run tests
 
 ```sh
-npm test
+pnpm test
 ```
 
 Post testing, remove plex server from account. Warning this is destructive. Do not use this on a real plex account.
 
 ```sh
-npm run test-cleanup
+pnpm run test-cleanup
 ```
 
-### Running tests locally (mostly for myself)
+### Running tests locally
+
+#### Step 1
 
 get a claim token from https://www.plex.tv/claim/
 export PLEX_CLAIM_TOKEN=claim-token
 
 Start plex container for testing. Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
+
+#### Step 2
+Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
 
 ```console
 docker run -d \
