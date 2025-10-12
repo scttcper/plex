@@ -1,6 +1,6 @@
 {
   "name": "@ctrl/plex",
-  "version": "3.9.2",
+  "version": "3.10.0",
   "description": "plex api client in typescript using ofetch",
   "author": "Scott Cooper <scttcper@gmail.com>",
   "publishConfig": {
