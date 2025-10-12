@@ -87,15 +87,10 @@ export const requiredAudio = {
 
 export async function prepareAudioDir(audioPath = audioDir): Promise<void> {
   for (const [artist, albums] of Object.entries(requiredAudio)) {
-    const artistDir = path.join(audioPath, artist);
-    if (!fs.existsSync(artistDir)) {
-      fs.mkdirSync(artistDir);
-    }
-
     for (const [album, songs] of Object.entries(albums)) {
-      const albumDir = path.join(artistDir, album);
+      const albumDir = path.join(audioPath, `${artist} - ${album}`);
       if (!fs.existsSync(albumDir)) {
-        fs.mkdirSync(albumDir);
+        fs.mkdirSync(albumDir, { recursive: true });
       }
 
       for (const song of songs) {
