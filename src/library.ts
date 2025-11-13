@@ -1047,7 +1047,7 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
   declare art?: string;
 
   // TODO: can this be set in the constructor?
-  VIDEO_TYPE!: Class<CollectionVideoType>;
+  declare VIDEO_TYPE: Class<CollectionVideoType>;
 
   // Alias for childCount
   get size() {

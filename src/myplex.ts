@@ -117,50 +117,50 @@ export class MyPlexAccount {
   WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'; // get, post with data
 
   /** Your Plex account ID */
-  id?: number;
+  declare id?: number;
   /** Unknown */
-  uuid?: string;
+  declare uuid?: string;
   /**
    * auth token for user by plex
    */
-  authenticationToken?: string;
+  declare authenticationToken?: string;
   /** Unknown */
-  certificateVersion?: number;
+  declare certificateVersion?: number;
   /** Unknown. - Looks like an alias for `username` */
-  title?: string;
+  declare title?: string;
   /** Your current Plex email address */
-  email?: string;
+  declare email?: string;
   /** URL of your account thumbnail */
-  thumb?: string;
+  declare thumb?: string;
   /** Unknown */
-  guest?: boolean;
+  declare guest?: boolean;
   /** Unknown */
-  home?: boolean;
+  declare home?: boolean;
   /** Unknown */
-  homeSize?: number;
+  declare homeSize?: number;
   /** Unknown */
-  maxHomeSize?: number;
+  declare maxHomeSize?: number;
   /** Your Plex locale */
-  locale?: string | null;
+  declare locale?: string | null;
   /** Your current mailing list status. */
-  mailingListStatus?: 'active' | 'inactive';
-  mailingListActive?: boolean;
+  declare mailingListStatus?: 'active' | 'inactive';
+  declare mailingListActive?: boolean;
   /** Email address to add items to your `Watch Later` queue. */
-  queueEmail?: string;
+  declare queueEmail?: string;
   /** Unknown */
-  restricted?: boolean;
+  declare restricted?: boolean;
   /** Description */
-  scrobbleTypes?: string;
+  declare scrobbleTypes?: string;
   /** Name of subscription plan */
-  subscriptionPlan?: string | null;
+  declare subscriptionPlan?: string | null;
   /** String representation of `subscriptionActive` */
-  subscriptionStatus?: 'active' | 'inactive';
+  declare subscriptionStatus?: 'active' | 'inactive';
   /** True if your subsctiption is active */
-  subscriptionActive?: boolean | null;
+  declare subscriptionActive?: boolean | null;
   /** List of features allowed on your subscription */
-  subscriptionFeatures?: string[];
+  declare subscriptionFeatures?: string[];
   /** List of devices your allowed to use with this account */
-  entitlements?: string[];
+  declare entitlements?: string[];
 
   /**
    *

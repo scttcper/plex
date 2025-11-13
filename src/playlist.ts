@@ -147,9 +147,9 @@ export class Playlist extends Playable {
   declare playlistType: string;
   declare smart: boolean;
   declare summary: string;
-  allowSync?: boolean;
-  duration?: number;
-  durationInSeconds?: number;
+  declare allowSync?: boolean;
+  declare duration?: number;
+  declare durationInSeconds?: number;
   /** Cache of playlist items */
   private _items: PlaylistContent[] | null = null;
 

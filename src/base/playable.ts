@@ -11,19 +11,19 @@ import { PartialPlexObject } from './partialPlexObject.js';
  */
 export abstract class Playable extends PartialPlexObject {
   /** (int): Active session key. */
-  sessionKey: any;
+  declare sessionKey: any;
   /** (str): Username of the person playing this item (for active sessions). */
-  usernames: any;
+  declare usernames: any;
   /** (:class:`~plexapi.client.PlexClient`): Client objects playing this item (for active sessions). */
-  players: any;
+  declare players: any;
   /** (:class:`~plexapi.media.Session`): Session object, for a playing media file. */
-  session: any;
+  declare session: any;
   /** (:class:`~plexapi.media.TranscodeSession`): Transcode Session object if item is being transcoded (None otherwise). */
-  transcodeSessions: any;
+  declare transcodeSessions: any;
   /** (datetime): Datetime item was last viewed (history). */
-  viewedAt: any;
+  declare viewedAt: any;
   /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
-  playlistItemID?: number;
+  declare playlistItemID?: number;
 
   /**
    * Returns a new PlayQueue from this media item.

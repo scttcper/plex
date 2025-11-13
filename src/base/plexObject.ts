@@ -11,7 +11,7 @@ export abstract class PlexObject {
   /** xml element type */
   static TYPE: string | null = null;
   /** plex relative url */
-  key!: string;
+  declare key: string;
   /**
    * WeakRef to the parent object that this object is built from.
    */

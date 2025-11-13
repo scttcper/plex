@@ -16,7 +16,7 @@ import type {
 abstract class MediaTag extends PlexObject {
   static override TAG: string;
   /** Tag ID (This seems meaningless except to use it as a unique id). */
-  id?: string;
+  declare id?: string;
   /** unknown */
   declare role?: string;
   /**

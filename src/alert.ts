@@ -6,7 +6,7 @@ import type { PlexServer } from './server.js';
 export class AlertListener {
   key = '/:/websockets/notifications';
 
-  _ws?: WebSocket;
+  declare _ws?: WebSocket;
 
   constructor(
     private readonly server: PlexServer,

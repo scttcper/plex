@@ -64,6 +64,8 @@ export class PlexClient {
   TAG = 'Player';
   key = '/resources';
 
+  timeout: number;
+
   declare deviceClass?: string;
   declare machineIdentifier?: string;
   declare product?: string;
@@ -73,7 +75,6 @@ export class PlexClient {
   declare platform?: string;
   declare platformVersion?: string;
   declare title?: string;
-  timeout: number;
 
   constructor(options: PlexOptions = {}) {
     if (options.baseurl) {
