@@ -117,50 +117,50 @@ export class MyPlexAccount {
   WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'; // get, post with data
 
   /** Your Plex account ID */
-  id?: number;
+  declare id?: number;
   /** Unknown */
-  uuid?: string;
+  declare uuid?: string;
   /**
    * auth token for user by plex
    */
-  authenticationToken?: string;
+  declare authenticationToken?: string;
   /** Unknown */
-  certificateVersion?: number;
+  declare certificateVersion?: number;
   /** Unknown. - Looks like an alias for `username` */
-  title?: string;
+  declare title?: string;
   /** Your current Plex email address */
-  email?: string;
+  declare email?: string;
   /** URL of your account thumbnail */
-  thumb?: string;
+  declare thumb?: string;
   /** Unknown */
-  guest?: boolean;
+  declare guest?: boolean;
   /** Unknown */
-  home?: boolean;
+  declare home?: boolean;
   /** Unknown */
-  homeSize?: number;
+  declare homeSize?: number;
   /** Unknown */
-  maxHomeSize?: number;
+  declare maxHomeSize?: number;
   /** Your Plex locale */
-  locale?: string | null;
+  declare locale?: string | null;
   /** Your current mailing list status. */
-  mailingListStatus?: 'active' | 'inactive';
-  mailingListActive?: boolean;
+  declare mailingListStatus?: 'active' | 'inactive';
+  declare mailingListActive?: boolean;
   /** Email address to add items to your `Watch Later` queue. */
-  queueEmail?: string;
+  declare queueEmail?: string;
   /** Unknown */
-  restricted?: boolean;
+  declare restricted?: boolean;
   /** Description */
-  scrobbleTypes?: string;
+  declare scrobbleTypes?: string;
   /** Name of subscription plan */
-  subscriptionPlan?: string | null;
+  declare subscriptionPlan?: string | null;
   /** String representation of `subscriptionActive` */
-  subscriptionStatus?: 'active' | 'inactive';
+  declare subscriptionStatus?: 'active' | 'inactive';
   /** True if your subsctiption is active */
-  subscriptionActive?: boolean | null;
+  declare subscriptionActive?: boolean | null;
   /** List of features allowed on your subscription */
-  subscriptionFeatures?: string[];
+  declare subscriptionFeatures?: string[];
   /** List of devices your allowed to use with this account */
-  entitlements?: string[];
+  declare entitlements?: string[];
 
   /**
    *
@@ -409,37 +409,37 @@ export class MyPlexResource {
   static key = 'https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1';
   TAG = 'Device';
   /** Descriptive name of this resource */
-  name!: string;
+  declare name: string;
   /** True if this resource is one of your own (you logged into it) */
-  owned!: boolean;
+  declare owned: boolean;
   /** This resources accesstoken */
-  accessToken!: string;
+  declare accessToken: string;
   /** Unique ID for this resource */
-  clientIdentifier!: string;
+  declare clientIdentifier: string;
   /** List of !:class!:`~myplex.ResourceConnection` objects for this resource */
-  connections!: ResourceConnection[];
+  declare connections: ResourceConnection[];
   /** Timestamp this resource first connected to your server */
-  createdAt!: Date;
+  declare createdAt: Date;
   /** Timestamp this resource last connected */
-  lastSeenAt!: Date;
+  declare lastSeenAt: Date;
   /** Best guess on the type of device this is (PS, iPhone, Linux, etc) */
-  device!: string | null;
+  declare device: string | null;
   /** Unknown */
-  home!: boolean;
+  declare home: boolean;
   /** OS the resource is running (Linux, Windows, Chrome, etc.) */
-  platform!: string;
+  declare platform: string;
   /** Version of the platform */
-  platformVersion!: string;
+  declare platformVersion: string;
   /** True if the resource is online */
-  presence!: boolean;
+  declare presence: boolean;
   /** Plex product (Plex Media Server, Plex for iOS, Plex Web, etc.) */
-  product!: string;
+  declare product: string;
   /** Version of the product. */
-  productVersion!: string;
+  declare productVersion: string;
   /** List of services this resource provides (client, server, player, pubsub-player, etc.) */
-  provides!: string;
+  declare provides: string;
   /** Unknown (possibly True if the resource has synced content?) */
-  synced!: boolean;
+  declare synced: boolean;
 
   constructor(
     public readonly account: MyPlexAccount,
@@ -516,17 +516,17 @@ export class MyPlexResource {
 export class ResourceConnection {
   TAG = 'Connection';
   /** Local IP address */
-  address!: string;
+  declare address: string;
   /** Full local address */
-  httpuri!: string;
+  declare httpuri: string;
   /** True if local */
-  local!: boolean;
+  declare local: boolean;
   /** 32400 */
-  port!: number;
+  declare port: number;
   /** HTTP or HTTPS */
-  protocol!: string;
+  declare protocol: string;
   /** External address */
-  uri!: string;
+  declare uri: string;
 
   constructor(data: Connection) {
     this._loadData(data);
@@ -552,26 +552,26 @@ export class MyPlexDevice extends PlexObject {
   static override TAG = 'Device';
   static key = 'https://plex.tv/devices.xml';
 
-  name!: string;
-  publicAddress!: string;
-  product!: string;
-  productVersion!: string;
-  platform!: string;
-  platformVersion!: string;
-  device!: string;
-  model!: string;
-  vendor!: string;
-  provides!: string;
-  clientIdentifier!: string;
-  version!: string;
-  id!: string;
-  token!: string;
-  screenResolution!: string;
-  screenDensity!: string;
-  createdAt!: Date;
-  lastSeenAt!: Date;
+  declare name: string;
+  declare publicAddress: string;
+  declare product: string;
+  declare productVersion: string;
+  declare platform: string;
+  declare platformVersion: string;
+  declare device: string;
+  declare model: string;
+  declare vendor: string;
+  declare provides: string;
+  declare clientIdentifier: string;
+  declare version: string;
+  declare id: string;
+  declare token: string;
+  declare screenResolution: string;
+  declare screenDensity: string;
+  declare createdAt: Date;
+  declare lastSeenAt: Date;
   /** List of connection URIs for the device. */
-  connections?: string[];
+  declare connections?: string[];
 
   async connect(): Promise<PlexServer> {
     // TODO: switch between PlexServer and PlexClient

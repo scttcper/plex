@@ -26,13 +26,13 @@ export type Section = MovieSection | ShowSection | MusicSection;
 export class Library {
   static key = '/library';
   /** Unknown ('com.plexapp.plugins.library') */
-  identifier!: string;
+  declare identifier: string;
   /** Unknown (/system/bundle/media/flags/) */
-  mediaTagPrefix!: string;
+  declare mediaTagPrefix: string;
   /** 'Plex Library' (not sure how useful this is) */
-  title1!: string;
+  declare title1: string;
   /** Second title (this is blank on my setup) */
-  title2!: string;
+  declare title2: string;
 
   constructor(
     private readonly server: PlexServer,
@@ -66,11 +66,11 @@ export class Library {
 
   async section<T extends Section = Section>(title: string): Promise<T> {
     const sections = await this.sections();
-    const section = sections.find(s => s.title.toLowerCase() === title.toLowerCase()) as
+    const section = sections.find(s => s.title?.toLowerCase() === title.toLowerCase()) as
       | T
       | undefined;
     if (!section) {
-      const avilableSections = sections.map(s => s.title).join(', ');
+      const avilableSections = sections.map(s => s.title || 'Unknown').join(', ');
       throw new Error(`Invalid library section: ${title}. Available: ${avilableSections}`);
     }
 
@@ -364,41 +364,41 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   static ALLOWED_SORT: string[] = [];
   static BOOLEAN_FILTERS = ['unwatched', 'duplicate'];
   /** Unknown (com.plexapp.agents.imdb, etc) */
-  agent!: string;
+  declare agent: string;
   /** l True if you allow syncing content from this section. */
-  allowSync!: boolean;
+  declare allowSync: boolean;
   /** Wallpaper artwork used to respresent this section. */
-  art!: string;
+  declare art: string;
   /** Composit image used to represent this section. */
-  composite!: string;
+  declare composite: string;
   /** Unknown */
-  filters!: boolean;
+  declare filters: boolean;
   /** Language represented in this section (en, xn, etc). */
-  language!: string;
+  declare language: string;
   /** Paths on disk where section content is stored. */
-  locations!: Location[];
+  declare locations: Location[];
   /** True if this section is currently being refreshed. */
-  refreshing!: boolean;
+  declare refreshing: boolean;
   /** Internal scanner used to find media (Plex Movie Scanner, Plex Premium Music Scanner, etc.) */
-  scanner!: string;
+  declare scanner: string;
   /** Thumbnail image used to represent this section. */
-  thumb!: string;
+  declare thumb: string;
   /** Title of this section. */
-  title!: string;
+  declare title: string;
   /** Type of content section represents (movie, artist, photo, show). */
-  type!: 'movie' | 'show';
+  declare type: 'movie' | 'show';
   /** Datetime this library section was last updated. */
-  updatedAt!: Date;
+  declare updatedAt: Date;
   /** Datetime this library section was created. */
-  createdAt!: Date;
-  scannedAt!: Date;
+  declare createdAt: Date;
+  declare scannedAt: Date;
   /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
-  uuid!: string;
-  CONTENT_TYPE!: string;
+  declare uuid: string;
+  declare CONTENT_TYPE: string;
   readonly SECTION_TYPE!: Class<SType>;
 
-  _filterTypes?: FilteringType[];
-  _fieldTypes?: FilteringFieldType[];
+  declare _filterTypes?: FilteringType[];
+  declare _fieldTypes?: FilteringFieldType[];
 
   async all(sort = ''): Promise<SType[]> {
     let sortStr = '';
@@ -985,13 +985,13 @@ export class MusicSection extends LibrarySection<Track> {
 export class Hub extends PlexObject {
   static override TAG = 'Hub';
 
-  hubIdentifier!: string;
+  declare hubIdentifier: string;
   /** Number of items found. */
-  size!: number;
-  title!: string;
-  type!: string;
-  Directory: SearchResultContainer['Directory'];
-  Metadata: SearchResultContainer['Metadata'];
+  declare size: number;
+  declare title: string;
+  declare type: string;
+  declare Directory: SearchResultContainer['Directory'];
+  declare Metadata: SearchResultContainer['Metadata'];
 
   protected _loadData(data: SearchResultContainer) {
     this.hubIdentifier = data.hubIdentifier;
@@ -1007,7 +1007,7 @@ export class Hub extends PlexObject {
  * Represents a Folder inside a library.
  */
 export class Folder extends PlexObject {
-  title!: string;
+  declare title: string;
 
   /**
    * Returns a list of available Folders for this folder.
@@ -1031,23 +1031,23 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
   static override TAG = 'Directory';
   TYPE = 'collection';
 
-  guid!: string;
-  librarySectionTitle!: string;
-  librarySectionKey!: string;
-  contentRating!: string;
-  subtype!: string;
-  summary!: string;
-  index!: number;
-  thumb!: string;
-  addedAt!: number;
-  updatedAt!: number;
-  childCount!: number;
-  maxYear!: string;
-  minYear!: string;
-  art?: string;
+  declare guid: string;
+  declare librarySectionTitle: string;
+  declare librarySectionKey: string;
+  declare contentRating: string;
+  declare subtype: string;
+  declare summary: string;
+  declare index: number;
+  declare thumb: string;
+  declare addedAt: number;
+  declare updatedAt: number;
+  declare childCount: number;
+  declare maxYear: string;
+  declare minYear: string;
+  declare art?: string;
 
   // TODO: can this be set in the constructor?
-  VIDEO_TYPE!: Class<CollectionVideoType>;
+  declare VIDEO_TYPE: Class<CollectionVideoType>;
 
   // Alias for childCount
   get size() {
@@ -1101,13 +1101,13 @@ export class FilterChoice extends PlexObject {
    * API URL path to quickly list all items with this filter choice.
    * (/library/sections/<section>/all?genre=<key>)
    */
-  fastKey!: string;
+  declare fastKey: string;
   /** Thumbnail URL for the filter choice. */
-  thumb?: string;
+  declare thumb?: string;
   /** The title of the filter choice. */
-  title!: string;
+  declare title: string;
   /** The filter type (genre, contentRating, etc). */
-  type!: string;
+  declare type: string;
 
   protected _loadData(data: CollectionData) {
     this.key = data.key;
@@ -1121,16 +1121,16 @@ export class FilteringType extends PlexObject {
   static override TAG = 'Type';
 
   /** The libtype for the filter. */
-  type!: string;
+  declare type: string;
   /** True if this filter type is currently active. */
-  active!: boolean;
-  fields!: FilteringField[];
-  filters!: FilteringFilter[];
+  declare active: boolean;
+  declare fields: FilteringField[];
+  declare filters: FilteringFilter[];
 
   /** List of sort objects. */
-  sorts: any;
+  declare sorts: any;
   /** The title for the libtype filter. */
-  title!: string;
+  declare title: string;
 
   _loadData(data: any) {
     this.active = data.active;
@@ -1150,13 +1150,13 @@ export class FilteringFilter extends PlexObject {
   static override TAG = 'Filter';
 
   /** The key for the filter. */
-  filter!: string;
+  declare filter: string;
   /** The :class:`~plexapi.library.FilteringFieldType` type (string, boolean, integer, date, etc). */
-  filterType!: string;
+  declare filterType: string;
   /** The title of the filter. */
-  title!: string;
+  declare title: string;
   /** 'filter' */
-  type!: string;
+  declare type: string;
 
   _loadData(data: any) {
     this.filter = data.filter;
@@ -1174,19 +1174,19 @@ export class FilteringSort extends PlexObject {
   static override TAG = 'Sort';
 
   /** True if the sort is currently active. */
-  active!: boolean;
+  declare active: boolean;
   /** The currently active sorting direction. */
-  activeDirection!: string;
+  declare activeDirection: string;
   /** The currently active default sorting direction. */
-  default!: string;
+  declare default: string;
   /** The default sorting direction. */
-  defaultDirection!: string;
+  declare defaultDirection: string;
   /** The URL key for sorting with desc. */
-  descKey!: string;
+  declare descKey: string;
   /** API URL path for first character endpoint. */
-  firstCharacterKey!: string;
+  declare firstCharacterKey: string;
   /** The title of the sorting. */
-  title!: string;
+  declare title: string;
 
   _loadData(data: any) {
     this.active = data.active;
@@ -1206,10 +1206,10 @@ export class FilteringSort extends PlexObject {
 export class FilteringField extends PlexObject {
   static override TAG = 'Field';
 
-  type!: string;
-  title!: string;
+  declare type: string;
+  declare title: string;
   /** The subtype of the filter (decade, rating, etc) */
-  subType!: string;
+  declare subType: string;
 
   _loadData(data: any) {
     this.key = data.key;
@@ -1226,8 +1226,8 @@ export class FilteringFieldType extends PlexObject {
   static override TAG = 'FieldType';
 
   /** The filtering data type (string, boolean, integer, date, etc). */
-  type!: string;
-  operators!: FilteringOperator[];
+  declare type: string;
+  declare operators: FilteringOperator[];
 
   _loadData(data: any) {
     this.type = data.type;
@@ -1242,7 +1242,7 @@ export class FilteringOperator extends PlexObject {
   static override TAG = 'Operator';
 
   /** The libtype for the filter. */
-  type!: string;
+  declare type: string;
 
   _loadData(data: any) {
     this.key = data.key;

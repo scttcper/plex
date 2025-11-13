@@ -33,53 +33,53 @@ import type { MediaContainer } from './util.js';
 export class PlexServer {
   key = '/';
   /** True if server allows camera upload */
-  allowCameraUpload!: boolean;
+  declare allowCameraUpload: boolean;
   /** True if server allows channel access (iTunes?) */
-  allowChannelAccess!: boolean;
+  declare allowChannelAccess: boolean;
   /** True is server allows media to be deleted. */
-  allowMediaDeletion!: boolean;
+  declare allowMediaDeletion: boolean;
   /** True is server allows sharing */
-  allowSharing!: boolean;
+  declare allowSharing: boolean;
   /** True is server allows sync */
-  allowSync!: boolean;
+  declare allowSync: boolean;
   /** Unknown */
-  allowTuners!: boolean;
+  declare allowTuners: boolean;
   /** Unknown */
-  livetv!: number;
+  declare livetv: number;
   /** Unknown */
-  backgroundProcessing!: boolean;
+  declare backgroundProcessing: boolean;
   /** True if server has an HTTPS certificate */
-  certificate!: boolean;
+  declare certificate: boolean;
   /** Unknown */
-  companionProxy!: boolean;
+  declare companionProxy: boolean;
   /** Unknown */
-  diagnostics!: string;
+  declare diagnostics: string;
   /** Unknown */
-  eventStream!: boolean;
+  declare eventStream: boolean;
   /** Human friendly name for this server */
-  friendlyName!: string;
+  declare friendlyName: string;
   /**
    * True if `Hub Search <https!://www.plex.tv/blog
    * /seek-plex-shall-find-leveling-web-app/>`_ is enabled. I believe this
    * is enabled for everyone
    */
-  hubSearch!: boolean;
+  declare hubSearch: boolean;
   /** Unique ID for this server (looks like an md5) */
-  machineIdentifier?: string;
+  declare machineIdentifier?: string;
   /**
    * True if `multiusers <https!://support.plex.tv/hc/en-us/articles/200250367-Multi-User-Support>`_ are enabled.
    */
-  multiuser!: boolean;
+  declare multiuser: boolean;
   /** Unknown (True if logged into myPlex?) */
-  myPlex!: boolean;
+  declare myPlex: boolean;
   /** Unknown (ex!: mapped) */
-  myPlexMappingState!: string;
+  declare myPlexMappingState: string;
   /** Unknown (ex!: ok). */
-  myPlexSigninState!: string;
+  declare myPlexSigninState: string;
   /** True if you have a myPlex subscription */
-  myPlexSubscription!: boolean;
+  declare myPlexSubscription: boolean;
   /** Email address if signed into myPlex (user@example.com) */
-  myPlexUsername!: string;
+  declare myPlexUsername: string;
   /**
    * List of features allowed by the server owner. This may be based
    * on your PlexPass subscription. Features include!: camera_upload, cloudsync,
@@ -87,60 +87,60 @@ export class PlexServer {
    * photo_autotags, premium_music_metadata, session_bandwidth_restrictions, sync,
    * trailers, webhooks (and maybe more).
    */
-  ownerFeatures!: string[];
+  declare ownerFeatures: string[];
   /**
    * True if photo `auto-tagging <https!://support.plex.tv/hc/en-us/articles/234976627-Auto-Tagging-of-Photos>`_ is enabled.
    */
-  photoAutoTag!: boolean;
+  declare photoAutoTag: boolean;
   /** Platform the server is hosted on (ex!: Linux) */
-  platform!: string;
+  declare platform: string;
   /** Platform version (ex!: '6.1 (Build 7601)', '4.4.0-59-generic'). */
-  platformVersion!: string;
+  declare platformVersion: string;
   /** Unknown */
-  pluginHost!: boolean;
+  declare pluginHost: boolean;
   /** Unknown */
-  readOnlyLibraries!: boolean;
+  declare readOnlyLibraries: boolean;
   /** Unknown */
-  requestParametersInCookie!: boolean;
+  declare requestParametersInCookie: boolean;
   /**
    * Current `Streaming Brain <https!://www.plex.tv/blog/mcstreamy-brain-take-world-two-easy-steps/>`_ version.
    */
-  streamingBrainVersion!: number;
-  streamingBrainABRVersion!: number;
+  declare streamingBrainVersion: number;
+  declare streamingBrainABRVersion: number;
   /**
    * True if `syncing to a device <https!://support.plex.tv/hc/en-us/articles/201053678-Sync-Media-to-a-Device>`_ is enabled.
    */
-  sync!: boolean;
+  declare sync: boolean;
   /**
    * Number of active video transcoding sessions.
    */
-  transcoderActiveVideoSessions!: number;
+  declare transcoderActiveVideoSessions: number;
   /** True if audio transcoding audio is available. */
-  transcoderAudio!: boolean;
+  declare transcoderAudio: boolean;
   /** True if audio transcoding lyrics is available. */
-  transcoderLyrics!: boolean;
+  declare transcoderLyrics: boolean;
   /** True if audio transcoding photos is available. */
-  transcoderPhoto!: boolean;
+  declare transcoderPhoto: boolean;
   /** True if audio transcoding subtitles is available. */
-  transcoderSubtitles!: boolean;
+  declare transcoderSubtitles: boolean;
   /** True if audio transcoding video is available. */
-  transcoderVideo!: boolean;
+  declare transcoderVideo: boolean;
   /** List of video bitrates. */
-  transcoderVideoBitrates!: string;
+  declare transcoderVideoBitrates: string;
   /** List of video qualities. */
-  transcoderVideoQualities!: string;
+  declare transcoderVideoQualities: string;
   /** List of video resolutions. */
-  transcoderVideoResolutions!: string;
+  declare transcoderVideoResolutions: string;
   /** Datetime the server was updated. */
-  updatedAt!: number;
+  declare updatedAt: number;
   /** Unknown */
-  updater!: boolean;
+  declare updater: boolean;
   /** Current Plex version (ex!: 1.3.2.3112-1751929) */
-  version!: string;
+  declare version: string;
   /** True if voice search is enabled. (is this Google Voice search?) */
-  voiceSearch!: boolean;
+  declare voiceSearch: boolean;
   /** Unknown */
-  pushNotifications!: boolean;
+  declare pushNotifications: boolean;
   _library?: Library;
   _settings?: Settings;
   private _myPlexAccount?: MyPlexAccount;

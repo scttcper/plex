@@ -30,11 +30,11 @@ export abstract class PartialPlexObject extends PlexObject {
     includeStations: 0,
   };
 
-  ratingKey?: string;
-  title?: string;
-  type?: string;
-  year?: number;
-  librarySectionID?: number;
+  declare ratingKey?: string;
+  declare title?: string;
+  declare type?: string;
+  declare year?: number;
+  declare librarySectionID?: number;
 
   protected override _detailsKey = this._buildDetailsKey();
 

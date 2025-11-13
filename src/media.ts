@@ -16,14 +16,14 @@ import type {
 abstract class MediaTag extends PlexObject {
   static override TAG: string;
   /** Tag ID (This seems meaningless except to use it as a unique id). */
-  id?: string;
+  declare id?: string;
   /** unknown */
-  role?: string;
+  declare role?: string;
   /**
    * Name of the tag. This will be Animation, SciFi etc for Genres.
    * The name of person for Directors and Roles (ex: Animation, Stephen Graham, etc).
    */
-  tag!: string;
+  declare tag: string;
   abstract FILTER: string;
 
   // async items(): Promise<any[]> {
@@ -44,43 +44,43 @@ abstract class MediaTag extends PlexObject {
 
 export class Media extends PlexObject {
   static override TAG = 'Media' as const;
-  aspectRatio!: number;
+  declare aspectRatio: number;
   /**
    * Number of audio channels for this video (ex: 6)
    */
-  audioChannels!: number;
+  declare audioChannels: number;
   /**
    * Audio codec used within the video (ex: ac3)
    */
-  audioCodec!: string;
+  declare audioCodec: string;
   /**
    * Bitrate of the video (ex: 1624)
    */
-  bitrate!: number;
+  declare bitrate: number;
   /**
    * Length of the video in milliseconds (ex: 6990483)
    */
-  duration!: number;
+  declare duration: number;
   /**
    * Height of the video in pixels (ex: 256)
    */
-  height!: number;
+  declare height: number;
   /**
    * Plex ID of this media item
    */
-  id!: number;
+  declare id: number;
   /**
    * True if video has 64 bit offsets
    */
-  has64bitOffsets!: boolean;
-  optimizedForStreaming!: boolean;
-  title?: string;
-  videoCodec!: string;
-  videoFrameRate!: string;
-  videoProfile!: string;
+  declare has64bitOffsets: boolean;
+  declare optimizedForStreaming: boolean;
+  declare title?: string;
+  declare videoCodec: string;
+  declare videoFrameRate: string;
+  declare videoProfile: string;
   /** Width of the video in pixels */
-  width!: number;
-  parts!: MediaPart[];
+  declare width: number;
+  declare parts: MediaPart[];
 
   protected _loadData(data: MediaData) {
     this.aspectRatio = data.aspectRatio;
@@ -104,18 +104,18 @@ export class Media extends PlexObject {
 export class MediaPart extends PlexObject {
   static override TAG = 'Part' as const;
 
-  container!: string;
-  duration!: number;
-  file!: string;
-  id!: number;
-  indexes!: string;
-  size!: number;
-  optimizedForStreaming!: boolean;
-  syncItemId!: string;
-  syncState!: string;
-  videoProfile!: string;
-  streams!: MediaPartStream[];
-  exists?: boolean;
+  declare container: string;
+  declare duration: number;
+  declare file: string;
+  declare id: number;
+  declare indexes: string;
+  declare size: number;
+  declare optimizedForStreaming: boolean;
+  declare syncItemId: string;
+  declare syncState: string;
+  declare videoProfile: string;
+  declare streams: MediaPartStream[];
+  declare exists?: boolean;
 
   /**
    * Set the selected {@link AudioStream} for this MediaPart.
@@ -184,13 +184,13 @@ export class MediaPart extends PlexObject {
 export class MediaPartStream extends PlexObject {
   static override TAG = 'Stream' as const;
 
-  id!: number;
-  codec!: string;
-  index!: number;
-  language?: string;
-  languageCode?: string;
-  selected?: boolean;
-  streamType?: number;
+  declare id: number;
+  declare codec: string;
+  declare index: number;
+  declare language?: string;
+  declare languageCode?: string;
+  declare selected?: boolean;
+  declare streamType?: number;
 
   protected _loadData(data: MediaPartStreamData) {
     this.id = data.id;
@@ -210,29 +210,29 @@ export class SubtitleStream extends MediaPartStream {
   static override TAG = 'Stream' as const;
   static STREAMTYPE = 3;
   /** True if the subtitle stream can be auto synced. */
-  canAutoSync?: boolean;
+  declare canAutoSync?: boolean;
   /** The container of the subtitle stream. */
-  container?: string;
+  declare container?: string;
   /** True if this is a forced subtitle. */
-  forced!: boolean;
+  declare forced: boolean;
   /** The format of the subtitle stream (ex: srt). */
-  format?: string;
+  declare format?: string;
   /** The header compression of the subtitle stream. */
-  headerCompression?: string;
+  declare headerCompression?: string;
   /** True if this is a hearing impaired (SDH) subtitle. */
-  hearingImpaired!: boolean;
+  declare hearingImpaired: boolean;
   /** True if the on-demand subtitle is a perfect match. */
-  perfectMatch?: boolean;
+  declare perfectMatch?: boolean;
   /** The provider title where the on-demand subtitle is downloaded from. */
-  providerTitle?: string;
+  declare providerTitle?: string;
   /** The match score (download count) of the on-demand subtitle. */
-  score?: number;
+  declare score?: number;
   /** The source key of the on-demand subtitle. */
-  sourceKey?: string;
+  declare sourceKey?: string;
   /** Unknown. */
-  transient?: string;
+  declare transient?: string;
   /** The user id of the user that downloaded the on-demand subtitle. */
-  userID?: number;
+  declare userID?: number;
 
   /**
    * Sets this subtitle stream as the selected subtitle stream.
@@ -270,13 +270,13 @@ export class LyricStream extends MediaPartStream {
   static override TAG = 'Stream' as const;
   static STREAMTYPE = 4;
   /** The format of the lyric stream (ex: lrc). */
-  format?: string;
+  declare format?: string;
   /** The minimum number of lines in the (timed) lyric stream. */
-  minLines?: number;
+  declare minLines?: number;
   /** The provider of the lyric stream (ex: com.plexapp.agents.lyricfind). */
-  provider?: string;
+  declare provider?: string;
   /** True if the lyrics are timed to the track. */
-  timed!: boolean;
+  declare timed: boolean;
 
   protected override _loadData(data: any): void {
     super._loadData(data);
@@ -341,9 +341,9 @@ export class Marker extends MediaTag {
   static override TAG = 'Marker' as const;
   FILTER = 'marker' as const;
 
-  type!: 'intro' | 'credits';
-  startTimeOffset!: number;
-  endTimeOffset!: number;
+  declare type: 'intro' | 'credits';
+  declare startTimeOffset: number;
+  declare endTimeOffset: number;
 
   protected override _loadData(data: MarkerData) {
     this.type = data.type;
@@ -359,9 +359,9 @@ export class Chapter extends MediaTag {
   static override TAG = 'Chapter' as const;
   FILTER = 'chapter' as const;
 
-  startTimeOffset!: number;
-  endTimeOffset!: number;
-  thumb?: string;
+  declare startTimeOffset: number;
+  declare endTimeOffset: number;
+  declare thumb?: string;
 
   protected override _loadData(data: ChapterData) {
     this.startTimeOffset = data.startTimeOffset;
@@ -404,12 +404,12 @@ export class Subformat extends MediaTag {
 
 export class Optimized extends PlexObject {
   static override TAG = 'Item';
-  id!: string;
-  composite!: any;
-  title!: any;
-  type!: any;
-  target!: any;
-  targetTagID!: any;
+  declare id: string;
+  declare composite: any;
+  declare title: any;
+  declare type: any;
+  declare target: any;
+  declare targetTagID: any;
 
   // TODO: Implement items()
 
@@ -456,7 +456,7 @@ class GuidTag extends PlexObject {
   /**
    * The guid for external metadata sources (e.g. IMDB, TMDB, TVDB). ex - imdb://tt3222784
    */
-  id!: string;
+  declare id: string;
 
   protected _loadData(data: any) {
     this.id = data.id;
@@ -478,17 +478,17 @@ export class Rating extends PlexObject {
    * (e.g. ``imdb://image.rating``, ``rottentomatoes://image.rating.ripe``,
    * ``rottentomatoes://image.rating.upright``, ``themoviedb://image.rating``).
    */
-  image!: string;
+  declare image: string;
 
   /**
    * The type of rating (e.g. audience or critic).
    */
-  type!: 'audience' | 'critic';
+  declare type: 'audience' | 'critic';
 
   /**
    * The rating value.
    */
-  value!: number;
+  declare value: number;
 
   protected _loadData(data: any) {
     this.image = data.image;
@@ -504,22 +504,22 @@ abstract class BaseResource extends PlexObject {
   /**
    * The source of the resource. 'local' for local files (e.g. theme.mp3),
    */
-  provider!: string;
+  declare provider: string;
 
   /**
    * Unique key identifying the resource.
    */
-  ratingKey!: string;
+  declare ratingKey: string;
 
   /**
    * True if the resource is currently selected.
    */
-  selected!: boolean;
+  declare selected: boolean;
 
   /**
    * The URL to retrieve the resource thumbnail.
    */
-  thumb!: string;
+  declare thumb: string;
 
   async select() {
     const key = this.key.slice(0, -1);
@@ -599,7 +599,7 @@ export class AudioStream extends MediaPartStream {
   /** The stream identifier of the audio stream. */
   streamIdentifier?: number;
   /** True if this is a visually impaired (AD) audio stream. */
-  visualImpaired!: boolean;
+  declare visualImpaired: boolean;
 
   // Track only attributes
   /** The gain for the album. */
@@ -663,11 +663,11 @@ export class Image extends PlexObject {
   static override TAG = 'Image' as const;
 
   /** The alt text for the image. */
-  alt?: string;
+  declare alt?: string;
   /** The type of image (e.g. coverPoster, background, snapshot). */
-  type?: string;
+  declare type?: string;
   /** The API URL (/library/metadata/<ratingKey>/thumb/<thumbid>). */
-  url?: string;
+  declare url?: string;
 
   protected _loadData(data: any): void {
     this.alt = data.alt;
@@ -682,9 +682,9 @@ export class Field extends PlexObject {
   static override TAG = 'Field' as const;
 
   /** True if the field is locked. */
-  locked!: boolean;
+  declare locked: boolean;
   /** The name of the field. */
-  name!: string;
+  declare name: string;
 
   protected _loadData(data: any): void {
     // Convert potential string '1' or '0' to boolean

@@ -139,17 +139,17 @@ export class Playlist extends Playable {
 
   TYPE = 'playlist';
 
-  addedAt!: Date;
-  updatedAt!: Date;
-  composite!: string;
-  guid!: string;
-  leafCount!: number;
-  playlistType!: string;
-  smart!: boolean;
-  summary!: string;
-  allowSync?: boolean;
-  duration?: number;
-  durationInSeconds?: number;
+  declare addedAt: Date;
+  declare updatedAt: Date;
+  declare composite: string;
+  declare guid: string;
+  declare leafCount: number;
+  declare playlistType: string;
+  declare smart: boolean;
+  declare summary: string;
+  declare allowSync?: boolean;
+  declare duration?: number;
+  declare durationInSeconds?: number;
   /** Cache of playlist items */
   private _items: PlaylistContent[] | null = null;
 
@@ -168,7 +168,7 @@ export class Playlist extends Playable {
    */
   async item(title: string): Promise<PlaylistContent | null> {
     const items = await this.items();
-    const matched = items.find(item => item.title.toLowerCase() === title.toLowerCase());
+    const matched = items.find(item => item.title?.toLowerCase() === title.toLowerCase());
     return matched ?? null;
   }
 

@@ -25,38 +25,38 @@ export class PlayQueue extends PlexObject {
   static override TYPE = 'playqueue';
 
   /** PlayQueue identifier */
-  identifier!: string;
+  declare identifier: string;
   /** Media tag prefix path */
-  mediaTagPrefix!: string;
+  declare mediaTagPrefix: string;
   /** Media tag version number */
-  mediaTagVersion!: number;
+  declare mediaTagVersion: number;
   /** Unique ID of the PlayQueue */
-  playQueueID!: number;
+  declare playQueueID: number;
   /** ID of the last added item, defines where "Up Next" region starts */
-  playQueueLastAddedItemID?: number;
+  declare playQueueLastAddedItemID?: number;
   /** The queue item ID of the currently selected item */
-  playQueueSelectedItemID!: number;
+  declare playQueueSelectedItemID: number;
   /** The offset of the selected item in the PlayQueue */
-  playQueueSelectedItemOffset!: number;
+  declare playQueueSelectedItemOffset: number;
   /** ID of the currently selected item, matches ratingKey */
-  playQueueSelectedMetadataItemID!: number;
+  declare playQueueSelectedMetadataItemID: number;
   /** True if the PlayQueue is shuffled */
-  playQueueShuffled!: boolean;
+  declare playQueueShuffled: boolean;
   /** Original URI used to create the PlayQueue */
-  playQueueSourceURI!: string;
+  declare playQueueSourceURI: string;
   /** Total number of items in the PlayQueue */
-  playQueueTotalCount!: number;
+  declare playQueueTotalCount: number;
   /** Version of the PlayQueue, increments on changes */
-  playQueueVersion!: number;
+  declare playQueueVersion: number;
   /** Total size of the PlayQueue (alias for playQueueTotalCount) */
-  size!: number;
+  declare size: number;
   /** Media object for the currently selected item */
-  selectedItem?: Playable;
+  declare selectedItem?: Playable;
 
   /** Cache of PlayQueue items */
   private _items: Playable[] | null = null;
   /** Raw data from server */
-  private _data: any;
+  declare private _data: any;
 
   /**
    * Retrieve an existing PlayQueue by identifier.
