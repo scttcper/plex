@@ -384,7 +384,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /** Thumbnail image used to represent this section. */
   thumb!: string;
   /** Title of this section. */
-  title!: string;
+  declare title: string;
   /** Type of content section represents (movie, artist, photo, show). */
   type!: 'movie' | 'show';
   /** Datetime this library section was last updated. */

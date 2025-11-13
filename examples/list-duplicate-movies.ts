@@ -10,9 +10,6 @@ import { type MovieSection, MyPlexAccount } from '../src/index.js';
  */
 const RESOURCE_NAME = 'cooper-plex';
 const SECTION_NAME = 'Movies';
-const USERNAME = process.env.PLEX_USERNAME;
-const PASSWORD = process.env.PLEX_PASSWORD;
-const HOST = process.env.PLEX_HOST;
 
 interface ParsedFile {
   path: string;
@@ -42,7 +39,12 @@ function getQualityScore(parsed: ParsedMovie): number {
 }
 
 async function listDuplicateMovies() {
-  const account = await new MyPlexAccount(HOST, USERNAME, PASSWORD).connect();
+  const account = await new MyPlexAccount(
+    null,
+    process.env.PLEX_USERNAME,
+    process.env.PLEX_PASSWORD,
+    process.env.PLEX_TOKEN,
+  ).connect();
   const resource = await account.resource(RESOURCE_NAME);
   const plex = await resource.connect();
   const library = await plex.library();
