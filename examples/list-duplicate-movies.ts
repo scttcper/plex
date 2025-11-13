@@ -25,6 +25,7 @@ interface DuplicateMovie {
   parsedFiles: ParsedFile[];
   filesToRemove: string[];
   foldersToRemove: string[];
+  sameQuality: boolean;
 }
 
 // Quick and dirty resolution scoring - extract number from enum string
@@ -76,6 +77,11 @@ async function listDuplicateMovies() {
       // Sort by quality score (highest first)
       parsedFiles.sort((a, b) => b.qualityScore - a.qualityScore);
 
+      // Check if all files have the same quality score
+      const sameQuality = parsedFiles.every(
+        file => file.qualityScore === parsedFiles[0].qualityScore,
+      );
+
       // Keep the highest quality file, mark others for removal
       const filesToRemove = parsedFiles.slice(1).map(file => file.path);
 
@@ -96,6 +102,7 @@ async function listDuplicateMovies() {
         parsedFiles,
         filesToRemove,
         foldersToRemove,
+        sameQuality,
       });
     }
   }
@@ -110,11 +117,22 @@ async function listDuplicateMovies() {
   for (const movie of duplicateMovies) {
     console.log('---');
     console.log(`${movie.title} (${movie.year})`);
-    console.log(`${movie.locations.length} copies found:\n`);
+    console.log(`${movie.locations.length} copies found:`);
+
+    if (movie.sameQuality) {
+      console.log('⚠️  All copies have the same quality score\n');
+    } else {
+      console.log();
+    }
 
     // Show quality analysis for each file
     movie.parsedFiles.forEach((file, index) => {
-      const status = index === 0 ? '✅ KEEP' : '❌ REMOVE';
+      let status: string;
+      if (movie.sameQuality) {
+        status = index === 0 ? '✅ KEEP (first found)' : '⚠️  SAME QUALITY';
+      } else {
+        status = index === 0 ? '✅ KEEP' : '❌ REMOVE';
+      }
       console.log(`  ${status} [Score: ${file.qualityScore}] ${file.filename}`);
 
       if (file.parsed.resolution) {
@@ -131,16 +149,15 @@ async function listDuplicateMovies() {
     });
   }
 
-  // Summary of folders to remove
+  // Summary of folders to remove (exclude movies with same quality)
   console.log('\n🗑️  FOLDERS RECOMMENDED FOR REMOVAL:');
   console.log('======================================');
-  const totalFoldersToRemove = duplicateMovies.reduce(
-    (total, movie) => total + movie.foldersToRemove.length,
-    0,
-  );
+  const totalFoldersToRemove = duplicateMovies
+    .filter(movie => !movie.sameQuality)
+    .reduce((total, movie) => total + movie.foldersToRemove.length, 0);
 
   for (const movie of duplicateMovies) {
-    if (movie.foldersToRemove.length > 0) {
+    if (!movie.sameQuality && movie.foldersToRemove.length > 0) {
       console.log(`\n${movie.title} (${movie.year}):`);
       for (const folderPath of movie.foldersToRemove) {
         console.log(`  rm -rf "${folderPath}"`);

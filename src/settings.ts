@@ -40,7 +40,7 @@ enum Type {
 export class Settings extends PlexObject {
   static key = '/:/prefs';
   declare _settings: Record<string, Setting>;
-  declare _data: SettingResponse[] = [];
+  _data: SettingResponse[] = [];
 
   all(): Setting[] {
     return Object.entries(this._settings)
@@ -114,7 +114,7 @@ export class Setting extends PlexObject {
   declare group: string;
   /** List or dictionary of valis values for this setting. */
   declare enumValues: any[] | any;
-  declare _setValue: string | boolean | number | null = null;
+  _setValue: string | boolean | number | null = null;
 
   /**
    * Set a new value for this setitng. NOTE: You must call {@link Settings.save} before
