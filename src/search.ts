@@ -8,11 +8,11 @@ import { rsplit } from './util.js';
 export class SearchResult extends PlexObject {
   static override TAG = 'SearchResult';
 
-  guid!: string;
-  name!: string;
-  score!: number;
-  year!: number;
-  lifespanEnded!: boolean;
+  declare guid: string;
+  declare name: string;
+  declare score: number;
+  declare year: number;
+  declare lifespanEnded: boolean;
 
   protected _loadData(data: MatchSearchResult) {
     this.guid = data.guid;
@@ -29,12 +29,12 @@ export class SearchResult extends PlexObject {
 export class Agent extends PlexObject {
   static override TAG = 'Agent';
 
-  hasAttribution!: boolean;
-  hasPrefs!: boolean;
-  identifier!: string;
-  primary!: string;
-  shortIdentifier!: string;
-  name!: string;
+  declare hasAttribution: boolean;
+  declare hasPrefs: boolean;
+  declare identifier: string;
+  declare primary: string;
+  declare shortIdentifier: string;
+  declare name: string;
   // languageCode: any[] = [];
 
   protected _loadData(data: any) {

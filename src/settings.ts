@@ -39,8 +39,8 @@ enum Type {
 
 export class Settings extends PlexObject {
   static key = '/:/prefs';
-  _settings!: Record<string, Setting>;
-  _data: SettingResponse[] = [];
+  declare _settings: Record<string, Setting>;
+  declare _data: SettingResponse[] = [];
 
   all(): Setting[] {
     return Object.entries(this._settings)
@@ -95,26 +95,26 @@ export class Settings extends PlexObject {
  */
 export class Setting extends PlexObject {
   /** Setting id (or name). */
-  id!: string;
+  declare id: string;
   /** Short description of what this setting is. */
-  label!: string;
+  declare label: string;
   /** Long description of what this setting is. */
-  summary!: string;
+  declare summary: string;
   /** Setting type (text, int, double, bool). */
-  type!: string;
+  declare type: string;
   /** Default value for this setting. */
-  default!: string | boolean | number;
+  declare default: string | boolean | number;
   /** Current value for this setting. */
-  value!: string | boolean | number;
+  declare value: string | boolean | number;
   /** True if this is a hidden setting. */
-  hidden!: boolean;
+  declare hidden: boolean;
   /** True if this is an advanced setting. */
-  advanced!: boolean;
+  declare advanced: boolean;
   /** Group name this setting is categorized as. */
-  group!: string;
+  declare group: string;
   /** List or dictionary of valis values for this setting. */
-  enumValues: any[] | any;
-  _setValue: string | boolean | number | null = null;
+  declare enumValues: any[] | any;
+  declare _setValue: string | boolean | number | null = null;
 
   /**
    * Set a new value for this setitng. NOTE: You must call {@link Settings.save} before

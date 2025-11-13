@@ -24,31 +24,31 @@ import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.
 
 abstract class Video extends Playable {
   /** Datetime this item was added to the library. */
-  addedAt!: Date;
+  declare addedAt: Date;
   /** Datetime item was last accessed. */
-  lastViewedAt?: Date;
+  declare lastViewedAt?: Date;
   /** Hardcoded as 'video' (useful for search filters). */
   listType = 'video' as const;
   /** Summary of the artist, track, or album. */
-  summary!: string;
+  declare summary: string;
   /** URL to thumbnail image. */
-  thumb!: string;
+  declare thumb: string;
   /** Title to use when sorting (defaults to title). */
-  titleSort?: string;
+  declare titleSort?: string;
   /** Datetime this item was updated. */
-  updatedAt?: Date;
+  declare updatedAt?: Date;
   /** Count of times this item was accessed. */
-  viewCount?: number;
-  art?: string;
-  grandparentArt?: string;
+  declare viewCount?: number;
+  declare art?: string;
+  declare grandparentArt?: string;
   /**
    * BlurHash string for artwork image.
    */
-  artBlurHash?: string;
+  declare artBlurHash?: string;
   /**
    * BlurHash string for thumbnail image.
    */
-  thumbBlurHash?: string;
+  declare thumbBlurHash?: string;
 
   /**
    * Returns True if this video is watched.
@@ -179,50 +179,50 @@ export class Movie extends Video {
   METADATA_TYPE = 'movie';
 
   /** Audience rating (usually from Rotten Tomatoes). */
-  audienceRating?: number;
+  declare audienceRating?: number;
   /** Key to audience rating image (rottentomatoes://image.rating.spilled) */
-  audienceRatingImage?: string;
+  declare audienceRatingImage?: string;
   /** Chapter source (agent; media; mixed). */
-  chapterSource?: ChapterSource;
+  declare chapterSource?: ChapterSource;
   /** Content rating (PG-13; NR; TV-G). */
-  contentRating!: string;
+  declare contentRating: string;
   /** Duration of movie in milliseconds. */
-  duration!: number;
+  declare duration: number;
   /** Original title, often the foreign title (転々; 엽기적인 그녀). */
-  originalTitle?: string;
+  declare originalTitle?: string;
   /** YYYY-MM-DD movie was released. */
-  originallyAvailableAt!: string;
+  declare originallyAvailableAt: string;
   /** Primary extra key (/library/metadata/66351). */
-  primaryExtraKey!: string;
+  declare primaryExtraKey: string;
   /** Movie rating (7.9; 9.8; 8.1). */
-  rating!: number;
+  declare rating: number;
   /** Key to rating image (rottentomatoes://image.rating.rotten). */
-  ratingImage!: string;
+  declare ratingImage: string;
   /** Studio that created movie (Di Bonaventura Pictures; 21 Laps Entertainment). */
-  studio!: string;
+  declare studio: string;
   /** Movie tag line (Back 2 Work; Who says men can't change?). */
-  tagline?: string;
+  declare tagline?: string;
   /** User rating (2.0; 8.0). */
-  userRating?: number;
+  declare userRating?: number;
   /** View offset in milliseconds. */
-  viewOffset!: number;
+  declare viewOffset: number;
   /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en) */
-  guid!: string;
-  directors!: Director[];
-  countries!: Country[];
-  writers!: Writer[];
-  chapters?: Chapter[];
-  collections!: Collection[];
+  declare guid: string;
+  declare directors: Director[];
+  declare countries: Country[];
+  declare writers: Writer[];
+  declare chapters?: Chapter[];
+  declare collections: Collection[];
   // fields (List<:class:`~plexapi.media.Field`>): List of field objects.
-  genres!: Genre[];
+  declare genres: Genre[];
   // media (List<:class:`~plexapi.media.Media`>): List of media objects.
-  producers!: Producer[];
-  roles!: Role[];
-  similar!: Similar[];
-  media!: Media[];
-  guids!: Guid[];
-  markers!: Marker[];
-  ratings?: Rating[];
+  declare producers: Producer[];
+  declare roles: Role[];
+  declare similar: Similar[];
+  declare media: Media[];
+  declare guids: Guid[];
+  declare markers: Marker[];
+  declare ratings?: Rating[];
 
   get actors() {
     return this.roles;
@@ -315,35 +315,35 @@ export class Show extends Video {
   METADATA_TYPE = 'episode';
 
   /** Key to banner artwork (/library/metadata/<ratingkey>/art/<artid>) */
-  banner!: string;
+  declare banner: string;
   /** Unknown. */
-  childCount!: number;
+  declare childCount: number;
   /** Content rating (PG-13; NR; TV-G). */
-  contentRating!: string;
+  declare contentRating: string;
   /** <:class:`~plexapi.media.Collection`>): List of collections this media belongs. */
   // collections: List;
   /** Duration of show in milliseconds. */
-  duration!: number;
+  declare duration: number;
   /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en). */
-  guid!: string;
+  declare guid: string;
   /** Plex index (?) */
-  index!: number;
+  declare index: number;
   /** Unknown. */
-  leafCount!: number;
+  declare leafCount: number;
   /** Datetime show was released. */
-  originallyAvailableAt!: Date;
+  declare originallyAvailableAt: Date;
   /** Show rating (7.9; 9.8; 8.1). */
-  rating!: number;
+  declare rating: number;
   /** Studio that created show (Di Bonaventura Pictures; 21 Laps Entertainment). */
-  studio!: string;
+  declare studio: string;
   /** Key to theme resource (/library/metadata/<ratingkey>/theme/<themeid>) */
-  theme!: string;
+  declare theme: string;
   /** Unknown. */
-  viewedLeafCount!: number;
+  declare viewedLeafCount: number;
   /** List of genre objects. */
-  genres!: Genre[];
+  declare genres: Genre[];
   /** List of role objects. */
-  roles!: Role[];
+  declare roles: Role[];
   /** <:class:`~plexapi.media.Similar`>): List of Similar objects. */
   // similar: List;
 
@@ -418,17 +418,17 @@ export class Season extends Video {
   METADATA_TYPE = 'episode';
 
   /** Season number */
-  index!: number;
+  declare index: number;
   /** Number of episodes in season. */
-  leafCount!: number;
+  declare leafCount: number;
   /** Key to this season */
-  parentKey!: string;
+  declare parentKey: string;
   /** Rating key of the show this season belongs to */
-  parentRatingKey!: string;
+  declare parentRatingKey: string;
   /** Show title */
-  parentTitle!: string;
+  declare parentTitle: string;
   /** Number of watched episodes in season */
-  viewedLeafCount!: number;
+  declare viewedLeafCount: number;
 
   /** Returns season number */
   get seasonNumber(): number {
@@ -468,47 +468,47 @@ export class Episode extends Video {
   METADATA_TYPE = 'episode';
 
   /** Unknown (media). */
-  chapterSource?: string;
+  declare chapterSource?: string;
   /** Content rating (PG-13; NR; TV-G). */
-  contentRating!: string;
+  declare contentRating: string;
   /**  Duration of episode in milliseconds. */
-  duration!: number;
+  declare duration: number;
   /** Key to this episodes :class:`~plexapi.video.Show`. */
-  grandparentKey!: string;
+  declare grandparentKey: string;
   /** Unique key for this episodes :class:`~plexapi.video.Show`. */
-  grandparentRatingKey!: string;
+  declare grandparentRatingKey: string;
   /** Key to this episodes :class:`~plexapi.video.Show` theme. */
-  grandparentTheme!: string;
+  declare grandparentTheme: string;
   /** Key to this episodes :class:`~plexapi.video.Show` thumb. */
-  grandparentThumb!: string;
+  declare grandparentThumb: string;
   /** Title of this episodes :class:`~plexapi.video.Show`. */
-  grandparentTitle!: string;
+  declare grandparentTitle: string;
   /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en). */
-  guid!: string;
+  declare guid: string;
   /**  Episode number. */
-  index!: number;
+  declare index: number;
   /**  Datetime episode was released. */
-  originallyAvailableAt!: Date;
+  declare originallyAvailableAt: Date;
   /** Season number of episode. */
-  parentIndex!: number;
+  declare parentIndex: number;
   /** Key to this episodes :class:`~plexapi.video.Season`. */
-  parentKey!: string;
+  declare parentKey: string;
   /**  Unique key for this episodes :class:`~plexapi.video.Season`. */
-  parentRatingKey!: string;
+  declare parentRatingKey: string;
   /** Key to this episodes thumbnail. */
-  parentThumb!: string;
+  declare parentThumb: string;
   /** Name of this episode's season */
-  parentTitle!: string;
+  declare parentTitle: string;
   /** Movie rating (7.9; 9.8; 8.1). */
-  rating!: number;
+  declare rating: number;
   /**  View offset in milliseconds. */
-  viewOffset?: number;
-  writers!: Writer[];
-  directors!: Director[];
-  media!: Media[];
-  collections!: Collection[];
-  chapters!: Chapter[];
-  markers!: Marker[];
+  declare viewOffset?: number;
+  declare writers: Writer[];
+  declare directors: Director[];
+  declare media: Media[];
+  declare collections: Collection[];
+  declare chapters: Chapter[];
+  declare markers: Marker[];
 
   /**
    * Returns this episodes season number.

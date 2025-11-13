@@ -64,15 +64,15 @@ export class PlexClient {
   TAG = 'Player';
   key = '/resources';
 
-  deviceClass?: string;
-  machineIdentifier?: string;
-  product?: string;
-  protocol?: string;
-  protocolCapabilities?: string[];
-  protocolVersion?: string;
-  platform?: string;
-  platformVersion?: string;
-  title?: string;
+  declare deviceClass?: string;
+  declare machineIdentifier?: string;
+  declare product?: string;
+  declare protocol?: string;
+  declare protocolCapabilities?: string[];
+  declare protocolVersion?: string;
+  declare platform?: string;
+  declare platformVersion?: string;
+  declare title?: string;
   timeout: number;
 
   constructor(options: PlexOptions = {}) {

@@ -35,42 +35,42 @@ export class Audio extends Playable {
     return 'audio';
   }
 
-  addedAt?: Date;
-  art?: string;
-  artBlurHash?: string;
+  declare addedAt?: Date;
+  declare art?: string;
+  declare artBlurHash?: string;
   /** Sonic distance from a seed item, used in sonically similar results. */
-  distance?: number;
-  guid?: string;
+  declare distance?: number;
+  declare guid?: string;
   /** Plex index number (often the track number for tracks). */
-  index?: number;
-  lastRatedAt?: Date;
-  lastViewedAt?: Date;
+  declare index?: number;
+  declare lastRatedAt?: Date;
+  declare lastViewedAt?: Date;
   /** Key of the library section this item belongs to. */
-  librarySectionKey?: string;
+  declare librarySectionKey?: string;
   /** Title of the library section this item belongs to. */
-  librarySectionTitle?: string;
+  declare librarySectionTitle?: string;
   /** Plex music analysis version (1 indicates sonic analysis complete). */
-  musicAnalysisVersion?: number;
-  summary?: string;
-  thumb?: string;
-  thumbBlurHash?: string;
+  declare musicAnalysisVersion?: number;
+  declare summary?: string;
+  declare thumb?: string;
+  declare thumbBlurHash?: string;
   /** Title used for sorting (defaults to title). */
-  titleSort?: string;
-  updatedAt?: Date;
+  declare titleSort?: string;
+  declare updatedAt?: Date;
   /** User rating (0.0-10.0). */
-  userRating?: number;
+  declare userRating?: number;
   /** Count of times the item was played. */
-  viewCount?: number;
+  declare viewCount?: number;
 
   /** Store the raw data from the Plex API for lazy loading related items. */
-  protected _data?: any;
+  declare protected _data?: any;
 
   /** List of field objects. */
-  fields?: Field[];
+  declare fields?: Field[];
   /** List of image objects. */
-  images?: Image[];
+  declare images?: Image[];
   /** List of mood objects. */
-  moods?: Mood[];
+  declare moods?: Mood[];
 
   /**
    * @protected Should not be called directly. Use `server.fetchItem()`.
@@ -243,43 +243,43 @@ export class Track extends Audio {
   static override TYPE = 'track';
 
   // Track specific properties
-  audienceRating?: number;
-  chapterSource?: string;
+  declare audienceRating?: number;
+  declare chapterSource?: string;
   // chapters defined via getter
   // collections defined via getter
-  duration?: number;
+  declare duration?: number;
   // genres defined via getter
-  grandparentArt?: string;
-  grandparentGuid?: string;
-  grandparentKey?: string;
-  grandparentRatingKey?: number;
-  grandparentTheme?: string;
-  grandparentThumb?: string;
-  grandparentTitle?: string; // Artist Name
+  declare grandparentArt?: string;
+  declare grandparentGuid?: string;
+  declare grandparentKey?: string;
+  declare grandparentRatingKey?: number;
+  declare grandparentTheme?: string;
+  declare grandparentThumb?: string;
+  declare grandparentTitle?: string; // Artist Name
   // guids defined via getter
   // index inherited from Audio
   // labels defined via getter
   // media defined via getter
-  originalTitle?: string; // Often the Artist Name again or original track title?
-  parentGuid?: string;
-  parentIndex?: number; // Disc Number
-  parentKey?: string;
-  parentRatingKey?: number;
-  parentThumb?: string;
-  parentTitle?: string; // Album Title
-  primaryExtraKey?: string;
-  rating?: number; // Inherited ratingKey exists from PlexObject base
-  skipCount?: number;
-  sourceURI?: string; // Remote playlist item
+  declare originalTitle?: string; // Often the Artist Name again or original track title?
+  declare parentGuid?: string;
+  declare parentIndex?: number; // Disc Number
+  declare parentKey?: string;
+  declare parentRatingKey?: number;
+  declare parentThumb?: string;
+  declare parentTitle?: string; // Album Title
+  declare primaryExtraKey?: string;
+  declare rating?: number; // Inherited ratingKey exists from PlexObject base
+  declare skipCount?: number;
+  declare sourceURI?: string; // Remote playlist item
   // viewCount inherited from Audio
   // lastViewedAt inherited from Audio
-  viewOffset?: number;
-  chapters?: Chapter[];
-  collections?: Collection[];
-  genres?: Genre[];
-  guids?: Guid[];
-  labels?: Label[];
-  media?: Media[];
+  declare viewOffset?: number;
+  declare chapters?: Chapter[];
+  declare collections?: Collection[];
+  declare genres?: Genre[];
+  declare guids?: Guid[];
+  declare labels?: Label[];
+  declare media?: Media[];
 
   // Properties from Mixins (assuming, some might overlap with Audio)
   // userRating inherited from Audio
@@ -465,17 +465,17 @@ export class Artist extends Audio {
   static override TYPE = 'artist';
 
   // Artist specific properties
-  albumSort?: number; // -1: Library default, 0: Newest, 1: Oldest, 2: Name
-  audienceRating?: number;
-  rating?: number;
-  theme?: string;
-  countries?: Country[];
-  genres?: Genre[];
-  guids?: Guid[];
-  labels?: Label[];
-  similar?: Similar[];
-  styles?: Style[];
-  collections?: Collection[];
+  declare albumSort?: number; // -1: Library default, 0: Newest, 1: Oldest, 2: Name
+  declare audienceRating?: number;
+  declare rating?: number;
+  declare theme?: string;
+  declare countries?: Country[];
+  declare genres?: Genre[];
+  declare guids?: Guid[];
+  declare labels?: Label[];
+  declare similar?: Similar[];
+  declare styles?: Style[];
+  declare collections?: Collection[];
 
   get locations(): string[] {
     // Replicate listAttrs logic (assuming Location tag with path attribute)
@@ -679,46 +679,46 @@ export class Album extends Audio {
   static override TYPE = 'album';
 
   // Album specific properties
-  audienceRating?: number;
+  declare audienceRating?: number;
   // mapped arrays
-  collections?: Collection[];
-  formats?: Format[];
-  genres?: Genre[];
-  guids?: Guid[];
+  declare collections?: Collection[];
+  declare formats?: Format[];
+  declare genres?: Genre[];
+  declare guids?: Guid[];
   // key inherited from Audio
-  labels?: Label[];
-  leafCount?: number;
-  loudnessAnalysisVersion?: number;
-  originallyAvailableAt?: Date;
+  declare labels?: Label[];
+  declare leafCount?: number;
+  declare loudnessAnalysisVersion?: number;
+  declare originallyAvailableAt?: Date;
   /**
    * Artist GUID
    */
-  parentGuid?: string;
+  declare parentGuid?: string;
   /**
    * Artist Key
    */
-  parentKey?: string;
+  declare parentKey?: string;
   /**
    * Artist Rating Key
    */
-  parentRatingKey?: number;
+  declare parentRatingKey?: number;
   /**
    * Artist Theme
    */
-  parentTheme?: string;
+  declare parentTheme?: string;
   /**
    * Artist Thumb
    */
-  parentThumb?: string;
+  declare parentThumb?: string;
   /**
    * Artist Title
    */
-  parentTitle?: string;
-  rating?: number;
-  studio?: string;
-  styles?: Style[];
-  subformats?: Subformat[];
-  viewedLeafCount?: number;
+  declare parentTitle?: string;
+  declare rating?: number;
+  declare studio?: string;
+  declare styles?: Style[];
+  declare subformats?: Subformat[];
+  declare viewedLeafCount?: number;
 
   constructor(
     server: PlexServer,
