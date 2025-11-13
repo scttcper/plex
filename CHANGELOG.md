@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.11.0 (2025-11-13)
+
+* feat: upgrade dependencies, enable useDefineForClassFields (#38) ([60b35d9](https://github.com/scttcper/plex/commit/60b35d9)), closes [#38](https://github.com/scttcper/plex/issues/38)
+
 ## 3.10.0 (2025-10-12)
 
 * test: add 2nd artist ([bc48e04](https://github.com/scttcper/plex/commit/bc48e04))
