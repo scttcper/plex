@@ -228,8 +228,9 @@ export class PlexServer {
       params.limit = limit.toString();
     }
 
-    const key = `/hubs/search?${new URLSearchParams(params).toString()}`;
-    const hubs = await fetchItems<Hub>(this, key, undefined, Hub, this);
+    const url = new URL('/hubs/search', this.baseurl);
+    url.search = new URLSearchParams(params).toString();
+    const hubs = await fetchItems<Hub>(this, url.pathname + url.search, undefined, Hub, this);
     return hubs;
   }
 
@@ -311,8 +312,9 @@ export class PlexServer {
     args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxresults).toString();
 
     let results: HistoryResult[] = [];
-    let key = `/status/sessions/history/all?${new URLSearchParams(args).toString()}`;
-    let raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
+    const url = new URL('/status/sessions/history/all', this.baseurl);
+    url.search = new URLSearchParams(args).toString();
+    let raw = await this.query<MediaContainer<HistoryMediaContainer>>(url.pathname + url.search);
     const totalResults = raw.MediaContainer.totalSize;
     // Filter out null/undefined items from the metadata
     const validMetadata = raw.MediaContainer.Metadata?.filter(Boolean) ?? [];
@@ -325,9 +327,9 @@ export class PlexServer {
       args['X-Plex-Container-Start'] = (
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
-      key = `/status/sessions/history/all?${new URLSearchParams(args).toString()}`;
+      url.search = new URLSearchParams(args).toString();
 
-      raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
+      raw = await this.query<MediaContainer<HistoryMediaContainer>>(url.pathname + url.search);
       // Filter out null/undefined items from the metadata
       const validMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
       results.push(...validMetadata);
@@ -468,13 +470,16 @@ export class PlexServer {
     endpoint?: string,
     params?: URLSearchParams,
   ): string {
+    const url = new URL(base);
+    const queryString = params?.toString() ? `?${params.toString()}` : '';
+
     if (endpoint) {
-      return `${base}#!/server/${this.machineIdentifier}/${endpoint}?${params?.toString()}`;
+      url.hash = `!/server/${this.machineIdentifier}/${endpoint}${queryString}`;
+    } else {
+      url.hash = `!/media/${this.machineIdentifier}/com.plexapp.plugins.library${queryString}`;
     }
 
-    return `${base}#!/media/${
-      this.machineIdentifier
-    }/com.plexapp.plugins.library?${params?.toString()}`;
+    return url.toString();
   }
 
   _uriRoot(): string {

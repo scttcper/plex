@@ -76,8 +76,9 @@ export abstract class PlexObject {
         }
       }
 
-      if ([...params.keys()].length > 0) {
-        detailsKey += `?${params.toString()}`;
+      const searchParams = params.toString();
+      if (searchParams.length > 0) {
+        detailsKey += `?${searchParams}`;
       }
     }
 
