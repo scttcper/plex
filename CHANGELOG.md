@@ -1,5 +1,192 @@
 # Changelog
 
+## 4.0.0 (2025-12-23)
+
+* feat: make query accept single options object (#39) ([a482f2e](https://github.com/scttcper/plex/commit/a482f2e)), closes [#39](https://github.com/scttcper/plex/issues/39)
+
+
+### BREAKING CHANGE
+
+* PlexServer.query now takes a single {path, ...} argument; MyPlexAccount.query now takes a single {url, ...} argument; updated all callsites.
+
+# Migration Guide
+
+## Breaking Change: `query()` Method Signature Refactor
+
+### Summary
+
+Both `PlexServer.query()` and `MyPlexAccount.query()` now accept a **single options object** instead of separate positional parameters. This provides a more consistent, extensible API that aligns with modern TypeScript best practices.
+
+### What Changed
+
+#### PlexServer.query()
+
+**Before:**
+```typescript
+async query<T>(
+  path: string,
+  options?: {
+    method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+    headers?: Record<string, string>;
+    body?: Uint8Array;
+    username?: string;
+    password?: string;
+  }
+): Promise<T>
+```
+
+**After:**
+```typescript
+async query<T>({
+  path,
+  method = 'get',
+  headers,
+  body,
+  username,
+  password,
+}: {
+  path: string;
+  method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+  headers?: Record<string, string>;
+  body?: Uint8Array;
+  username?: string;
+  password?: string;
+}): Promise<T>
+```
+
+#### MyPlexAccount.query()
+
+**Before:**
+```typescript
+async query<T>(
+  url: string,
+  options?: {
+    method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+    headers?: any;
+    username?: string;
+    password?: string;
+  }
+): Promise<T>
+```
+
+**After:**
+```typescript
+async query<T>({
+  url,
+  method = 'get',
+  headers,
+  username,
+  password,
+}: {
+  url: string;
+  method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+  headers?: any;
+  username?: string;
+  password?: string;
+}): Promise<T>
+```
+
+### Migration Examples
+
+#### Simple GET requests
+
+**Before:**
+```typescript
+const data = await server.query('/library/sections');
+const userData = await account.query('https://plex.tv/api/v2/user');
+```
+
+**After:**
+```typescript
+const data = await server.query({ path: '/library/sections' });
+const userData = await account.query({ url: 'https://plex.tv/api/v2/user' });
+```
+
+#### POST/PUT/DELETE requests
+
+**Before:**
+```typescript
+await server.query('/playlists', { method: 'post' });
+await server.query('/library/sections/1', { method: 'delete' });
+```
+
+**After:**
+```typescript
+await server.query({ path: '/playlists', method: 'post' });
+await server.query({ path: '/library/sections/1', method: 'delete' });
+```
+
+#### Requests with custom headers
+
+**Before:**
+```typescript
+await server.query('/some/endpoint', {
+  method: 'put',
+  headers: { 'X-Custom': 'value' }
+});
+```
+
+**After:**
+```typescript
+await server.query({
+  path: '/some/endpoint',
+  method: 'put',
+  headers: { 'X-Custom': 'value' }
+});
+```
+
+#### Requests with authentication
+
+**Before:**
+```typescript
+await server.query('/protected/resource', {
+  username: 'user',
+  password: 'pass'
+});
+```
+
+**After:**
+```typescript
+await server.query({
+  path: '/protected/resource',
+  username: 'user',
+  password: 'pass'
+});
+```
+
+#### Requests with body data
+
+**Before:**
+```typescript
+await server.query('/upload', {
+  method: 'post',
+  body: fileData
+});
+```
+
+**After:**
+```typescript
+await server.query({
+  path: '/upload',
+  method: 'post',
+  body: fileData
+});
+```
+
+### Rationale
+
+1. **Consistency**: All parameters are now part of a single, named options object, reducing confusion about parameter order
+2. **Extensibility**: Adding new options in the future won't require changing function signatures
+3. **TypeScript ergonomics**: Better autocomplete and type inference with named parameters
+4. **Alignment**: Matches the pattern used by other refactored methods in this library (e.g., `history()`, `recentlyAdded()`, `fixMatch()`)
+
+### Notes
+
+- All internal usages within the library have been updated
+- The `path` parameter is **required** for `PlexServer.query()`
+- The `url` parameter is **required** for `MyPlexAccount.query()`
+- All other parameters remain optional with the same defaults
+
 ## <small>3.12.1 (2025-12-23)</small>
 
 * fix: Use URL to build more urls, fix undefined (#41) ([bad5d33](https://github.com/scttcper/plex/commit/bad5d33)), closes [#41](https://github.com/scttcper/plex/issues/41)
