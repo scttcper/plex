@@ -1,5 +1,6 @@
+import { URL, URLSearchParams } from 'node:url';
+
 import { ofetch } from 'ofetch';
-import { URL, URLSearchParams } from 'url';
 
 import { Playable } from './base/playable.js';
 
@@ -227,7 +228,7 @@ export class PlexServer {
       params.limit = limit.toString();
     }
 
-    const key = '/hubs/search?' + new URLSearchParams(params).toString();
+    const key = `/hubs/search?${new URLSearchParams(params).toString()}`;
     const hubs = await fetchItems<Hub>(this, key, undefined, Hub, this);
     return hubs;
   }
@@ -283,7 +284,7 @@ export class PlexServer {
    * @param librarySectionId request history for a specific library section ID.
    */
   async history(
-    maxresults = 9999999,
+    maxresults = 9_999_999,
     mindate?: Date,
     ratingKey?: number | string,
     accountId?: number | string,
@@ -310,12 +311,12 @@ export class PlexServer {
     args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxresults).toString();
 
     let results: HistoryResult[] = [];
-    let key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
+    let key = `/status/sessions/history/all?${new URLSearchParams(args).toString()}`;
     let raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
     const totalResults = raw.MediaContainer.totalSize;
     // Filter out null/undefined items from the metadata
     const validMetadata = raw.MediaContainer.Metadata?.filter(Boolean) ?? [];
-    results = results.concat(validMetadata);
+    results.push(...validMetadata);
     while (
       results.length <= totalResults &&
       X_PLEX_CONTAINER_SIZE === raw.MediaContainer.size &&
@@ -324,12 +325,12 @@ export class PlexServer {
       args['X-Plex-Container-Start'] = (
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
-      key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
+      key = `/status/sessions/history/all?${new URLSearchParams(args).toString()}`;
 
       raw = await this.query<MediaContainer<HistoryMediaContainer>>(key);
       // Filter out null/undefined items from the metadata
       const validMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
-      results = results.concat(validMetadata);
+      results.push(...validMetadata);
     }
 
     return results;

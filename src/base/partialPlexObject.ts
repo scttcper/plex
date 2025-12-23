@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 
 import type { Section } from '../library.js';
 import { SearchResult, searchType } from '../search.js';
@@ -97,7 +97,7 @@ export abstract class PartialPlexObject extends PlexObject {
     const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
       const autoMatch = await this.matches();
-      if (autoMatch.length) {
+      if (autoMatch.length > 0) {
         searchResult = autoMatch[0];
       } else {
         throw new Error(`No matches found using this agent: (${agent})`);
@@ -197,7 +197,7 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param maxresults Only return the specified number of results (optional).
    * @param mindate Min datetime to return results from.
    */
-  async history(maxresults = 9999999, mindate?: Date) {
+  async history(maxresults = 9_999_999, mindate?: Date) {
     return this.server.history(maxresults, mindate, this.ratingKey);
   }
 
@@ -304,7 +304,7 @@ export abstract class PartialPlexObject extends PlexObject {
    * @param remove If this is active remove the tags in items.
    */
   private async _editTags(tag: string, items: string[], locked = true, remove = false) {
-    const value = (this as any)[tag + 's'];
+    const value = (this as any)[`${tag}s`];
     const existingCols = value?.filter((x: any) => x && remove).map((x: any) => x.tag) ?? [];
     const d = tagHelper(tag, [...existingCols, ...items], locked, remove);
     await this.edit(d);

@@ -82,12 +82,12 @@ export interface TrackData {
   viewOffset?: number;
 
   // Tag arrays
-  Chapter?: import('./video.types.js').ChapterData[];
+  Chapter?: Array<import('./video.types.js').ChapterData>;
   Collection?: MediaTagData[];
   Genre?: MediaTagData[];
   Guid?: MediaTagData[];
   Label?: MediaTagData[];
-  Media?: import('./video.types.js').MediaData[];
+  Media?: Array<import('./video.types.js').MediaData>;
 }
 
 export interface ArtistData {

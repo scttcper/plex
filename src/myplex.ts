@@ -55,7 +55,7 @@ export class MyPlexAccount {
       )}&code=${encodeURIComponent(
         pin.code,
       )}&context%5Bdevice%5D%5Bproduct%5D=${encodeURIComponent(appName)}${
-        forwardUrl ? '&forwardUrl=' + encodeURIComponent(forwardUrl) : ''
+        forwardUrl ? `&forwardUrl=${encodeURIComponent(forwardUrl)}` : ''
       }`,
     };
   }
@@ -310,7 +310,7 @@ export class MyPlexAccount {
    */
   async claimToken(): Promise<string> {
     const url = 'https://plex.tv/api/claim/token.json';
-    const response = await this.query<{ token: string }>(url, 'get', undefined);
+    const response = await this.query<{ token: string }>(url, 'get');
     return response.token;
   }
 
@@ -616,8 +616,8 @@ export class MyPlexDevice extends PlexObject {
     });
     this.screenResolution = data.$.screenResolution;
     this.screenDensity = data.$.screenDensity;
-    this.createdAt = new Date(parseInt(data.$.createdAt, 10));
-    this.lastSeenAt = new Date(parseInt(data.$.lastSeenAt, 10));
+    this.createdAt = new Date(Number.parseInt(data.$.createdAt, 10));
+    this.lastSeenAt = new Date(Number.parseInt(data.$.lastSeenAt, 10));
     this.connections = data.Connection?.map(connection => connection.$.uri);
   }
 }

@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 
 import type { PlexServer } from '../server.js';
 
@@ -76,8 +76,8 @@ export abstract class PlexObject {
         }
       }
 
-      if ([...params.keys()].length) {
-        detailsKey += '?' + params.toString();
+      if ([...params.keys()].length > 0) {
+        detailsKey += `?${params.toString()}`;
       }
     }
 

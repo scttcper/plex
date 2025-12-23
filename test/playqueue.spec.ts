@@ -267,7 +267,7 @@ describe('PlayQueue Station Support', () => {
 
 describe('PlayQueue Error Handling', () => {
   it('should handle invalid PlayQueue ID gracefully', async () => {
-    await expect(PlayQueue.get(plex, 999999)).rejects.toThrow();
+    await expect(PlayQueue.get(plex, 999_999)).rejects.toThrow();
   });
 
   it('should handle queue item not found', async () => {

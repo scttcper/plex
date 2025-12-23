@@ -1,5 +1,4 @@
-import { PlayQueue } from '../playqueue.js';
-import type { PlayQueue as PlayQueueType } from '../playqueue.js';
+import { PlayQueue, type PlayQueue as PlayQueueType } from '../playqueue.js';
 import type { CreatePlayQueueOptions } from '../playqueue.types.js';
 
 import { PartialPlexObject } from './partialPlexObject.js';

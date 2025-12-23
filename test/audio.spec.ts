@@ -10,7 +10,7 @@ describe('Audio Class Tests', () => {
 
   beforeAll(async () => {
     plex = await createClient();
-  }, 60000);
+  }, 60_000);
 
   it('should load Artist attributes correctly for Ladytron', async () => {
     const library = await plex.library();
