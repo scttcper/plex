@@ -161,16 +161,19 @@ async function createSection(section: Section, server: PlexServer): Promise<void
 
   let expectedMediaTypes: number[];
   switch (section.type) {
-    case 'show':
+    case 'show': {
       expectedMediaTypes = [SEARCHTYPES.show, SEARCHTYPES.season, SEARCHTYPES.episode];
       break;
-    case 'artist':
+    }
+    case 'artist': {
       expectedMediaTypes = [SEARCHTYPES.artist, SEARCHTYPES.album, SEARCHTYPES.track];
       break;
-    default:
+    }
+    default: {
       // Assume single type matches section type (e.g., movie)
       expectedMediaTypes = [SEARCHTYPES[section.type as keyof typeof SEARCHTYPES]];
       break;
+    }
   }
 
   // oxlint-disable-next-line no-async-promise-executor

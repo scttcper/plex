@@ -23,7 +23,7 @@ describe('History API Tests', () => {
     }
 
     musicSectionId = musicSection.key;
-  }, 60000);
+  }, 60_000);
 
   beforeEach(async () => {
     // Create history data by scrobbling a track
@@ -41,7 +41,7 @@ describe('History API Tests', () => {
         // Ignore errors - tests will handle empty history gracefully
       }
     }
-  }, 15000);
+  }, 15_000);
 
   it('should return history without filters', async () => {
     const history = await plex.history(100);
@@ -56,7 +56,7 @@ describe('History API Tests', () => {
       expect(item).toHaveProperty('ratingKey');
       expect(item).toHaveProperty('title');
     });
-  }, 30000);
+  }, 30_000);
 
   it('should filter history by librarySectionId to return only music tracks', async () => {
     const allHistory = await plex.history(100);
@@ -78,7 +78,7 @@ describe('History API Tests', () => {
 
     // Filter should not increase results
     expect(validMusicHistory.length).toBeLessThanOrEqual(validAllHistory.length);
-  }, 30000);
+  }, 30_000);
 
   it('should filter history by ratingKey', async () => {
     const allHistory = await plex.history(10);
@@ -110,5 +110,5 @@ describe('History API Tests', () => {
     const historyKeys = validFilteredHistory.map(item => item.historyKey);
     const uniqueHistoryKeys = new Set(historyKeys);
     expect(uniqueHistoryKeys.size).toBe(validFilteredHistory.length);
-  }, 30000);
+  }, 30_000);
 });

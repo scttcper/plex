@@ -10,7 +10,7 @@ export interface MetadataContainer<T extends { Metadata: any }> {
 
 export function rsplit(str: string, sep: string, maxsplit: number): string[] {
   const split = str.split(sep);
-  return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
+  return maxsplit ? [split.slice(0, -maxsplit).join(sep), ...split.slice(-maxsplit)] : split;
 }
 
 /**
@@ -26,7 +26,7 @@ export async function getAgentIdentifier(section: Section, agent: string) {
       return ag.identifier;
     }
 
-    agents.concat(identifiers);
+    agents.push(...identifiers);
   }
 
   throw new Error(`Couldnt find "${agent}" in agents list (${agents.join(', ')})`);
@@ -57,7 +57,7 @@ export function ltrim(x: string, characters: string[]) {
   }
 
   const end = x.length - 1;
-  return x.substr(start, end);
+  return x.slice(start, end);
 }
 
 export function lowerFirst(str: string) {

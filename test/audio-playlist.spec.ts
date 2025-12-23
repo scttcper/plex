@@ -72,7 +72,7 @@ describe('Audio Playlist Tests', () => {
     expect(album2).toBeDefined();
     expect(artist1).toBeDefined();
     expect(artist2).toBeDefined();
-  }, 60000);
+  }, 60_000);
 
   afterEach(async () => {
     await playlist?.delete();

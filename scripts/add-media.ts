@@ -29,7 +29,7 @@ export async function addMedia(): Promise<void> {
       'prefs[augmentWithProviderContent]': '0',
     },
   );
-  await sleep(10000);
+  await sleep(10_000);
   await library.add(
     'Movies',
     'movie',
@@ -47,7 +47,7 @@ export async function addMedia(): Promise<void> {
     },
   );
 
-  await sleep(25000);
+  await sleep(25_000);
 }
 
 if (!module.parent) {

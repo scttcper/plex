@@ -358,7 +358,7 @@ export class PlayQueue extends PlexObject {
     this.playQueueSourceURI = data.playQueueSourceURI;
     this.playQueueTotalCount = data.playQueueTotalCount;
     this.playQueueVersion = data.playQueueVersion;
-    this.size = data.size || this.playQueueTotalCount;
+    this.size = data.size > 0 ? data.size : this.playQueueTotalCount;
 
     // selectedItem will be set lazily when accessing items
   }

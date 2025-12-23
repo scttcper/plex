@@ -1,5 +1,6 @@
+import { URLSearchParams } from 'node:url';
+
 import type { Class } from 'type-fest';
-import { URLSearchParams } from 'url';
 
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
@@ -250,7 +251,7 @@ export class Library {
       language,
       ...extra,
     });
-    const url = '/library/sections?' + search.toString();
+    const url = `/library/sections?${search.toString()}`;
     return this.server.query(url, 'post');
   }
 
@@ -615,7 +616,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
   async collections(
     args: Record<string, number | string | boolean> = {},
-  ): Promise<Collections<SType>[]> {
+  ): Promise<Array<Collections<SType>>> {
     const collections = await this.search<Collections<SType>>(
       { ...args, libtype: 'collection' },
       Collections,
