@@ -41,7 +41,7 @@ export abstract class PlexObject {
       throw new Error('Cannot reload an object not built from a URL');
     }
 
-    const data = await this.server.query(key);
+    const data = await this.server.query({ path: key });
     const innerData = data.MediaContainer ? data.MediaContainer : data;
     this._loadData(innerData);
   }
@@ -54,7 +54,7 @@ export abstract class PlexObject {
    */
   async refresh() {
     const key = `${this.key}/refresh`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   /**

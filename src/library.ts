@@ -46,7 +46,7 @@ export class Library {
    */
   async sections(): Promise<Section[]> {
     const key = '/library/sections';
-    const elems = await this.server.query<MediaContainer<SectionsResponse>>(key);
+    const elems = await this.server.query<MediaContainer<SectionsResponse>>({ path: key });
     const sections: Section[] = [];
     if (!elems.MediaContainer.Directory) {
       return sections;
@@ -251,7 +251,7 @@ export class Library {
       ...extra,
     });
     const url = '/library/sections?' + search.toString();
-    return this.server.query(url, 'post');
+    return this.server.query({ path: url, method: 'post' });
   }
 
   /**
@@ -287,7 +287,7 @@ export class Library {
    * library, you may like to optimize the database.
    */
   async optimize() {
-    await this.server.query('/library/optimize?async=1', 'put');
+    await this.server.query({ path: '/library/optimize?async=1', method: 'put' });
   }
 
   /**
@@ -463,7 +463,18 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * @param tab The library tab (recommended, library, collections, playlists, timeline).
    * @param key A hub key.
    */
-  getWebURL(base?: string, tab?: string, key?: string): string {
+  getWebURL({
+    base,
+    tab,
+    key,
+  }: {
+    /** The base URL before the fragment (``#!``). Default is https://app.plex.tv/desktop. */
+    base?: string;
+    /** The library tab (recommended, library, collections, playlists, timeline). */
+    tab?: string;
+    /** A hub key. */
+    key?: string;
+  } = {}): string {
     const params = new URLSearchParams();
     params.append('source', this.key);
     if (tab) {
@@ -475,7 +486,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       params.append('pageType', 'list');
     }
 
-    return this.server._buildWebURL(base, undefined, params);
+    return this.server._buildWebURL({ base, params });
   }
 
   /**
@@ -520,7 +531,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async analyze(): Promise<void> {
     const key = `/library/sections/${this.key}/analyze`;
-    await this.server.query(key, 'post');
+    await this.server.query({ path: key, method: 'post' });
   }
 
   /**
@@ -528,7 +539,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async emptyTrash(): Promise<void> {
     const key = `/library/sections/${this.key}/emptyTrash`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   /**
@@ -537,7 +548,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * @param mindate (datetime): Min datetime to return results from.
    */
   // async history(maxresults=9999999, mindate?: Date): Promise<any> {
-  //   return this.server.history(maxresults=maxresults, mindate=mindate, librarySectionID=self.key, accountID=1)
+  //   return this.server.history({ maxResults, minDate, librarySectionId: this.key, accountId: 1 })
   // }
 
   /**
@@ -545,7 +556,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async update(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh`;
-    await this.server.query(key);
+    await this.server.query({ path: key });
   }
 
   /**
@@ -553,7 +564,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async cancelUpdate(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh`;
-    await this.server.query(key, 'delete');
+    await this.server.query({ path: key, method: 'delete' });
   }
 
   /**
@@ -562,7 +573,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   override async refresh(): Promise<void> {
     const key = `/library/sections/${this.key}/refresh?force=1`;
-    await this.server.query(key);
+    await this.server.query({ path: key });
   }
 
   /**
@@ -571,13 +582,13 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async deleteMediaPreviews(): Promise<void> {
     const key = `/library/sections/${this.key}/indexes`;
-    await this.server.query(key, 'delete');
+    await this.server.query({ path: key, method: 'delete' });
   }
 
   /** Delete a library section. */
   async delete(): Promise<void> {
     const key = `/library/sections/${this.key}`;
-    await this.server.query(key, 'delete');
+    await this.server.query({ path: key, method: 'delete' });
   }
 
   /**
@@ -587,7 +598,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   async edit(kwargs: Record<string, string>): Promise<Section> {
     const params = new URLSearchParams(kwargs);
     const part = `/library/sections/${this.key}?${params.toString()}`;
-    await this.server.query(part, 'put');
+    await this.server.query({ path: part, method: 'put' });
     const library = await this.server.library();
     const sections = await library.sections();
     for (const section of sections) {
@@ -739,7 +750,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
   private async _loadFilters() {
     const key = `/library/sections/${this.key}/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0`;
-    const data = await this.server.query(key);
+    const data = await this.server.query({ path: key });
     // rtag='Meta'
     this._filterTypes = findItems(data, undefined, FilteringType);
   }
@@ -907,10 +918,18 @@ export class ShowSection extends LibrarySection<Show> {
   /**
    * Returns a list of recently added episodes from this library section.
    *
-   * @param maxresults Max number of items to return (default 50).
+   * @param options Filter and paging options.
    */
-  async recentlyAdded(args: any, libtype = 'episode', maxresults = 50) {
-    return this.search({ libtype, maxresults, sort: 'episode.addedAt:desc', ...args });
+  async recentlyAdded({
+    args,
+    libtype = 'episode',
+    maxResults = 50,
+  }: {
+    args?: any;
+    libtype?: string;
+    maxResults?: number;
+  } = {}) {
+    return this.search({ libtype, maxresults: maxResults, sort: 'episode.addedAt:desc', ...args });
   }
 }
 
@@ -952,18 +971,18 @@ export class MusicSection extends LibrarySection<Track> {
   }
 
   /** Returns a list of recently added artists from this library section. */
-  async recentlyAddedArtists(maxresults = 50): Promise<Artist[]> {
-    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'artist' }, Artist);
+  async recentlyAddedArtists({ maxResults = 50 }: { maxResults?: number } = {}): Promise<Artist[]> {
+    return this.search({ maxresults: maxResults, sort: 'addedAt:desc', libtype: 'artist' }, Artist);
   }
 
   /** Returns a list of recently added albums from this library section. */
-  async recentlyAddedAlbums(maxresults = 50): Promise<Album[]> {
-    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'album' }, Album);
+  async recentlyAddedAlbums({ maxResults = 50 }: { maxResults?: number } = {}): Promise<Album[]> {
+    return this.search({ maxresults: maxResults, sort: 'addedAt:desc', libtype: 'album' }, Album);
   }
 
   /** Returns a list of recently added tracks from this library section. */
-  async recentlyAddedTracks(maxresults = 50): Promise<Track[]> {
-    return this.search({ maxresults, sort: 'addedAt:desc', libtype: 'track' }, Track);
+  async recentlyAddedTracks({ maxResults = 50 }: { maxResults?: number } = {}): Promise<Track[]> {
+    return this.search({ maxresults: maxResults, sort: 'addedAt:desc', libtype: 'track' }, Track);
   }
 
   /**
@@ -1059,7 +1078,7 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
    */
   async items() {
     const key = `/library/metadata/${this.ratingKey}/children`;
-    const data = await this.server.query<MediaContainer<{ Metadata?: any[] }>>(key);
+    const data = await this.server.query<MediaContainer<{ Metadata?: any[] }>>({ path: key });
     return (
       data.MediaContainer.Metadata?.map(
         d => new this.VIDEO_TYPE(this.server, d, undefined, this),

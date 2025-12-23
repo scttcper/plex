@@ -35,7 +35,7 @@ describe('History API Tests', () => {
       const track = tracks[0];
       try {
         const key = `/:/scrobble?key=${track.ratingKey}&identifier=com.plexapp.plugins.library`;
-        await plex.query(key);
+        await plex.query({ path: key });
         await sleep(2000); // Wait for history to be updated
       } catch {
         // Ignore errors - tests will handle empty history gracefully
@@ -44,7 +44,7 @@ describe('History API Tests', () => {
   }, 15000);
 
   it('should return history without filters', async () => {
-    const history = await plex.history(100);
+    const history = await plex.history({ maxResults: 100 });
     expect(Array.isArray(history)).toBe(true);
 
     // Filter out null/undefined items
@@ -59,8 +59,8 @@ describe('History API Tests', () => {
   }, 30000);
 
   it('should filter history by librarySectionId to return only music tracks', async () => {
-    const allHistory = await plex.history(100);
-    const musicHistory = await plex.history(100, undefined, undefined, undefined, musicSectionId);
+    const allHistory = await plex.history({ maxResults: 100 });
+    const musicHistory = await plex.history({ maxResults: 100, librarySectionId: musicSectionId });
 
     // Filter out null/undefined items
     const validAllHistory = allHistory.filter(h => h != null);
@@ -81,7 +81,7 @@ describe('History API Tests', () => {
   }, 30000);
 
   it('should filter history by ratingKey', async () => {
-    const allHistory = await plex.history(10);
+    const allHistory = await plex.history({ maxResults: 10 });
     const validHistory = allHistory.filter(h => h != null);
 
     // If no history, test passes (empty arrays are valid)
@@ -99,7 +99,7 @@ describe('History API Tests', () => {
       return;
     }
 
-    const filteredHistory = await plex.history(100, undefined, ratingKey);
+    const filteredHistory = await plex.history({ maxResults: 100, ratingKey });
     const validFilteredHistory = filteredHistory.filter(h => h != null);
 
     // All items should have the same ratingKey

@@ -40,12 +40,12 @@ function getQualityScore(parsed: ParsedMovie): number {
 }
 
 async function listDuplicateMovies() {
-  const account = await new MyPlexAccount(
-    null,
-    process.env.PLEX_USERNAME,
-    process.env.PLEX_PASSWORD,
-    process.env.PLEX_TOKEN,
-  ).connect();
+  const account = await new MyPlexAccount({
+    baseUrl: null,
+    username: process.env.PLEX_USERNAME,
+    password: process.env.PLEX_PASSWORD,
+    token: process.env.PLEX_TOKEN,
+  }).connect();
   const resource = await account.resource(RESOURCE_NAME);
   const plex = await resource.connect();
   const library = await plex.library();

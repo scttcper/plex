@@ -102,7 +102,7 @@ export class Audio extends Playable {
     // or it might be used for things like `/tree`? The python `url` method seems rarely used directly.
     // For now, mirroring the python seems safest. If `part` is meant to be appended to `this.key`,
     // the logic would need changing.
-    return part ? this.server.url(part, true)?.toString() : undefined;
+    return part ? this.server.url(part, { includeToken: true })?.toString() : undefined;
   }
 
   /** Indicates if the audio item has undergone sonic analysis. */
@@ -168,7 +168,7 @@ export class Audio extends Playable {
 
     const addedAtTimestamp = data.addedAt ? parseInt(data.addedAt, 10) : NaN;
     this.addedAt = isNaN(addedAtTimestamp) ? undefined : new Date(addedAtTimestamp * 1000);
-    this.art = data.art ? this.server.url(data.art, true)?.toString() : undefined;
+    this.art = data.art ? this.server.url(data.art, { includeToken: true })?.toString() : undefined;
     this.artBlurHash = data.artBlurHash;
     const distanceFloat = data.distance ? parseFloat(data.distance) : NaN;
     this.distance = isNaN(distanceFloat) ? undefined : distanceFloat;
@@ -202,7 +202,9 @@ export class Audio extends Playable {
     const ratingKeyInt = data.ratingKey ? parseInt(data.ratingKey, 10) : NaN;
     this.ratingKey = isNaN(ratingKeyInt) ? this.ratingKey : ratingKeyInt.toString();
     this.summary = data.summary;
-    this.thumb = data.thumb ? this.server.url(data.thumb, true)?.toString() : undefined;
+    this.thumb = data.thumb
+      ? this.server.url(data.thumb, { includeToken: true })?.toString()
+      : undefined;
     this.thumbBlurHash = data.thumbBlurHash;
     this.title = data.title ?? this.title;
     this.titleSort = data.titleSort ?? this.title;
@@ -361,14 +363,14 @@ export class Track extends Audio {
   /**
    * Returns the Plex Web URL pointing to the album details page for this track.
    */
-  override getWebURL(base?: string): string {
+  override getWebURL({ base }: { base?: string } = {}): string {
     if (this.parentKey) {
       const params = new URLSearchParams();
       params.append('key', this.parentKey);
-      return this.server._buildWebURL(base, 'details', params);
+      return this.server._buildWebURL({ base, endpoint: 'details', params });
     }
 
-    return super.getWebURL(base);
+    return super.getWebURL({ base });
   }
 
   // metadataDirectory property requires Path module and filesystem access, which is

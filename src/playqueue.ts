@@ -84,7 +84,7 @@ export class PlayQueue extends PlexObject {
       params.set(key, value.toString());
     }
     const path = `/playQueues/${playQueueID}?${params.toString()}`;
-    const data = await server.query(path, 'get');
+    const data = await server.query({ path });
     const playQueue = new PlayQueue(server, data.MediaContainer, path);
     return playQueue;
   }
@@ -139,7 +139,7 @@ export class PlayQueue extends PlexObject {
       params.set(key, value.toString());
     }
     const path = `/playQueues?${params.toString()}`;
-    const data = await server.query(path, 'post');
+    const data = await server.query({ path, method: 'post' });
     const playQueue = new PlayQueue(server, data.MediaContainer, path);
     return playQueue;
   }
@@ -160,7 +160,7 @@ export class PlayQueue extends PlexObject {
       params.set(key, value.toString());
     }
     const path = `/playQueues?${params.toString()}`;
-    const data = await server.query(path, 'post');
+    const data = await server.query({ path, method: 'post' });
     const playQueue = new PlayQueue(server, data.MediaContainer, path);
     return playQueue;
   }
@@ -262,7 +262,7 @@ export class PlayQueue extends PlexObject {
       params.set(key, value.toString());
     }
     const path = `/playQueues/${this.playQueueID}?${params.toString()}`;
-    const data = await this.server.query(path, 'put');
+    const data = await this.server.query({ path, method: 'put' });
     this._invalidateCacheAndLoadData(data.MediaContainer);
     return this;
   }
@@ -301,7 +301,7 @@ export class PlayQueue extends PlexObject {
       }
       path += `?${params.toString()}`;
     }
-    const data = await this.server.query(path, 'put');
+    const data = await this.server.query({ path, method: 'put' });
     this._invalidateCacheAndLoadData(data.MediaContainer);
     return this;
   }
@@ -320,7 +320,7 @@ export class PlayQueue extends PlexObject {
     }
 
     const path = `/playQueues/${this.playQueueID}/items/${(queueItem as any).playQueueItemID}`;
-    const data = await this.server.query(path, 'delete');
+    const data = await this.server.query({ path, method: 'delete' });
     this._invalidateCacheAndLoadData(data.MediaContainer);
     return this;
   }
@@ -330,7 +330,7 @@ export class PlayQueue extends PlexObject {
    */
   async clear(): Promise<PlayQueue> {
     const path = `/playQueues/${this.playQueueID}/items`;
-    const data = await this.server.query(path, 'delete');
+    const data = await this.server.query({ path, method: 'delete' });
     this._invalidateCacheAndLoadData(data.MediaContainer);
     return this;
   }
@@ -340,7 +340,7 @@ export class PlayQueue extends PlexObject {
    */
   override async refresh(): Promise<void> {
     const path = `/playQueues/${this.playQueueID}`;
-    const data = await this.server.query(path, 'get');
+    const data = await this.server.query({ path });
     this._invalidateCacheAndLoadData(data.MediaContainer);
   }
 

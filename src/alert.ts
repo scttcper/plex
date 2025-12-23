@@ -14,7 +14,7 @@ export class AlertListener {
   ) {}
 
   async run(): Promise<void> {
-    const url = this.server.url(this.key, true).toString().replace('http', 'ws');
+    const url = this.server.url(this.key, { includeToken: true }).toString().replace('http', 'ws');
     this._ws = new WebSocket(url);
 
     this._ws.on('message', (buffer: Buffer) => {

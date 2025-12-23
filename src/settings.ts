@@ -70,7 +70,7 @@ export class Settings extends PlexObject {
     }
 
     const url = `${this.key}?${params.toString()}`;
-    await this.server.query(url, 'put');
+    await this.server.query({ path: url, method: 'put' });
   }
 
   override _loadData(data: SettingResponse[]) {

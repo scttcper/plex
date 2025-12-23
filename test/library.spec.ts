@@ -77,14 +77,14 @@ it('should get movie section plex url', async () => {
   const tab = 'library';
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
-  let url = section.getWebURL(undefined, tab);
+  let url = section.getWebURL({ tab });
   expect(url).toContain('https://app.plex.tv/desktop');
   expect(url).toContain(plex.machineIdentifier);
   expect(url).toContain(`source=${section.key}`);
   expect(url).toContain(`pivot=${tab}`);
   // Test a different base
   const base = 'https://doesnotexist.com/plex';
-  url = section.getWebURL(base);
+  url = section.getWebURL({ base });
   expect(url).toContain(base);
 });
 

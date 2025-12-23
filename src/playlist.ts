@@ -112,7 +112,7 @@ export class Playlist extends Playable {
     }
 
     const key = `/playlists/${ratingKey}?${params.toString()}`;
-    await server.query(key, 'put');
+    await server.query({ path: key, method: 'put' });
   }
 
   /** Create a smart playlist. */
@@ -133,7 +133,7 @@ export class Playlist extends Playable {
       smart: '0',
     });
     const key = `/playlists?${params.toString()}`;
-    const data = await server.query(key, 'post');
+    const data = await server.query({ path: key, method: 'post' });
     return new Playlist(server, data.MediaContainer.Metadata[0], key);
   }
 
@@ -156,7 +156,7 @@ export class Playlist extends Playable {
   async _edit(args: { title?: string; summary?: string }) {
     const searchparams = new URLSearchParams(args);
     const key = `${this.key}?${searchparams.toString()}`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   override async edit(changeObj: { title?: string; summary?: string }) {
@@ -202,7 +202,7 @@ export class Playlist extends Playable {
     });
 
     const key = `${this.key}/items?${params.toString()}`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   /** Remove an item from a playlist. */
@@ -215,13 +215,13 @@ export class Playlist extends Playable {
       const playlistItemId = await this._getPlaylistItemID(item);
       const key = `${this.key}/items/${playlistItemId}`;
 
-      await this.server.query(key, 'delete');
+      await this.server.query({ path: key, method: 'delete' });
     }
   }
 
   /** Delete the playlist. */
   override async delete() {
-    await this.server.query(this.key, 'delete');
+    await this.server.query({ path: this.key, method: 'delete' });
   }
 
   protected _loadData(data: PlaylistResponse) {

@@ -139,9 +139,9 @@ export class PlexClient {
    * Build a URL string with proper token argument. Token will be appended to the URL
    * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
    * @param key
-   * @param includeToken
+   * @param options
    */
-  url(key: string, includeToken = false): URL {
+  url(key: string, { includeToken = false }: { includeToken?: boolean } = {}): URL {
     if (!this._baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }
