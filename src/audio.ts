@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 
 import { Playable } from './base/playable.js';
 import { PlexObject } from './base/plexObject.js';
@@ -22,6 +22,12 @@ import {
   Subformat,
 } from './media.js';
 import type { PlexServer } from './server.js';
+
+type MusicSectionLike = {
+  sonicAdventure: (start: any, end: any) => Promise<any[]>;
+};
+const hasSonicAdventure = (s: unknown): s is MusicSectionLike =>
+  typeof (s as { sonicAdventure?: unknown }).sonicAdventure === 'function';
 
 /**
  * Base class for all audio objects including Artist, Album, and Track.
@@ -166,41 +172,47 @@ export class Audio extends Playable {
   protected _loadData(data: Record<string, any>): void {
     this._data = data;
 
-    const addedAtTimestamp = data.addedAt ? parseInt(data.addedAt, 10) : NaN;
-    this.addedAt = isNaN(addedAtTimestamp) ? undefined : new Date(addedAtTimestamp * 1000);
+    const addedAtTimestamp = data.addedAt ? Number.parseInt(data.addedAt, 10) : Number.NaN;
+    this.addedAt = Number.isNaN(addedAtTimestamp) ? undefined : new Date(addedAtTimestamp * 1000);
     this.art = data.art ? this.server.url(data.art, { includeToken: true })?.toString() : undefined;
     this.artBlurHash = data.artBlurHash;
-    const distanceFloat = data.distance ? parseFloat(data.distance) : NaN;
-    this.distance = isNaN(distanceFloat) ? undefined : distanceFloat;
+    const distanceFloat = data.distance ? Number.parseFloat(data.distance) : Number.NaN;
+    this.distance = Number.isNaN(distanceFloat) ? undefined : distanceFloat;
     this.guid = data.guid;
-    const indexInt = data.index ? parseInt(data.index, 10) : NaN;
-    this.index = isNaN(indexInt) ? undefined : indexInt;
+    const indexInt = data.index ? Number.parseInt(data.index, 10) : Number.NaN;
+    this.index = Number.isNaN(indexInt) ? undefined : indexInt;
     this.key = data.key ?? this.key ?? '';
-    const lastRatedAtTimestamp = data.lastRatedAt ? parseInt(data.lastRatedAt, 10) : NaN;
-    this.lastRatedAt = isNaN(lastRatedAtTimestamp)
+    const lastRatedAtTimestamp = data.lastRatedAt
+      ? Number.parseInt(data.lastRatedAt, 10)
+      : Number.NaN;
+    this.lastRatedAt = Number.isNaN(lastRatedAtTimestamp)
       ? undefined
       : new Date(lastRatedAtTimestamp * 1000);
-    const lastViewedAtTimestamp = data.lastViewedAt ? parseInt(data.lastViewedAt, 10) : NaN;
-    this.lastViewedAt = isNaN(lastViewedAtTimestamp)
+    const lastViewedAtTimestamp = data.lastViewedAt
+      ? Number.parseInt(data.lastViewedAt, 10)
+      : Number.NaN;
+    this.lastViewedAt = Number.isNaN(lastViewedAtTimestamp)
       ? undefined
       : new Date(lastViewedAtTimestamp * 1000);
-    const librarySectionIDInt = data.librarySectionID ? parseInt(data.librarySectionID, 10) : NaN;
-    this.librarySectionID = isNaN(librarySectionIDInt)
+    const librarySectionIDInt = data.librarySectionID
+      ? Number.parseInt(data.librarySectionID, 10)
+      : Number.NaN;
+    this.librarySectionID = Number.isNaN(librarySectionIDInt)
       ? this.librarySectionID
       : librarySectionIDInt;
     this.librarySectionKey = data.librarySectionKey;
     this.librarySectionTitle = data.librarySectionTitle;
     // listType is handled by the getter
     const musicAnalysisVersionInt = data.musicAnalysisVersion
-      ? parseInt(data.musicAnalysisVersion, 10)
-      : NaN;
-    this.musicAnalysisVersion = isNaN(musicAnalysisVersionInt)
+      ? Number.parseInt(data.musicAnalysisVersion, 10)
+      : Number.NaN;
+    this.musicAnalysisVersion = Number.isNaN(musicAnalysisVersionInt)
       ? undefined
       : musicAnalysisVersionInt;
     this.playlistItemID = data.playlistItemID;
     this.ratingKey = data.ratingKey;
-    const ratingKeyInt = data.ratingKey ? parseInt(data.ratingKey, 10) : NaN;
-    this.ratingKey = isNaN(ratingKeyInt) ? this.ratingKey : ratingKeyInt.toString();
+    const ratingKeyInt = data.ratingKey ? Number.parseInt(data.ratingKey, 10) : Number.NaN;
+    this.ratingKey = Number.isNaN(ratingKeyInt) ? this.ratingKey : ratingKeyInt.toString();
     this.summary = data.summary;
     this.thumb = data.thumb
       ? this.server.url(data.thumb, { includeToken: true })?.toString()
@@ -209,12 +221,15 @@ export class Audio extends Playable {
     this.title = data.title ?? this.title;
     this.titleSort = data.titleSort ?? this.title;
     this.type = data.type ?? this.type;
-    const updatedAtTimestamp = data.updatedAt ? parseInt(data.updatedAt, 10) : NaN;
-    this.updatedAt = isNaN(updatedAtTimestamp) ? undefined : new Date(updatedAtTimestamp * 1000);
-    const userRatingFloat = data.userRating ? parseFloat(data.userRating) : NaN;
-    this.userRating = isNaN(userRatingFloat) ? undefined : userRatingFloat;
-    const viewCountInt = data.viewCount !== undefined ? parseInt(data.viewCount, 10) : NaN;
-    this.viewCount = isNaN(viewCountInt) ? 0 : viewCountInt;
+    const updatedAtTimestamp = data.updatedAt ? Number.parseInt(data.updatedAt, 10) : Number.NaN;
+    this.updatedAt = Number.isNaN(updatedAtTimestamp)
+      ? undefined
+      : new Date(updatedAtTimestamp * 1000);
+    const userRatingFloat = data.userRating ? Number.parseFloat(data.userRating) : Number.NaN;
+    this.userRating = Number.isNaN(userRatingFloat) ? undefined : userRatingFloat;
+    const viewCountInt =
+      data.viewCount !== undefined ? Number.parseInt(data.viewCount, 10) : Number.NaN;
+    this.viewCount = Number.isNaN(viewCountInt) ? 0 : viewCountInt;
 
     // Map tag arrays like video.ts does
     this.fields = data.Field?.map((d: unknown) => new Field(this.server, d, undefined, this)) ?? [];
@@ -383,9 +398,6 @@ export class Track extends Audio {
    */
   async sonicAdventure(to: Track): Promise<Track[]> {
     const section = await this.section();
-    type MusicSectionLike = { sonicAdventure: (start: Track, end: Track) => Promise<Track[]> };
-    const hasSonicAdventure = (s: unknown): s is MusicSectionLike =>
-      typeof (s as { sonicAdventure?: unknown }).sonicAdventure === 'function';
 
     if (!hasSonicAdventure(section)) {
       throw new Error('Section does not support sonicAdventure');
@@ -654,14 +666,17 @@ export class Artist extends Audio {
    */
   override _loadData(data: ArtistData): void {
     super._loadData(data);
-    const albumSortInt = data.albumSort ? parseInt(String(data.albumSort), 10) : NaN;
-    this.albumSort = isNaN(albumSortInt) ? -1 : albumSortInt;
+    const albumSortInt = data.albumSort ? Number.parseInt(String(data.albumSort), 10) : Number.NaN;
+    this.albumSort = Number.isNaN(albumSortInt) ? -1 : albumSortInt;
     const audienceRatingFloat =
-      data.audienceRating !== undefined ? parseFloat(String(data.audienceRating)) : NaN;
-    this.audienceRating = isNaN(audienceRatingFloat) ? undefined : audienceRatingFloat;
+      data.audienceRating !== undefined
+        ? Number.parseFloat(String(data.audienceRating))
+        : Number.NaN;
+    this.audienceRating = Number.isNaN(audienceRatingFloat) ? undefined : audienceRatingFloat;
     this.key = data.key?.replace('/children', '');
-    const ratingFloat = data.rating !== undefined ? parseFloat(String(data.rating)) : NaN;
-    this.rating = isNaN(ratingFloat) ? undefined : ratingFloat;
+    const ratingFloat =
+      data.rating !== undefined ? Number.parseFloat(String(data.rating)) : Number.NaN;
+    this.rating = Number.isNaN(ratingFloat) ? undefined : ratingFloat;
     this.theme = data.theme;
     this.countries = data.Country?.map(d => new Country(this.server, d, undefined, this));
     this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this));
@@ -805,7 +820,7 @@ export class Album extends Audio {
         ? new Date(data.originallyAvailableAt)
         : undefined;
       // Check if the date is valid
-      if (this.originallyAvailableAt && isNaN(this.originallyAvailableAt.getTime())) {
+      if (this.originallyAvailableAt && Number.isNaN(this.originallyAvailableAt.getTime())) {
         this.originallyAvailableAt = undefined;
       }
     } catch {

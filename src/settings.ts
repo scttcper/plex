@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 
 import { PlexObject } from './base/plexObject.js';
 
@@ -122,7 +122,7 @@ export class Setting extends PlexObject {
    */
   set(value: string | boolean | number): void {
     if (typeof value !== typeof this.value) {
-      throw new Error('Invalid type');
+      throw new TypeError('Invalid type');
     }
 
     this._setValue = value;

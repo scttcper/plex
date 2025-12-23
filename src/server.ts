@@ -1,5 +1,6 @@
+import { URL, URLSearchParams } from 'node:url';
+
 import { ofetch } from 'ofetch';
-import { URL, URLSearchParams } from 'url';
 
 import { Playable } from './base/playable.js';
 
@@ -236,8 +237,9 @@ export class PlexServer {
       params.limit = limit.toString();
     }
 
-    const key = '/hubs/search?' + new URLSearchParams(params).toString();
-    const hubs = await fetchItems<Hub>(this, key, undefined, Hub, this);
+    const url = new URL('/hubs/search', this.baseurl);
+    url.search = new URLSearchParams(params).toString();
+    const hubs = await fetchItems<Hub>(this, url.pathname + url.search, undefined, Hub, this);
     return hubs;
   }
 
@@ -294,7 +296,7 @@ export class PlexServer {
    * @param options Filter and paging options.
    */
   async history({
-    maxResults = 9999999,
+    maxResults = 9_999_999,
     minDate,
     ratingKey,
     accountId,
@@ -321,12 +323,15 @@ export class PlexServer {
     args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxResults).toString();
 
     let results: HistoryResult[] = [];
-    let key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
-    let raw = await this.query<MediaContainer<HistoryMediaContainer>>({ path: key });
+    const url = new URL('/status/sessions/history/all', this.baseurl);
+    url.search = new URLSearchParams(args).toString();
+    let raw = await this.query<MediaContainer<HistoryMediaContainer>>({
+      path: url.pathname + url.search,
+    });
     const totalResults = raw.MediaContainer.totalSize;
     // Filter out null/undefined items from the metadata
     const validMetadata = raw.MediaContainer.Metadata?.filter(Boolean) ?? [];
-    results = results.concat(validMetadata);
+    results.push(...validMetadata);
     while (
       results.length <= totalResults &&
       X_PLEX_CONTAINER_SIZE === raw.MediaContainer.size &&
@@ -335,12 +340,14 @@ export class PlexServer {
       args['X-Plex-Container-Start'] = (
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
-      key = '/status/sessions/history/all?' + new URLSearchParams(args).toString();
+      url.search = new URLSearchParams(args).toString();
 
-      raw = await this.query<MediaContainer<HistoryMediaContainer>>({ path: key });
+      raw = await this.query<MediaContainer<HistoryMediaContainer>>({
+        path: url.pathname + url.search,
+      });
       // Filter out null/undefined items from the metadata
       const validMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
-      results = results.concat(validMetadata);
+      results.push(...validMetadata);
     }
 
     return results;
@@ -497,13 +504,15 @@ export class PlexServer {
     /** URL parameters to append. */
     params?: URLSearchParams;
   } = {}): string {
+    const url = new URL(base);
+    const queryString = params?.toString() ? `?${params.toString()}` : '';
     if (endpoint) {
-      return `${base}#!/server/${this.machineIdentifier}/${endpoint}?${params?.toString()}`;
+      url.hash = `!/server/${this.machineIdentifier}/${endpoint}${queryString}`;
+    } else {
+      url.hash = `!/media/${this.machineIdentifier}/com.plexapp.plugins.library${queryString}`;
     }
 
-    return `${base}#!/media/${
-      this.machineIdentifier
-    }/com.plexapp.plugins.library?${params?.toString()}`;
+    return url.toString();
   }
 
   _uriRoot(): string {

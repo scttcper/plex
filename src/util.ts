@@ -10,23 +10,25 @@ export interface MetadataContainer<T extends { Metadata: any }> {
 
 export function rsplit(str: string, sep: string, maxsplit: number): string[] {
   const split = str.split(sep);
-  return maxsplit ? [split.slice(0, -maxsplit).join(sep)].concat(split.slice(-maxsplit)) : split;
+  if (maxsplit) {
+    return [split.slice(0, -maxsplit).join(sep), ...split.slice(-maxsplit)];
+  }
+
+  return split;
 }
 
 /**
  * Return the full agent identifier from a short identifier, name, or confirm full identifier.
- * @param section
- * @param agent
  */
 export async function getAgentIdentifier(section: Section, agent: string) {
-  const agents: any[] = [];
+  const agents: string[] = [];
   for (const ag of await section.agents()) {
     const identifiers = [ag.identifier, ag.shortIdentifier, ag.name];
     if (identifiers.includes(agent)) {
       return ag.identifier;
     }
 
-    agents.concat(identifiers);
+    agents.push(...identifiers);
   }
 
   throw new Error(`Couldnt find "${agent}" in agents list (${agents.join(', ')})`);
@@ -54,16 +56,15 @@ export function tagHelper(
   return data;
 }
 
-export function ltrim(x: string, characters: string[]) {
+export function ltrim(x: string, characters: string[]): string {
   let start = 0;
   while (characters.includes(x[start])) {
     start += 1;
   }
 
-  const end = x.length - 1;
-  return x.substr(start, end);
+  return x.slice(start);
 }
 
-export function lowerFirst(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+export function lowerFirst(str: string): string {
+  return str.charAt(0).toLowerCase() + str.slice(1);
 }

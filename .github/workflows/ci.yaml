@@ -18,7 +18,7 @@ jobs:
       PLEX_CONTAINER_TAG: latest
     steps:
       # https://github.com/actions/checkout
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # https://github.com/wyvox/action-setup-pnpm
       - uses: wyvox/action-setup-pnpm@v3
@@ -48,7 +48,7 @@ jobs:
 
       - name: Cache PMS Docker image
         id: docker-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/docker/plexinc
           key: ${{ runner.os }}-docker-pms-${{ steps.docker-digest.outputs.digest }}

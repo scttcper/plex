@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 
 import { Playable } from './base/playable.js';
 
@@ -15,18 +15,24 @@ import { Episode, Movie } from './video.js';
  */
 function contentClass(data: any) {
   switch (data.type) {
-    case 'episode':
+    case 'episode': {
       return Episode;
-    case 'movie':
+    }
+    case 'movie': {
       return Movie;
-    case 'track':
+    }
+    case 'track': {
       return Track;
-    case 'album':
+    }
+    case 'album': {
       return Album;
-    case 'artist':
+    }
+    case 'artist': {
       return Artist;
-    default:
+    }
+    default: {
       throw new Error(`Media type '${data.type}' not implemented`);
+    }
   }
 }
 

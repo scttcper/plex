@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { searchType } from '../src/search.js';
-import { ltrim, tagHelper } from '../src/util.js';
+import { lowerFirst, ltrim, rsplit, tagHelper } from '../src/util.js';
 
 describe('searchType', () => {
   it('should return matched search types ', () => {
@@ -40,5 +40,23 @@ describe('tagHelper', () => {
 describe('ltrim', () => {
   it('should trim characters from the left of the string', () => {
     expect(ltrim('////hello', ['/'])).toBe('hello');
+  });
+});
+
+describe('lowerFirst', () => {
+  it('should lowercase the first character', () => {
+    expect(lowerFirst('Hello')).toBe('hello');
+    expect(lowerFirst('HELLO')).toBe('hELLO');
+  });
+});
+
+describe('rsplit', () => {
+  it('should split from the right', () => {
+    expect(rsplit('a/b/c', '/', 1)).toEqual(['a/b', 'c']);
+    expect(rsplit('a/b/c', '/', 2)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('should return original when no maxsplit', () => {
+    expect(rsplit('a/b/c', '/', 0)).toEqual(['a', 'b', 'c']);
   });
 });

@@ -1,4 +1,4 @@
-import { URLSearchParams } from 'url';
+import { URLSearchParams } from 'node:url';
 
 import type { Section } from '../library.js';
 import { SearchResult, searchType } from '../search.js';
@@ -104,7 +104,7 @@ export abstract class PartialPlexObject extends PlexObject {
     const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
       const autoMatch = await this.matches();
-      if (autoMatch.length) {
+      if (autoMatch.length > 0) {
         searchResult = autoMatch[0];
       } else {
         throw new Error(`No matches found using this agent: (${agent})`);
@@ -205,6 +205,7 @@ export abstract class PartialPlexObject extends PlexObject {
    */
   async history(options: Omit<HistoryOptions, 'ratingKey'> = {}) {
     return this.server.history({ ...options, ratingKey: this.ratingKey });
+  }
   }
 
   async section(): Promise<Section> {
@@ -316,7 +317,7 @@ export abstract class PartialPlexObject extends PlexObject {
     items: string[],
     { locked = true, remove = false }: { locked?: boolean; remove?: boolean } = {},
   ) {
-    const value = (this as any)[tag + 's'];
+    const value = (this as any)[`${tag}s`];
     const existingCols = value?.filter((x: any) => x && remove).map((x: any) => x.tag) ?? [];
     const d = tagHelper(tag, [...existingCols, ...items], { locked, remove });
     await this.edit(d);

@@ -1,5 +1,13 @@
 # Changelog
 
+## <small>3.12.1 (2025-12-23)</small>
+
+* fix: Use URL to build more urls, fix undefined (#41) ([bad5d33](https://github.com/scttcper/plex/commit/bad5d33)), closes [#41](https://github.com/scttcper/plex/issues/41)
+
+## 3.12.0 (2025-12-23)
+
+* feat: Upgrade dependencies, fix lint (#40) ([3b2ef99](https://github.com/scttcper/plex/commit/3b2ef99)), closes [#40](https://github.com/scttcper/plex/issues/40)
+
 ## 3.11.0 (2025-11-13)
 
 * feat: upgrade dependencies, enable useDefineForClassFields (#38) ([60b35d9](https://github.com/scttcper/plex/commit/60b35d9)), closes [#38](https://github.com/scttcper/plex/issues/38)

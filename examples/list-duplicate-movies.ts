@@ -36,7 +36,7 @@ function getQualityScore(parsed: ParsedMovie): number {
 
   // Extract resolution number from enum string (e.g., "R1080P" -> 1080)
   const resolutionMatch = /\d+/.exec(parsed.resolution);
-  return resolutionMatch ? parseInt(resolutionMatch[0], 10) : 0;
+  return resolutionMatch ? Number.parseInt(resolutionMatch[0], 10) : 0;
 }
 
 async function listDuplicateMovies() {

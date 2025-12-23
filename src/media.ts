@@ -125,8 +125,7 @@ export class MediaPart extends PlexObject {
     const key = `/library/parts/${this.id}`;
     const params = new URLSearchParams({ allParts: '1' });
     const streamId = typeof stream === 'number' ? stream : stream.id;
-    params.set('audioStreamID', streamId.toString());
-    await this.server.query({ path: key + '?' + params.toString(), method: 'put' });
+    await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
     return this;
   }
 
@@ -139,7 +138,7 @@ export class MediaPart extends PlexObject {
     const params = new URLSearchParams({ allParts: '1' });
     const streamId = typeof stream === 'number' ? stream : stream.id;
     params.set('subtitleStreamID', streamId.toString());
-    await this.server.query({ path: key + '?' + params.toString(), method: 'put' });
+    await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
     return this;
   }
 
@@ -250,16 +249,16 @@ export class SubtitleStream extends MediaPartStream {
     super._loadData(data);
     this.canAutoSync = Boolean(data.canAutoSync); // Use !! for boolean casting from potential string/number
     this.container = data.container;
-    this.forced = Boolean(parseInt(data.forced ?? '0', 10));
+    this.forced = Boolean(Number.parseInt(data.forced ?? '0', 10));
     this.format = data.format;
     this.headerCompression = data.headerCompression;
-    this.hearingImpaired = Boolean(parseInt(data.hearingImpaired ?? '0', 10));
+    this.hearingImpaired = Boolean(Number.parseInt(data.hearingImpaired ?? '0', 10));
     this.perfectMatch = Boolean(data.perfectMatch);
     this.providerTitle = data.providerTitle;
-    this.score = data.score ? parseInt(data.score, 10) : undefined;
+    this.score = data.score ? Number.parseInt(data.score, 10) : undefined;
     this.sourceKey = data.sourceKey;
     this.transient = data.transient;
-    this.userID = data.userID ? parseInt(data.userID, 10) : undefined;
+    this.userID = data.userID ? Number.parseInt(data.userID, 10) : undefined;
   }
 }
 
@@ -281,9 +280,9 @@ export class LyricStream extends MediaPartStream {
   protected override _loadData(data: any): void {
     super._loadData(data);
     this.format = data.format;
-    this.minLines = data.minLines ? parseInt(data.minLines, 10) : undefined;
+    this.minLines = data.minLines ? Number.parseInt(data.minLines, 10) : undefined;
     this.provider = data.provider;
-    this.timed = Boolean(parseInt(data.timed ?? '0', 10));
+    this.timed = Boolean(Number.parseInt(data.timed ?? '0', 10));
   }
 }
 
@@ -636,24 +635,26 @@ export class AudioStream extends MediaPartStream {
   protected override _loadData(data: any): void {
     super._loadData(data);
     this.audioChannelLayout = data.audioChannelLayout;
-    this.bitDepth = data.bitDepth ? parseInt(data.bitDepth, 10) : undefined;
+    this.bitDepth = data.bitDepth ? Number.parseInt(data.bitDepth, 10) : undefined;
     this.bitrateMode = data.bitrateMode;
-    this.channels = data.channels ? parseInt(data.channels, 10) : undefined;
-    this.duration = data.duration ? parseInt(data.duration, 10) : undefined;
+    this.channels = data.channels ? Number.parseInt(data.channels, 10) : undefined;
+    this.duration = data.duration ? Number.parseInt(data.duration, 10) : undefined;
     this.profile = data.profile;
-    this.samplingRate = data.samplingRate ? parseInt(data.samplingRate, 10) : undefined;
-    this.streamIdentifier = data.streamIdentifier ? parseInt(data.streamIdentifier, 10) : undefined;
-    this.visualImpaired = Boolean(parseInt(data.visualImpaired ?? '0', 10));
+    this.samplingRate = data.samplingRate ? Number.parseInt(data.samplingRate, 10) : undefined;
+    this.streamIdentifier = data.streamIdentifier
+      ? Number.parseInt(data.streamIdentifier, 10)
+      : undefined;
+    this.visualImpaired = Boolean(Number.parseInt(data.visualImpaired ?? '0', 10));
 
     // Track only attributes
-    this.albumGain = data.albumGain ? parseFloat(data.albumGain) : undefined;
-    this.albumPeak = data.albumPeak ? parseFloat(data.albumPeak) : undefined;
-    this.albumRange = data.albumRange ? parseFloat(data.albumRange) : undefined;
+    this.albumGain = data.albumGain ? Number.parseFloat(data.albumGain) : undefined;
+    this.albumPeak = data.albumPeak ? Number.parseFloat(data.albumPeak) : undefined;
+    this.albumRange = data.albumRange ? Number.parseFloat(data.albumRange) : undefined;
     this.endRamp = data.endRamp;
-    this.gain = data.gain ? parseFloat(data.gain) : undefined;
-    this.loudness = data.loudness ? parseFloat(data.loudness) : undefined;
-    this.lra = data.lra ? parseFloat(data.lra) : undefined;
-    this.peak = data.peak ? parseFloat(data.peak) : undefined;
+    this.gain = data.gain ? Number.parseFloat(data.gain) : undefined;
+    this.loudness = data.loudness ? Number.parseFloat(data.loudness) : undefined;
+    this.lra = data.lra ? Number.parseFloat(data.lra) : undefined;
+    this.peak = data.peak ? Number.parseFloat(data.peak) : undefined;
     this.startRamp = data.startRamp;
   }
 }
