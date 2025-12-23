@@ -21,12 +21,24 @@ import { MyPlexAccount } from '@ctrl/plex';
 
 const account = await new MyPlexAccount({
   baseUrl: 'http://localhost:32400',
+  // Use username and password based auth
   username: 'username',
   password: 'password',
+  // OR Token based auth
+  token: 'token',
 }).connect();
+
+// List all available servers (resources) attached to your account
+const resources = await account.resources();
+
+// Connect to a specific server by name
+// You can find the server name in the Plex Web UI settings or by listing resources above
 const resource = await account.resource('<SERVERNAME>');
 const plex = await resource.connect();
 const library = await plex.library();
+
+// List all libraries (Movies, TV Shows, Music, etc.)
+const sections = await library.sections();
 ```
 
 ###### Example 1: List all unwatched movies.
@@ -69,6 +81,18 @@ const section = await library.section<ShowSection>('TV Shows');
 // Get an array of Show objects
 const results = await section.search({ title: 'Silicon Valley' });
 const episodes = await results[0].episodes();
+```
+
+###### Example 5: Create a playlist from search results
+
+```ts
+import { Playlist } from '@ctrl/plex';
+
+// Search for all movies with rating > 8
+const topMovies = await section.search({ hasRating: true, sort: 'rating' });
+
+// Create a new playlist
+const bestMovies = await Playlist.create(plex, 'Best Movies', { items: topMovies });
 ```
 
 ### Differences from python plex client
