@@ -37,7 +37,7 @@ export async function fetchItem(
   cls?: any,
 ): Promise<any> {
   const key = typeof ekey === 'number' ? `/library/metadata/${ekey.toString()}` : ekey;
-  const response = await server.query<MediaContainer<any>>(key);
+  const response = await server.query<MediaContainer<any>>({ path: key });
   const containerKey = cls?.TAG ?? 'Metadata';
   const elems = response.MediaContainer[containerKey] ?? [];
   for (const elem of elems) {
@@ -61,7 +61,7 @@ export async function fetchItems<T = any>(
   Cls?: any,
   parent?: any,
 ): Promise<T[]> {
-  const response = await server.query<MediaContainer<any>>(ekey);
+  const response = await server.query<MediaContainer<any>>({ path: ekey });
   const { MediaContainer } = response;
   const elems = MediaContainer[Cls?.TAG] ?? MediaContainer.Metadata ?? [];
   const items = findItems(elems, options, Cls, server, parent);

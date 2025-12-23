@@ -67,12 +67,12 @@ abstract class Video extends Playable {
    */
   get thumbUrl(): URL {
     const thumb = this.thumb ?? (this as any).parentThumb ?? (this as any).granparentThumb;
-    return this.server.url(thumb, true);
+    return this.server.url(thumb, { includeToken: true });
   }
 
   get artUrl(): URL {
     const art = this.art ?? this.grandparentArt;
-    return this.server.url(art, true);
+    return this.server.url(art, { includeToken: true });
   }
 
   /**
@@ -80,7 +80,7 @@ abstract class Video extends Playable {
    */
   async markWatched(): Promise<void> {
     const key = `/:/scrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`;
-    await this.server.query(key);
+    await this.server.query({ path: key });
     await this.reload();
   }
 
@@ -89,18 +89,18 @@ abstract class Video extends Playable {
    */
   async markUnwatched(): Promise<void> {
     const key = `/:/unscrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`;
-    await this.server.query(key);
+    await this.server.query({ path: key });
     await this.reload();
   }
 
   async rate(rate: number): Promise<void> {
     const key = `/:/rate?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&rating=${rate}`;
-    await this.server.query(key);
+    await this.server.query({ path: key });
     await this.reload();
   }
 
   async extras(): Promise<Extra[]> {
-    const data = await this.server.query(this._detailsKey);
+    const data = await this.server.query({ path: this._detailsKey });
     return findItems(
       data.MediaContainer.Metadata[0].Extras?.Metadata,
       undefined,
@@ -134,13 +134,21 @@ abstract class Video extends Playable {
   /**
    * I haven't tested this yet. It may not work.
    */
-  async uploadPoster(url?: string, file?: Uint8Array): Promise<void> {
+  async uploadPoster({
+    url,
+    file,
+  }: {
+    url?: string;
+    file?: Uint8Array;
+  } = {}): Promise<void> {
     if (url) {
       const key = `/library/metadata/${this.ratingKey}/posters?url=${encodeURIComponent(url)}`;
-      await this.server.query(key, 'post');
+      await this.server.query({ path: key, method: 'post' });
     } else if (file) {
       const key = `/library/metadata/${this.ratingKey}/posters`;
-      await this.server.query(key, 'post', {
+      await this.server.query({
+        path: key,
+        method: 'post',
         body: file,
       });
     }

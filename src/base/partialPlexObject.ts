@@ -3,6 +3,7 @@ import { URLSearchParams } from 'node:url';
 import type { Section } from '../library.js';
 import { SearchResult, searchType } from '../search.js';
 import type { MatchSearchResult } from '../search.types.js';
+import type { HistoryOptions } from '../server.types.js';
 import { getAgentIdentifier, ltrim, type MediaContainer, tagHelper } from '../util.js';
 
 import { PlexObject } from './plexObject.js';
@@ -58,7 +59,7 @@ export abstract class PartialPlexObject extends PlexObject {
    */
   async analyze() {
     const key = `/${ltrim(this.key, ['/'])}/analyze`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   /**
@@ -72,7 +73,7 @@ export abstract class PartialPlexObject extends PlexObject {
     }
 
     this.initpath = key;
-    const data = await this.server.query(key);
+    const data = await this.server.query({ path: key });
     const innerData = data.MediaContainer ?? data;
     this._loadFullData(innerData);
   }
@@ -89,11 +90,17 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /**
    * Use match result to update show metadata.
-   * @param searchResult Search result @see {@link PartialPlexObject.matches}
-   * @param auto True uses first match from matches, False allows user to provide the match
-   * @param agent (str): Agent name to be used (imdb, thetvdb, themoviedb, etc.)
+   * @param options Match options.
    */
-  async fixMatch(searchResult?: SearchResult, auto = false, agent = ''): Promise<void> {
+  async fixMatch({
+    searchResult,
+    auto = false,
+    agent = '',
+  }: {
+    searchResult?: SearchResult;
+    auto?: boolean;
+    agent?: string;
+  } = {}): Promise<void> {
     const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
       const autoMatch = await this.matches();
@@ -108,24 +115,20 @@ export abstract class PartialPlexObject extends PlexObject {
 
     const params = new URLSearchParams({ guid: searchResult.guid, name: searchResult.name });
     const url = `${key}?${params.toString()}`;
-    await this.server.query(url, 'put');
+    await this.server.query({ path: url, method: 'put' });
   }
 
   /**
-   *
-   * @param agent Agent name to be used (imdb, thetvdb, themoviedb, etc.)
-   * @param title Title of item to search for
-   * @param year Year of item to search in
-   * @param language Language of item to search in
+   * @param options Match options.
    *
    *  Examples:
    *  1. video.matches()
-   *  2. video.matches(title="something", year=2020)
-   *  3. video.matches(title="something")
-   *  4. video.matches(year=2020)
-   *  5. video.matches(title="something", year="")
-   *  6. video.matches(title="", year=2020)
-   *  7. video.matches(title="", year="")
+   *  2. video.matches({ title: "something", year: "2020" })
+   *  3. video.matches({ title: "something" })
+   *  4. video.matches({ year: "2020" })
+   *  5. video.matches({ title: "something", year: "" })
+   *  6. video.matches({ title: "", year: "2020" })
+   *  7. video.matches({ title: "", year: "" })
    *
    *  1. The default behaviour in Plex Web = no params in plexapi
    *  2. Both title and year specified by user
@@ -137,12 +140,17 @@ export abstract class PartialPlexObject extends PlexObject {
    *
    *  For 2 to 7, the agent and language is automatically filled in
    */
-  async matches(
-    agent?: string,
-    title?: string,
-    year?: string,
-    language?: string,
-  ): Promise<SearchResult[]> {
+  async matches({
+    agent,
+    title,
+    year,
+    language,
+  }: {
+    agent?: string;
+    title?: string;
+    year?: string;
+    language?: string;
+  } = {}): Promise<SearchResult[]> {
     const key = `/library/metadata/${this.ratingKey}/matches`;
     const params = new URLSearchParams({ manual: '1' });
 
@@ -179,26 +187,24 @@ export abstract class PartialPlexObject extends PlexObject {
       }
     }
 
-    const data = await this.server.query<MediaContainer<{ SearchResult: MatchSearchResult[] }>>(
-      `${key}?${params.toString()}`,
-      'get',
-    );
+    const data = await this.server.query<MediaContainer<{ SearchResult: MatchSearchResult[] }>>({
+      path: `${key}?${params.toString()}`,
+    });
     return data.MediaContainer.SearchResult.map(r => new SearchResult(this.server, r));
   }
 
   /** Unmatches metadata match from object. */
   async unmatch() {
     const key = `/library/metadata/${this.ratingKey}/unmatch`;
-    return this.server.query(key, 'put');
+    return this.server.query({ path: key, method: 'put' });
   }
 
   /**
    * Get Play History for a media item.
-   * @param maxresults Only return the specified number of results (optional).
-   * @param mindate Min datetime to return results from.
+   * @param options Filter and paging options.
    */
-  async history(maxresults = 9_999_999, mindate?: Date) {
-    return this.server.history(maxresults, mindate, this.ratingKey);
+  async history(options: Omit<HistoryOptions, 'ratingKey'> = {}) {
+    return this.server.history({ ...options, ratingKey: this.ratingKey });
   }
 
   async section(): Promise<Section> {
@@ -209,7 +215,7 @@ export abstract class PartialPlexObject extends PlexObject {
    * Delete a media element. This has to be enabled under settings > server > library in plex webui.
    */
   async delete(): Promise<any> {
-    return this.server.query(this.key, 'delete');
+    return this.server.query({ path: this.key, method: 'delete' });
   }
 
   /** Add a collection(s). */
@@ -219,7 +225,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /** Remove a collection(s). */
   async removeCollection(collections: string[]) {
-    await this._editTags('collection', collections, undefined, true);
+    await this._editTags('collection', collections, { remove: true });
   }
 
   /** Add a label(s). */
@@ -229,7 +235,7 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /** Remove a label(s). */
   async removeLabel(labels: string[]) {
-    await this._editTags('label', labels, undefined, true);
+    await this._editTags('label', labels, { remove: true });
   }
 
   /** Add a genre(s). */
@@ -239,11 +245,11 @@ export abstract class PartialPlexObject extends PlexObject {
 
   /** Remove a genre(s). */
   async removeGenre(genres: string[]) {
-    await this._editTags('genre', genres, undefined, true);
+    await this._editTags('genre', genres, { remove: true });
   }
 
-  getWebURL(base?: string): string {
-    return this._getWebURL(base);
+  getWebURL({ base }: { base?: string } = {}): string {
+    return this._getWebURL({ base });
   }
 
   /**
@@ -280,8 +286,11 @@ export abstract class PartialPlexObject extends PlexObject {
       Object.entries(changeObj).map(([key, value]) => [key, value.toString()]),
     );
     const params = new URLSearchParams(strObj);
-    const url = this.server.url(`/library/sections/${this.librarySectionID}/all`, true, params);
-    await this.server.query(url.toString(), 'put');
+    const url = this.server.url(`/library/sections/${this.librarySectionID}/all`, {
+      includeToken: true,
+      params,
+    });
+    await this.server.query({ path: url.toString(), method: 'put' });
   }
 
   protected abstract _loadFullData(data: any): void;
@@ -290,23 +299,26 @@ export abstract class PartialPlexObject extends PlexObject {
    * Get the Plex Web URL with the correct parameters.
    * Private method to allow overriding parameters from subclasses.
    */
-  private _getWebURL(base?: string): string {
+  private _getWebURL({ base }: { base?: string } = {}): string {
     const params = new URLSearchParams();
     params.append('key', this.key);
-    return this.server._buildWebURL(base, 'details', params);
+    return this.server._buildWebURL({ base, endpoint: 'details', params });
   }
 
   /**
    * Helper to edit and refresh a tags.
    * @param tag tag name
    * @param items list of tags to add
-   * @param locked lock this field.
-   * @param remove If this is active remove the tags in items.
+   * @param options
    */
-  private async _editTags(tag: string, items: string[], locked = true, remove = false) {
+  private async _editTags(
+    tag: string,
+    items: string[],
+    { locked = true, remove = false }: { locked?: boolean; remove?: boolean } = {},
+  ) {
     const value = (this as any)[`${tag}s`];
     const existingCols = value?.filter((x: any) => x && remove).map((x: any) => x.tag) ?? [];
-    const d = tagHelper(tag, [...existingCols, ...items], locked, remove);
+    const d = tagHelper(tag, [...existingCols, ...items], { locked, remove });
     await this.edit(d);
     await this.reload();
   }

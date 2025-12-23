@@ -22,14 +22,14 @@ describe('tagHelper', () => {
   });
 
   it('should build remove tag object', () => {
-    expect(tagHelper('test', ['a', 'b'], undefined, true)).toEqual({
+    expect(tagHelper('test', ['a', 'b'], { remove: true })).toEqual({
       'test.locked': 1,
       'test[].tag.tag-': 'a,b',
     });
   });
 
   it('should build unlocked tag object', () => {
-    expect(tagHelper('test', ['a', 'b'], false)).toEqual({
+    expect(tagHelper('test', ['a', 'b'], { locked: false })).toEqual({
       'test.locked': 0,
       'test[0].tag.tag': 'a',
       'test[1].tag.tag': 'b',

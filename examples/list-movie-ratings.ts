@@ -1,11 +1,11 @@
 import { type MovieSection, MyPlexAccount } from '../src/index.js';
 
 async function listMovies() {
-  const account = await new MyPlexAccount(
-    process.env.PLEX_HOST,
-    process.env.PLEX_USERNAME,
-    process.env.PLEX_PASSWORD,
-  ).connect();
+  const account = await new MyPlexAccount({
+    baseUrl: process.env.PLEX_HOST ?? null,
+    username: process.env.PLEX_USERNAME,
+    password: process.env.PLEX_PASSWORD,
+  }).connect();
   const resource = await account.resource('cooper-plex');
   const plex = await resource.connect();
   const library = await plex.library();

@@ -273,12 +273,12 @@ async function main() {
     throw new Error('Must provide username/password or token');
   }
 
-  const account = await new MyPlexAccount(
-    'http://localhost:32400',
-    argv.username,
-    argv.password,
+  const account = await new MyPlexAccount({
+    baseUrl: 'http://localhost:32400',
+    username: argv.username,
+    password: argv.password,
     token,
-  ).connect();
+  }).connect();
   const claimToken = await account.claimToken();
   const destination = join(__dirname, '..', argv.destination);
   const mediaPath = join(destination, 'media');

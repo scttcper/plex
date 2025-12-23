@@ -19,7 +19,11 @@ Create a plex connection
 ```ts
 import { MyPlexAccount } from '@ctrl/plex';
 
-const account = await new MyPlexAccount('http://localhost:32400', 'username', 'password').connect();
+const account = await new MyPlexAccount({
+  baseUrl: 'http://localhost:32400',
+  username: 'username',
+  password: 'password',
+}).connect();
 const resource = await account.resource('<SERVERNAME>');
 const plex = await resource.connect();
 const library = await plex.library();

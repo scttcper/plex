@@ -195,7 +195,7 @@ describe('Audio Playlist Tests', () => {
 
     // Verify deletion by attempting to fetch - should fail or return null
     try {
-      await plex.query(`/playlists/${ratingKey}`);
+      await plex.query({ path: `/playlists/${ratingKey}` });
       // If we get here, deletion failed
       expect.fail('Playlist should have been deleted');
     } catch (error) {

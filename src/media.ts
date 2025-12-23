@@ -126,7 +126,7 @@ export class MediaPart extends PlexObject {
     const params = new URLSearchParams({ allParts: '1' });
     const streamId = typeof stream === 'number' ? stream : stream.id;
     params.set('audioStreamID', streamId.toString());
-    await this.server.query(`${key}?${params.toString()}`, 'put');
+    await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
     return this;
   }
 
@@ -139,7 +139,7 @@ export class MediaPart extends PlexObject {
     const params = new URLSearchParams({ allParts: '1' });
     const streamId = typeof stream === 'number' ? stream : stream.id;
     params.set('subtitleStreamID', streamId.toString());
-    await this.server.query(`${key}?${params.toString()}`, 'put');
+    await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
     return this;
   }
 
@@ -418,7 +418,7 @@ export class Optimized extends PlexObject {
    */
   async remove(): Promise<void> {
     const key = `${this.key}/${this.id}`;
-    await this.server.query(key, 'delete');
+    await this.server.query({ path: key, method: 'delete' });
   }
 
   /**
@@ -427,7 +427,7 @@ export class Optimized extends PlexObject {
    */
   async rename(title: string): Promise<void> {
     const key = `${this.key}/${this.id}?Item[title]=${encodeURIComponent(title)}`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   /**
@@ -436,7 +436,7 @@ export class Optimized extends PlexObject {
    */
   async reprocess(ratingKey: string | number): Promise<void> {
     const key = `${this.key}/${this.id}/${ratingKey}/enable`;
-    await this.server.query(key, 'put');
+    await this.server.query({ path: key, method: 'put' });
   }
 
   protected _loadData(data: any) {
@@ -525,7 +525,7 @@ abstract class BaseResource extends PlexObject {
     const key = this.key.slice(0, -1);
     const params = new URLSearchParams();
     params.append('url', this.ratingKey);
-    return this.server.query(`${key}?${params.toString()}`, 'put');
+    return this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
   }
 
   resourceFilepath(): string {
@@ -675,7 +675,7 @@ export class Image extends PlexObject {
     this.alt = data.alt;
     this.type = data.type;
     // Assuming server.url is needed to make this a complete URL
-    this.url = data.url ? this.server.url(data.url, true)?.toString() : undefined;
+    this.url = data.url ? this.server.url(data.url, { includeToken: true })?.toString() : undefined;
   }
 }
 

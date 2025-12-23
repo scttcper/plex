@@ -20,6 +20,7 @@ import type {
   HistoryMediaContainer,
   HistoryResult,
   ServerRootResponse,
+  HistoryOptions,
 } from './server.types.js';
 import { type SettingResponse, Settings } from './settings.js';
 import type { MediaContainer } from './util.js';
@@ -166,7 +167,7 @@ export class PlexServer {
   }
 
   async connect(): Promise<void> {
-    const data = await this.query<MediaContainer<ServerRootResponse>>(this.key);
+    const data = await this.query<MediaContainer<ServerRootResponse>>({ path: this.key });
     this._loadData(data.MediaContainer);
 
     // Attempt to prevent token from being logged accidentally
@@ -187,11 +188,13 @@ export class PlexServer {
     }
 
     try {
-      const data = await this.query<MediaContainer<LibraryRootResponse>>(Library.key);
+      const data = await this.query<MediaContainer<LibraryRootResponse>>({ path: Library.key });
       this._library = new Library(this, data.MediaContainer);
     } catch {
       // TODO: validate error type, also TODO figure out how this is used
-      const data = await this.query<MediaContainer<LibraryRootResponse>>('/library/sections/');
+      const data = await this.query<MediaContainer<LibraryRootResponse>>({
+        path: '/library/sections/',
+      });
       this._library = new Library(this, data.MediaContainer);
     }
 
@@ -210,13 +213,19 @@ export class PlexServer {
    * 'Arnold' you’ll get a result for the actor, but also the most recently added
    * movies he’s in.
    * @param query Query to use when searching your library.
-   * @param mediatype Optionally limit your search to the specified media type.
-   * @param limit Optionally limit to the specified number of results per Hub.
+   * @param options Search options.
    */
   async search(
     query: string,
-    mediatype?: keyof typeof SEARCHTYPES,
-    limit?: number,
+    {
+      mediatype,
+      limit,
+    }: {
+      /** Optionally limit your search to the specified media type. */
+      mediatype?: keyof typeof SEARCHTYPES;
+      /** Optionally limit to the specified number of results per Hub. */
+      limit?: number;
+    } = {},
   ): Promise<Hub[]> {
     const params: Record<string, string> = { query };
 
@@ -239,18 +248,24 @@ export class PlexServer {
    * by encoding the response to utf-8 and parsing the returned XML into and
    * ElementTree object. Returns None if no data exists in the response.
    * TODO: use headers
-   * @param path
-   * @param method
-   * @param headers
+   * @param options
    */
-  async query<T = any>(
-    path: string,
-    method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
-    options: { headers?: Record<string, string>; body?: Uint8Array } = {},
-    username?: string,
-    password?: string,
-  ): Promise<T> {
-    const requestHeaders = this._headers();
+  async query<T = any>({
+    path,
+    method = 'get',
+    headers,
+    body,
+    username,
+    password,
+  }: {
+    path: string;
+    method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+    headers?: Record<string, string>;
+    body?: Uint8Array;
+    username?: string;
+    password?: string;
+  }): Promise<T> {
+    const requestHeaders = { ...this._headers(), ...headers };
     if (username && password) {
       const credentials = Buffer.from(`${username}:${password}`).toString('base64');
       requestHeaders.Authorization = `Basic ${credentials}`;
@@ -265,7 +280,7 @@ export class PlexServer {
       method,
       headers: requestHeaders,
       timeout: this.timeout ?? TIMEOUT,
-      body: options.body,
+      body,
       retry: 0,
       responseType: 'json',
     });
@@ -276,21 +291,17 @@ export class PlexServer {
   /**
    * Returns a list of media items from watched history. If there are many results, they will
    * be fetched from the server in batches of X_PLEX_CONTAINER_SIZE amounts. If you're only
-   * looking for the first <num> results, it would be wise to set the maxresults option to that
+   * looking for the first <num> results, it would be wise to set the maxResults option to that
    * amount so this functions doesn't iterate over all results on the server.
-   * @param maxresults Only return the specified number of results (optional).
-   * @param mindate Min datetime to return results from. This really helps speed up the result listing. For example: datetime.now() - timedelta(days=7)
-   * @param ratingKey request history for a specific ratingKey item.
-   * @param accountId request history for a specific account ID.
-   * @param librarySectionId request history for a specific library section ID.
+   * @param options Filter and paging options.
    */
-  async history(
-    maxresults = 9_999_999,
-    mindate?: Date,
-    ratingKey?: number | string,
-    accountId?: number | string,
-    librarySectionId?: number | string,
-  ): Promise<HistoryResult[]> {
+  async history({
+    maxResults = 9_999_999,
+    minDate,
+    ratingKey,
+    accountId,
+    librarySectionId,
+  }: HistoryOptions = {}): Promise<HistoryResult[]> {
     const args: Record<string, string> = { sort: 'viewedAt:desc' };
     if (ratingKey !== undefined) {
       args.metadataItemID = ratingKey.toString();
@@ -304,17 +315,19 @@ export class PlexServer {
       args.librarySectionID = librarySectionId.toString();
     }
 
-    if (mindate !== undefined) {
-      args['viewedAt>'] = Math.floor(mindate.getTime() / 1000).toString();
+    if (minDate !== undefined) {
+      args['viewedAt>'] = Math.floor(minDate.getTime() / 1000).toString();
     }
 
     args['X-Plex-Container-Start'] = '0';
-    args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxresults).toString();
+    args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxResults).toString();
 
     let results: HistoryResult[] = [];
     const url = new URL('/status/sessions/history/all', this.baseurl);
     url.search = new URLSearchParams(args).toString();
-    let raw = await this.query<MediaContainer<HistoryMediaContainer>>(url.pathname + url.search);
+    let raw = await this.query<MediaContainer<HistoryMediaContainer>>({
+      path: url.pathname + url.search,
+    });
     const totalResults = raw.MediaContainer.totalSize;
     // Filter out null/undefined items from the metadata
     const validMetadata = raw.MediaContainer.Metadata?.filter(Boolean) ?? [];
@@ -322,14 +335,16 @@ export class PlexServer {
     while (
       results.length <= totalResults &&
       X_PLEX_CONTAINER_SIZE === raw.MediaContainer.size &&
-      maxresults > results.length
+      maxResults > results.length
     ) {
       args['X-Plex-Container-Start'] = (
         Number(args['X-Plex-Container-Start']) + Number(args['X-Plex-Container-Size'])
       ).toString();
       url.search = new URLSearchParams(args).toString();
 
-      raw = await this.query<MediaContainer<HistoryMediaContainer>>(url.pathname + url.search);
+      raw = await this.query<MediaContainer<HistoryMediaContainer>>({
+        path: url.pathname + url.search,
+      });
       // Filter out null/undefined items from the metadata
       const validMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
       results.push(...validMetadata);
@@ -340,7 +355,9 @@ export class PlexServer {
 
   async settings(): Promise<Settings> {
     if (!this._settings) {
-      const data = await this.query<MediaContainer<{ Setting: SettingResponse[] }>>(Settings.key);
+      const data = await this.query<MediaContainer<{ Setting: SettingResponse[] }>>({
+        path: Settings.key,
+      });
       this._settings = new Settings(this, data.MediaContainer.Setting);
     }
 
@@ -379,14 +396,12 @@ export class PlexServer {
    */
   myPlexAccount(): MyPlexAccount {
     if (!this._myPlexAccount) {
-      this._myPlexAccount = new MyPlexAccount(
-        this.baseurl,
-        undefined,
-        undefined,
-        this.token,
-        this.timeout,
-        this,
-      );
+      this._myPlexAccount = new MyPlexAccount({
+        baseUrl: this.baseurl,
+        token: this.token,
+        timeout: this.timeout,
+        server: this,
+      });
     }
 
     return this._myPlexAccount;
@@ -395,7 +410,9 @@ export class PlexServer {
   // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
   async clients(): Promise<PlexClient[]> {
     const items: PlexClient[] = [];
-    const response = await this.query<MediaContainer<ConnectionInfo | undefined>>('/clients');
+    const response = await this.query<MediaContainer<ConnectionInfo | undefined>>({
+      path: '/clients',
+    });
 
     if (response.MediaContainer?.Server === undefined) {
       return [];
@@ -442,7 +459,16 @@ export class PlexServer {
    * Build a URL string with proper token argument. Token will be appended to the URL
    * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
    */
-  url(key: string, includeToken = false, params?: URLSearchParams): URL {
+  url(
+    key: string,
+    {
+      includeToken = false,
+      params,
+    }: {
+      includeToken?: boolean;
+      params?: URLSearchParams;
+    } = {},
+  ): URL {
     if (!this.baseurl) {
       throw new Error('PlexClient object missing baseurl.');
     }
@@ -455,24 +481,31 @@ export class PlexServer {
       return url;
     }
 
+    if (params) {
+      url.search = params.toString();
+    }
+
     return url;
   }
 
   /**
    * Build the Plex Web URL for the object.
-   * @param base The base URL before the fragment (``#!``).
-   *    Default is https://app.plex.tv/desktop.
-   * @param endpoint The Plex Web URL endpoint.
-   *    None for server, 'playlist' for playlists, 'details' for all other media types.
+   * @param options Options for the URL.
    */
-  _buildWebURL(
+  _buildWebURL({
     base = 'https://app.plex.tv/desktop/',
-    endpoint?: string,
-    params?: URLSearchParams,
-  ): string {
+    endpoint,
+    params,
+  }: {
+    /** The base URL before the fragment (``#!``). Default is https://app.plex.tv/desktop. */
+    base?: string;
+    /** The Plex Web URL endpoint. None for server, 'playlist' for playlists, 'details' for all other media types. */
+    endpoint?: string;
+    /** URL parameters to append. */
+    params?: URLSearchParams;
+  } = {}): string {
     const url = new URL(base);
     const queryString = params?.toString() ? `?${params.toString()}` : '';
-
     if (endpoint) {
       url.hash = `!/server/${this.machineIdentifier}/${endpoint}${queryString}`;
     } else {

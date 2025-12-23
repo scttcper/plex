@@ -64,7 +64,10 @@ export class MyPlexAccount {
    * Pass in the `webLogin` object obtained from `getWebLogin()` and this will poll Plex to see if
    * the user agreed. It returns a connected `MyPlexAccount` or throws an error.
    */
-  static async webLoginCheck(webLogin: WebLogin, timeoutSeconds = 60): Promise<MyPlexAccount> {
+  static async webLoginCheck(
+    webLogin: WebLogin,
+    { timeoutSeconds = 60 }: { timeoutSeconds?: number } = {},
+  ): Promise<MyPlexAccount> {
     const recheckMs = 3000;
     const clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'];
     const uri = `https://plex.tv/api/v2/pins/${webLogin.id}`;
@@ -85,7 +88,7 @@ export class MyPlexAccount {
           retryDelay: recheckMs,
         });
         if (tokenResponse.authToken) {
-          const myPlexAccount = new MyPlexAccount(null, '', '', tokenResponse.authToken);
+          const myPlexAccount = new MyPlexAccount({ token: tokenResponse.authToken });
 
           return await myPlexAccount.connect();
         }
@@ -162,23 +165,38 @@ export class MyPlexAccount {
   /** List of devices your allowed to use with this account */
   declare entitlements?: string[];
 
+  public baseUrl: string | null = null;
+  public username?: string;
+  public password?: string;
+  public token?: string;
+  public timeout: number = TIMEOUT;
+  public server?: PlexServer;
+
   /**
-   *
-   * @param username Your MyPlex username
-   * @param password Your MyPlex password
-   * @param token Token used to access this client.
-   * @param session Use your own session object if you want to cache the http responses from PMS
-   * @param timeout timeout in seconds on initial connect to myplex
-   * @param server not often available
+   * @param options Connection + auth options.
    */
-  constructor(
-    public baseUrl: string | null = null,
-    public username?: string,
-    public password?: string,
-    public token?: string,
-    public timeout = TIMEOUT,
-    public server?: PlexServer,
-  ) {
+  constructor({
+    baseUrl = null,
+    username,
+    password,
+    token,
+    timeout = TIMEOUT,
+    server,
+  }: {
+    baseUrl?: string | null;
+    username?: string;
+    password?: string;
+    token?: string;
+    timeout?: number;
+    server?: PlexServer;
+  } = {}) {
+    this.baseUrl = baseUrl;
+    this.username = username;
+    this.password = password;
+    this.token = token;
+    this.timeout = timeout;
+    this.server = server;
+
     if (this.token) {
       Object.defineProperty(this, 'token', {
         enumerable: false,
@@ -210,7 +228,7 @@ export class MyPlexAccount {
       return this;
     }
 
-    const data = await this.query<UserResponse>(MyPlexAccount.key);
+    const data = await this.query<UserResponse>({ url: MyPlexAccount.key });
     this._loadData(data);
     return this;
   }
@@ -229,7 +247,7 @@ export class MyPlexAccount {
   }
 
   async resources(): Promise<MyPlexResource[]> {
-    const data = await this.query<ResourcesResponse[]>(MyPlexResource.key);
+    const data = await this.query<ResourcesResponse[]>({ url: MyPlexResource.key });
     return data.map(device => new MyPlexResource(this, device, this.baseUrl));
   }
 
@@ -254,7 +272,9 @@ export class MyPlexAccount {
    * Returns a list of all :class:`~plexapi.myplex.MyPlexDevice` objects connected to the server.
    */
   async devices(): Promise<MyPlexDevice[]> {
-    const response = await this.query<MediaContainer<{ Device: Device[] }>>(MyPlexDevice.key);
+    const response = await this.query<MediaContainer<{ Device: Device[] }>>({
+      url: MyPlexDevice.key,
+    });
     return response.MediaContainer.Device.map(data => new MyPlexDevice(this.server, data));
   }
 
@@ -264,21 +284,29 @@ export class MyPlexAccount {
    * ElementTree object. Returns None if no data exists in the response.
    * TODO: use headers
    * @param path
-   * @param method
-   * @param headers
-   * @param timeout
+   * @param options
    */
-  async query<T = any>(
-    url: string,
-    method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
-    headers?: any,
-    username?: string,
-    password?: string,
-  ): Promise<T> {
+  async query<T = any>({
+    url,
+    method = 'get',
+    headers,
+    username,
+    password,
+  }: {
+    url: string;
+    method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+    headers?: any;
+    username?: string;
+    password?: string;
+  }): Promise<T> {
     const requestHeaders = this._headers();
     if (username && password) {
       const credentials = Buffer.from(`${username}:${password}`).toString('base64');
       requestHeaders.Authorization = `Basic ${credentials}`;
+    }
+
+    if (headers) {
+      Object.assign(requestHeaders, headers);
     }
 
     if (!url.includes('xml')) {
@@ -310,7 +338,7 @@ export class MyPlexAccount {
    */
   async claimToken(): Promise<string> {
     const url = 'https://plex.tv/api/claim/token.json';
-    const response = await this.query<{ token: string }>(url, 'get');
+    const response = await this.query<{ token: string }>({ url });
     return response.token;
   }
 
@@ -344,13 +372,12 @@ export class MyPlexAccount {
   }
 
   private async _signin(username?: string, password?: string): Promise<UserResponse> {
-    const data = await this.query<{ user: UserResponse }>(
-      this.SIGNIN,
-      'post',
-      undefined,
+    const data = await this.query<{ user: UserResponse }>({
+      url: this.SIGNIN,
+      method: 'post',
       username,
       password,
-    );
+    });
     return data.user;
   }
 
@@ -590,7 +617,7 @@ export class MyPlexDevice extends PlexObject {
    */
   async delete() {
     const key = `https://plex.tv/devices/${this.id}.xml`;
-    await this.server.query(key, 'delete');
+    await this.server.query({ path: key, method: 'delete' });
   }
 
   protected override _loadData(data: Device): void {

@@ -126,3 +126,16 @@ export interface ServerConnectionInfo {
   protocolVersion: string;
   protocolCapabilities: string;
 }
+
+export interface HistoryOptions {
+  /** Only return the specified number of results. */
+  maxResults?: number;
+  /** Min datetime to return results from. */
+  minDate?: Date;
+  /** Request history for a specific ratingKey item. */
+  ratingKey?: number | string;
+  /** Request history for a specific account ID. */
+  accountId?: number | string;
+  /** Request history for a specific library section ID. */
+  librarySectionId?: number | string;
+}
