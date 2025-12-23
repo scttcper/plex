@@ -9,17 +9,17 @@
 
 * PlexServer.query now takes a single {path, ...} argument; MyPlexAccount.query now takes a single {url, ...} argument; updated all callsites.
 
-# Migration Guide
+## v4 Migration Guide
 
-## Breaking Change: `query()` Method Signature Refactor
+### Breaking Change: `query()` Method Signature Refactor
 
-### Summary
+#### Summary
 
 Both `PlexServer.query()` and `MyPlexAccount.query()` now accept a **single options object** instead of separate positional parameters. This provides a more consistent, extensible API that aligns with modern TypeScript best practices.
 
-### What Changed
+#### What Changed
 
-#### PlexServer.query()
+##### PlexServer.query()
 
 **Before:**
 ```typescript
@@ -54,7 +54,7 @@ async query<T>({
 }): Promise<T>
 ```
 
-#### MyPlexAccount.query()
+##### MyPlexAccount.query()
 
 **Before:**
 ```typescript
@@ -86,9 +86,9 @@ async query<T>({
 }): Promise<T>
 ```
 
-### Migration Examples
+#### Migration Examples
 
-#### Simple GET requests
+##### Simple GET requests
 
 **Before:**
 ```typescript
@@ -102,7 +102,7 @@ const data = await server.query({ path: '/library/sections' });
 const userData = await account.query({ url: 'https://plex.tv/api/v2/user' });
 ```
 
-#### POST/PUT/DELETE requests
+##### POST/PUT/DELETE requests
 
 **Before:**
 ```typescript
@@ -116,7 +116,7 @@ await server.query({ path: '/playlists', method: 'post' });
 await server.query({ path: '/library/sections/1', method: 'delete' });
 ```
 
-#### Requests with custom headers
+##### Requests with custom headers
 
 **Before:**
 ```typescript
@@ -135,7 +135,7 @@ await server.query({
 });
 ```
 
-#### Requests with authentication
+##### Requests with authentication
 
 **Before:**
 ```typescript
@@ -154,7 +154,7 @@ await server.query({
 });
 ```
 
-#### Requests with body data
+##### Requests with body data
 
 **Before:**
 ```typescript
@@ -172,20 +172,6 @@ await server.query({
   body: fileData
 });
 ```
-
-### Rationale
-
-1. **Consistency**: All parameters are now part of a single, named options object, reducing confusion about parameter order
-2. **Extensibility**: Adding new options in the future won't require changing function signatures
-3. **TypeScript ergonomics**: Better autocomplete and type inference with named parameters
-4. **Alignment**: Matches the pattern used by other refactored methods in this library (e.g., `history()`, `recentlyAdded()`, `fixMatch()`)
-
-### Notes
-
-- All internal usages within the library have been updated
-- The `path` parameter is **required** for `PlexServer.query()`
-- The `url` parameter is **required** for `MyPlexAccount.query()`
-- All other parameters remain optional with the same defaults
 
 ## <small>3.12.1 (2025-12-23)</small>
 
