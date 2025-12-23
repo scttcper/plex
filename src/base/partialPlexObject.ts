@@ -206,7 +206,6 @@ export abstract class PartialPlexObject extends PlexObject {
   async history(options: Omit<HistoryOptions, 'ratingKey'> = {}) {
     return this.server.history({ ...options, ratingKey: this.ratingKey });
   }
-  }
 
   async section(): Promise<Section> {
     return (await this.server.library()).sectionByID(this.librarySectionID);

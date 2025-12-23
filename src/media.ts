@@ -125,6 +125,7 @@ export class MediaPart extends PlexObject {
     const key = `/library/parts/${this.id}`;
     const params = new URLSearchParams({ allParts: '1' });
     const streamId = typeof stream === 'number' ? stream : stream.id;
+    params.set('audioStreamID', streamId.toString());
     await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
     return this;
   }
