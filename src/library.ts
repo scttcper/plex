@@ -255,6 +255,15 @@ export class Library {
   }
 
   /**
+   * Returns a list of all on-deck items from all library sections.
+   * On-deck items are media that is currently in progress.
+   */
+  async onDeck(): Promise<any[]> {
+    const key = '/library/onDeck';
+    return fetchItems(this.server, key);
+  }
+
+  /**
    * Returns a list of all media from all library sections.
    * This may be a very large dataset to retrieve.
    */
@@ -651,6 +660,32 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
+   * Returns a list of items currently on deck (in progress) for this library section.
+   */
+  async onDeck(): Promise<SType[]> {
+    const key = `/library/sections/${this.key}/onDeck`;
+    return fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
+  }
+
+  /**
+   * Returns a list of recently added items for this library section.
+   *
+   * @param maxResults Maximum number of results to return. Default 50.
+   */
+  async recentlyAdded(maxResults = 50): Promise<SType[]> {
+    return this.search({ maxresults: maxResults, sort: 'addedAt:desc' });
+  }
+
+  /**
+   * Returns the list of first characters for items in this library section.
+   * This is the data used to populate the alphabet bar in the Plex UI.
+   */
+  async firstCharacter(): Promise<FirstCharacter[]> {
+    const key = `/library/sections/${this.key}/firstCharacter`;
+    return fetchItems<FirstCharacter>(this.server, key, undefined, FirstCharacter);
+  }
+
+  /**
    * Returns a list of available {@link FilteringField} for a specified libtype.
    * This is the list of options in the custom filter dropdown menu
    */
@@ -917,19 +952,12 @@ export class ShowSection extends LibrarySection<Show> {
 
   /**
    * Returns a list of recently added episodes from this library section.
+   * Overrides the base class to sort by episode.addedAt and default to episode libtype.
    *
-   * @param options Filter and paging options.
+   * @param maxResults Maximum number of results to return. Default 50.
    */
-  async recentlyAdded({
-    args,
-    libtype = 'episode',
-    maxResults = 50,
-  }: {
-    args?: any;
-    libtype?: string;
-    maxResults?: number;
-  } = {}) {
-    return this.search({ libtype, maxresults: maxResults, sort: 'episode.addedAt:desc', ...args });
+  override async recentlyAdded(maxResults = 50): Promise<Show[]> {
+    return this.search({ libtype: 'episode', maxresults: maxResults, sort: 'episode.addedAt:desc' });
   }
 }
 
@@ -1287,6 +1315,25 @@ export class FilterChoice extends PlexObject {
     this.title = data.title;
     this.type = data.type;
     this.thumb = data.thumb;
+  }
+}
+
+/**
+ * Represents a single first character entry for a library section.
+ * Used to populate the alphabet bar in the Plex UI.
+ */
+export class FirstCharacter extends PlexObject {
+  static override TAG = 'Directory';
+
+  /** The title of the character (e.g. 'A', 'B', '#'). */
+  declare title: string;
+  /** The number of items starting with this character. */
+  declare size: number;
+
+  protected _loadData(data: any) {
+    this.key = data.key;
+    this.title = data.title;
+    this.size = data.size;
   }
 }
 

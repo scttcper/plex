@@ -78,3 +78,21 @@ it('should update a playlist by ratingKey without fetching it first', async () =
   expect(playlist.title).toBe(new_title);
   expect(playlist.summary).toBe(new_summary);
 });
+
+it('should create and delete a smart playlist', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  let smartPlaylist: Playlist | undefined;
+  try {
+    smartPlaylist = await Playlist.create(plex, 'Test Smart Playlist', {
+      smart: true,
+      section,
+      sort: 'addedAt:desc',
+      limit: 5,
+    });
+    expect(smartPlaylist.smart).toBe(true);
+    expect(smartPlaylist.title).toBe('Test Smart Playlist');
+  } finally {
+    await smartPlaylist?.delete();
+  }
+});

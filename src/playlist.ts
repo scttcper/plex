@@ -6,6 +6,7 @@ import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
 import type { Section, SectionType } from './library.js';
 import type { PlaylistResponse } from './playlist.types.js';
+import { searchType } from './search.js';
 import type { PlexServer } from './server.js';
 import { Episode, Movie } from './video.js';
 
@@ -77,8 +78,7 @@ export class Playlist extends Playable {
 
   static async create(server: PlexServer, title: string, options: CreatePlaylistOptions) {
     if (options.smart) {
-      throw new Error('not yet supported');
-      // return this._createSmart(server, title, options);
+      return this._createSmart(server, title, options);
     }
 
     return this._create(server, title, (options as any).items);
@@ -121,7 +121,51 @@ export class Playlist extends Playable {
   }
 
   /** Create a smart playlist. */
-  // private static _createSmart(server: PlexServer, title: string, options: CreatePlaylistOptions) {}
+  private static async _createSmart(
+    server: PlexServer,
+    title: string,
+    options: CreateSmartPlaylistOptions,
+  ): Promise<Playlist> {
+    const { section, limit, sort, filters } = options;
+    if (!section) {
+      throw new BadRequest('A section is required to create a smart playlist.');
+    }
+
+    // Build the content URI for the smart playlist filter
+    const sectionType = searchType(section.type);
+    const filterParams = new URLSearchParams();
+    filterParams.set('type', sectionType.toString());
+
+    if (sort) {
+      filterParams.set('sort', sort);
+    }
+
+    if (limit !== undefined) {
+      filterParams.set('limit', limit.toString());
+    }
+
+    if (filters) {
+      for (const [key, value] of Object.entries(filters)) {
+        filterParams.set(key, String(value));
+      }
+    }
+
+    const uri = `${server._uriRoot()}/library/sections/${section.key}/all?${filterParams.toString()}`;
+
+    // Determine playlist type from section content type
+    const playlistType = section.CONTENT_TYPE ?? 'video';
+
+    const params = new URLSearchParams({
+      type: playlistType,
+      title,
+      smart: '1',
+      uri,
+    });
+
+    const key = `/playlists?${params.toString()}`;
+    const data = await server.query({ path: key, method: 'post' });
+    return new Playlist(server, data.MediaContainer.Metadata[0], key);
+  }
 
   private static async _create(server: PlexServer, title: string, items: SectionType[]) {
     if (!items || items.length === 0) {

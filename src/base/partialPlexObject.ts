@@ -293,6 +293,36 @@ export abstract class PartialPlexObject extends PlexObject {
     await this.server.query({ path: url.toString(), method: 'put' });
   }
 
+  /** Set the title. */
+  async editTitle(title: string): Promise<void> {
+    await this.edit({ 'title.value': title, 'title.locked': 1 });
+  }
+
+  /** Set the sort title. */
+  async editSortTitle(sortTitle: string): Promise<void> {
+    await this.edit({ 'titleSort.value': sortTitle, 'titleSort.locked': 1 });
+  }
+
+  /** Set the summary. */
+  async editSummary(summary: string): Promise<void> {
+    await this.edit({ 'summary.value': summary, 'summary.locked': 1 });
+  }
+
+  /** Set the content rating (e.g. PG-13, R, TV-MA). */
+  async editContentRating(contentRating: string): Promise<void> {
+    await this.edit({ 'contentRating.value': contentRating, 'contentRating.locked': 1 });
+  }
+
+  /** Set the studio. */
+  async editStudio(studio: string): Promise<void> {
+    await this.edit({ 'studio.value': studio, 'studio.locked': 1 });
+  }
+
+  /** Set the originally available at date (release date). */
+  async editOriginallyAvailableAt(date: string): Promise<void> {
+    await this.edit({ 'originallyAvailableAt.value': date, 'originallyAvailableAt.locked': 1 });
+  }
+
   protected abstract _loadFullData(data: any): void;
 
   /**

@@ -1,6 +1,11 @@
 import { beforeAll, expect, it } from 'vitest';
 
-import { Movie, type MovieSection, type PlexServer, type ShowSection } from '../src/index.js';
+import {
+  Movie,
+  type MovieSection,
+  type PlexServer,
+  type ShowSection,
+} from '../src/index.js';
 
 import { createClient } from './test-client.js';
 
@@ -99,4 +104,47 @@ it.skip('should list all clients connected to the Server.', async () => {
     const client = clients[0];
     await client.reload();
   }
+});
+
+it('should get library on deck items', async () => {
+  const library = await plex.library();
+  const onDeck = await library.onDeck();
+  // On deck may be empty if nothing is in progress, that's OK
+  expect(Array.isArray(onDeck)).toBe(true);
+});
+
+it('should get movie section on deck items', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const onDeck = await section.onDeck();
+  // On deck may be empty if nothing is in progress, that's OK
+  expect(Array.isArray(onDeck)).toBe(true);
+});
+
+it('should get movie section recently added items', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const recentlyAdded = await section.recentlyAdded();
+  expect(recentlyAdded.length).toBeGreaterThan(0);
+  // Verify items are Movie instances
+  expect(recentlyAdded[0]).toBeInstanceOf(Movie);
+});
+
+it('should get show section recently added items', async () => {
+  const library = await plex.library();
+  const section = await library.section<ShowSection>('TV Shows');
+  const recentlyAdded = await section.recentlyAdded();
+  expect(recentlyAdded.length).toBeGreaterThan(0);
+});
+
+it('should get movie section first character data', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const characters = await section.firstCharacter();
+  expect(characters.length).toBeGreaterThan(0);
+  // Each character entry should have a title and size
+  const firstChar = characters[0];
+  expect(typeof firstChar.title).toBe('string');
+  expect(typeof firstChar.size).toBe('number');
+  expect(firstChar.size).toBeGreaterThan(0);
 });
