@@ -49,6 +49,10 @@ export interface SectionsDirectory {
   content: boolean;
   directory: boolean;
   contentChangedAt: number;
+  totalSize?: number;
+  totalDuration?: number;
+  totalStorage?: number;
+  totalViewSize?: number;
   Location: Location[];
 }
 

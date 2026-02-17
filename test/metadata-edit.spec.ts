@@ -15,12 +15,7 @@ beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
-  // Try "Sita Sings the Blues" first, fall back to "Elephants Dream"
-  let results = await section.search({ title: 'Sita' });
-  if (results.length === 0) {
-    results = await section.search({ title: 'Elephant' });
-  }
-
+  const results = await section.search({ title: 'Sita' });
   expect(results.length).toBeGreaterThan(0);
   movie = results[0];
   // Reload to get full object with all fields
@@ -32,18 +27,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Restore original values
-  if (movie) {
-    await movie.editTitle(originalTitle);
-    await movie.editSummary(originalSummary);
-    if (originalSortTitle) {
-      await movie.editSortTitle(originalSortTitle);
-    }
-
-    if (originalContentRating) {
-      await movie.editContentRating(originalContentRating);
-    }
-  }
+  await movie.editTitle(originalTitle);
+  await movie.editSummary(originalSummary);
+  await movie.editSortTitle(originalSortTitle ?? '');
+  await movie.editContentRating(originalContentRating);
 });
 
 it('should edit movie title', async () => {

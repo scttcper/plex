@@ -41,10 +41,7 @@ describe('Collections', () => {
 
   it('should have expected properties on a collection', async () => {
     const collections = await movieSection.collections();
-    if (collections.length === 0) {
-      return;
-    }
-
+    expect(collections.length).toBeGreaterThan(0);
     const collection = collections[0];
     expect(collection.ratingKey).toBeTruthy();
     expect(collection.title).toBeTruthy();
@@ -54,10 +51,7 @@ describe('Collections', () => {
 
   it('should get items from a collection', async () => {
     const collections = await movieSection.collections();
-    if (collections.length === 0) {
-      return;
-    }
-
+    expect(collections.length).toBeGreaterThan(0);
     const collection = collections[0];
     const items = await collection.items();
     expect(items.length).toBe(collection.childCount);

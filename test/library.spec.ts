@@ -5,6 +5,7 @@ import {
   type MovieSection,
   type PlexServer,
   type ShowSection,
+  BadRequest,
 } from '../src/index.js';
 
 import { createClient } from './test-client.js';
@@ -147,4 +148,76 @@ it('should get movie section first character data', async () => {
   expect(typeof firstChar.title).toBe('string');
   expect(typeof firstChar.size).toBe('number');
   expect(firstChar.size).toBeGreaterThan(0);
+});
+
+it('should have locations with paths', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  expect(section.locations.length).toBeGreaterThan(0);
+  for (const location of section.locations) {
+    expect(typeof location.id).toBe('number');
+    expect(typeof location.path).toBe('string');
+  }
+});
+
+it('should throw when removing all locations', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const allPaths = section.locations.map(loc => loc.path);
+  await expect(section.removeLocations(allPaths)).rejects.toThrow(BadRequest);
+});
+
+it('should get totalViewSize for movie section', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const size = await section.totalViewSize();
+  expect(size).toBeGreaterThan(0);
+});
+
+it('should get totalViewSize with libtype filter', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const size = await section.totalViewSize({ libtype: 'movie' });
+  expect(typeof size).toBe('number');
+  expect(size).toBeGreaterThan(0);
+});
+
+it('should get totalViewSize excluding collections', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const size = await section.totalViewSize({ includeCollections: false });
+  expect(typeof size).toBe('number');
+  expect(size).toBeGreaterThan(0);
+});
+
+it('should get totalSize for movie section', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const size = await section.totalSize();
+  expect(size).toBeGreaterThan(0);
+});
+
+it('should get totalDuration for movie section', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const duration = await section.totalDuration();
+  expect(typeof duration).toBe('number');
+});
+
+it('should get totalStorage for movie section', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const storage = await section.totalStorage();
+  expect(typeof storage).toBe('number');
+});
+
+it('should add and remove locations', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const originalCount = section.locations.length;
+  const fakePath = '/tmp/plex-test-location';
+  const updated = await section.addLocations(fakePath);
+  expect(updated.locations.length).toBe(originalCount + 1);
+  const restored = await updated.removeLocations(fakePath);
+  expect(restored.locations.length).toBe(originalCount);
 });

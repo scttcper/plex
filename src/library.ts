@@ -409,6 +409,82 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   declare _filterTypes?: FilteringType[];
   declare _fieldTypes?: FilteringFieldType[];
 
+  private _durationStorageCache?: { duration: number | null; storage: number | null };
+
+  /**
+   * Returns the total number of items in the library.
+   * Queries the library without fetching any items to get the total count.
+   *
+   * @param options.libtype Filter by a specific library type (movie, show, episode, etc.).
+   * @param options.includeCollections Whether to include collections in the count. Default true.
+   */
+  async totalViewSize(
+    options?: { libtype?: string; includeCollections?: boolean },
+  ): Promise<number> {
+    const params = new URLSearchParams({
+      includeCollections: (options?.includeCollections ?? true) ? '1' : '0',
+      'X-Plex-Container-Start': '0',
+      'X-Plex-Container-Size': '0',
+    });
+    if (options?.libtype) {
+      params.set('type', searchType(options.libtype).toString());
+    }
+    const key = `/library/sections/${this.key}/all?${params.toString()}`;
+    const data = await this.server.query<MediaContainer<{ totalSize: number }>>({ path: key });
+    return data.MediaContainer.totalSize ?? 0;
+  }
+
+  /**
+   * Returns the total number of items in the library, excluding collections.
+   */
+  async totalSize(): Promise<number> {
+    return this.totalViewSize({ includeCollections: false });
+  }
+
+  /**
+   * Returns the total duration of all items in the library in milliseconds, or null if unavailable.
+   */
+  async totalDuration(): Promise<number | null> {
+    return (await this._fetchDurationStorage()).duration;
+  }
+
+  /**
+   * Returns the total storage size of all items in the library in bytes, or null if unavailable.
+   */
+  async totalStorage(): Promise<number | null> {
+    return (await this._fetchDurationStorage()).storage;
+  }
+
+  /**
+   * Add new file paths to the library section.
+   * @param locations One or more file paths to add.
+   */
+  async addLocations(locations: string | string[]): Promise<Section> {
+    const paths = typeof locations === 'string' ? [locations] : locations;
+    const currentPaths = this.locations.map(loc => loc.path);
+    const allPaths = [...currentPaths, ...paths];
+    return this._editLocations(allPaths);
+  }
+
+  /**
+   * Remove file paths from the library section.
+   * @param locations One or more file paths to remove.
+   */
+  async removeLocations(locations: string | string[]): Promise<Section> {
+    const paths = typeof locations === 'string' ? [locations] : locations;
+    const currentPaths = this.locations.map(loc => loc.path);
+    for (const path of paths) {
+      if (!currentPaths.includes(path)) {
+        throw new BadRequest(`Path: ${path} does not exist in the library.`);
+      }
+    }
+    const remaining = currentPaths.filter(p => !paths.includes(p));
+    if (remaining.length === 0) {
+      throw new BadRequest('You are unable to remove all locations from a library.');
+    }
+    return this._editLocations(remaining);
+  }
+
   async all(sort = ''): Promise<SType[]> {
     let sortStr = '';
     if (sort) {
@@ -761,6 +837,43 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     }
 
     return this._fieldTypes;
+  }
+
+  private async _fetchDurationStorage(): Promise<{ duration: number | null; storage: number | null }> {
+    if (this._durationStorageCache) return this._durationStorageCache;
+    const data = await this.server.query<any>({ path: '/media/providers?includeStorage=1' });
+    const providers = data.MediaContainer?.MediaProvider ?? [];
+    for (const provider of providers) {
+      if (provider.identifier !== 'com.plexapp.plugins.library') continue;
+      for (const feature of provider.Feature ?? []) {
+        if (feature.type !== 'content') continue;
+        for (const dir of feature.Directory ?? []) {
+          if (String(dir.id) === String(this.key)) {
+            this._durationStorageCache = {
+              duration: dir.durationTotal != null ? Number(dir.durationTotal) : null,
+              storage: dir.storageTotal != null ? Number(dir.storageTotal) : null,
+            };
+            return this._durationStorageCache;
+          }
+        }
+      }
+    }
+    this._durationStorageCache = { duration: null, storage: null };
+    return this._durationStorageCache;
+  }
+
+  private async _editLocations(paths: string[]): Promise<Section> {
+    const locationParams = paths.map(p => `location=${encodeURIComponent(p)}`).join('&');
+    const part = `/library/sections/${this.key}?agent=${this.agent}&${locationParams}`;
+    await this.server.query({ path: part, method: 'put' });
+    const library = await this.server.library();
+    const sections = await library.sections();
+    for (const section of sections) {
+      if (section.key === this.key) {
+        return section;
+      }
+    }
+    throw new Error("Couldn't update section");
   }
 
   protected _loadData(data: SectionsDirectory): void {

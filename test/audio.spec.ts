@@ -16,9 +16,6 @@ describe('Audio Class Tests', () => {
     const library = await plex.library();
     const musicSection = await library.section('Music');
     expect(musicSection.CONTENT_TYPE).toBe('audio');
-    if (!musicSection) {
-      throw new Error("Test section 'Music' not found. Run bootstrap script.");
-    }
     const results = await musicSection.search({ title: 'Ladytron', libtype: 'artist' }, Artist);
     expect(results.length).toBeGreaterThan(0);
     const artist = results[0];
