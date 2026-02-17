@@ -599,13 +599,13 @@ export class MyPlexDevice extends PlexObject {
   /** List of connection URIs for the device. */
   declare connections?: string[];
 
-  async connect(): Promise<PlexServer> {
+  async connect(timeout?: number): Promise<PlexServer> {
     // TODO: switch between PlexServer and PlexClient
 
     // Try connecting to all known resource connections in parellel, but
     // only return the first server (in order) that provides a response.
     const promises = (this.connections ?? []).map(async url =>
-      connect((...args) => new PlexServer(...args), url, this.token),
+      connect((...args) => new PlexServer(...args), url, this.token, timeout),
     );
     const result = await pAny(promises);
     return result;

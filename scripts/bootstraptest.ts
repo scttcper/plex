@@ -53,6 +53,16 @@ const yarg = yargs(hideBin(process.argv))
     default: 'latest',
     desc: 'Docker image tag to install',
   })
+  .option('server-wait-timeout-seconds', {
+    type: 'number',
+    default: 180,
+    desc: 'Max time to wait for the server to appear in account',
+  })
+  .option('server-connect-timeout-ms', {
+    type: 'number',
+    default: 5000,
+    desc: 'Timeout for each attempt to connect to a discovered server',
+  })
   .option('docker', {
     type: 'boolean',
     desc: 'Use docker',
@@ -321,19 +331,27 @@ async function main() {
 
   await account.connect();
 
-  const connectServer = async () => (await account.device(opts.hostname)).connect();
+  const waitTimeoutMs = argv['server-wait-timeout-seconds'] * 1000;
+  const connectTimeoutMs = argv['server-connect-timeout-ms'];
+  const startWaitTime = Date.now();
+
+  const connectServer = async () => (await account.device(opts.hostname)).connect(connectTimeoutMs);
 
   const waitServer = ora('Waiting for the server to appear in your account').start();
 
   let plexServer: PlexServer;
   try {
     plexServer = await pRetry(connectServer, {
-      retries: 20,
+      retries: Math.ceil(waitTimeoutMs / 1000),
+      maxRetryTime: waitTimeoutMs,
       onFailedAttempt: async () => sleep(1000),
     });
   } catch (err) {
     console.error(err);
-    throw new Error('Server didnt appear in your account');
+    const elapsedMs = Date.now() - startWaitTime;
+    throw new Error(
+      `Server didnt appear in your account after ${Math.round(elapsedMs / 1000)}s (timeout: ${argv['server-wait-timeout-seconds']}s)`,
+    );
   }
 
   waitServer.succeed();

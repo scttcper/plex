@@ -70,9 +70,12 @@ jobs:
           echo "PLEXAPI_AUTH_SERVER_TOKEN=${{ secrets.PLEXAPI_AUTH_SERVER_TOKEN }}" >> $GITHUB_ENV
 
       - name: Bootstrap Plex server
+        timeout-minutes: 8
         run: pnpm run bootstraptest -- \
           --advertise-ip 127.0.0.1 \
-          --docker-tag ${{ env.PLEX_CONTAINER_TAG }}
+          --docker-tag ${{ env.PLEX_CONTAINER_TAG }} \
+          --server-wait-timeout-seconds 180 \
+          --server-connect-timeout-ms 5000
 
       - name: Unlink PMS from MyPlex account
         uses: webiny/action-post-run@3.1.0
