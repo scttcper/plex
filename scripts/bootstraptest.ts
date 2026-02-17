@@ -355,7 +355,7 @@ async function main() {
 
   const connectServer = async () => (await account.device(opts.hostname)).connect(connectTimeoutMs);
 
-  const waitServer = ora('Waiting for the server to appear in your account').start();
+  const waitServer = ora(`Waiting for server "${opts.hostname}" to appear in your account`).start();
 
   let plexServer: PlexServer;
   try {
@@ -367,6 +367,22 @@ async function main() {
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     console.error(`Failed to connect to server: ${reason}`);
+    try {
+      const devices = await account.devices();
+      if (devices.length === 0) {
+        console.error('No devices are currently visible on this account.');
+      } else {
+        console.error('Devices currently visible on this account:');
+        for (const device of devices) {
+          console.error(
+            `- name="${device.name ?? ''}", clientIdentifier="${device.clientIdentifier}", product="${device.product}", provides="${device.provides}"`,
+          );
+        }
+      }
+    } catch (deviceErr) {
+      const deviceReason = deviceErr instanceof Error ? deviceErr.message : String(deviceErr);
+      console.error(`Unable to list account devices: ${deviceReason}`);
+    }
     const elapsedMs = Date.now() - startWaitTime;
     throw new Error(
       `Server didnt appear in your account after ${Math.round(elapsedMs / 1000)}s (timeout: ${argv['server-wait-timeout-seconds']}s)`,
