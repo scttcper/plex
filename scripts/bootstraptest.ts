@@ -353,7 +353,27 @@ async function main() {
   const connectTimeoutMs = argv['server-connect-timeout-ms'];
   const startWaitTime = Date.now();
 
-  const connectServer = async () => (await account.device(opts.hostname)).connect(connectTimeoutMs);
+  const connectServer = async () => {
+    let resourceError: unknown;
+    try {
+      const resource = await account.resource(opts.hostname);
+      return await resource.connect(null, connectTimeoutMs);
+    } catch (err) {
+      resourceError = err;
+    }
+
+    try {
+      const device = await account.device(opts.hostname);
+      return await device.connect(connectTimeoutMs);
+    } catch (deviceErr) {
+      const resourceReason =
+        resourceError instanceof Error ? resourceError.message : String(resourceError);
+      const deviceReason = deviceErr instanceof Error ? deviceErr.message : String(deviceErr);
+      throw new Error(
+        `Failed to connect via resource and device paths (resource: ${resourceReason}; device: ${deviceReason})`,
+      );
+    }
+  };
 
   const waitServer = ora(`Waiting for server "${opts.hostname}" to appear in your account`).start();
 
