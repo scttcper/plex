@@ -347,7 +347,8 @@ async function main() {
       onFailedAttempt: async () => sleep(1000),
     });
   } catch (err) {
-    console.error(err);
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error(`Failed to connect to server: ${reason}`);
     const elapsedMs = Date.now() - startWaitTime;
     throw new Error(
       `Server didnt appear in your account after ${Math.round(elapsedMs / 1000)}s (timeout: ${argv['server-wait-timeout-seconds']}s)`,
