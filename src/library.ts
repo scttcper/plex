@@ -6,7 +6,7 @@ import { Album, Artist, Track } from './audio.js';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
-import { NotFound } from './exceptions.js';
+import { BadRequest, NotFound, Unsupported } from './exceptions.js';
 import type {
   CollectionData,
   LibraryRootResponse,
@@ -1051,12 +1051,19 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
   TYPE = 'collection';
 
   declare guid: string;
+  declare smart: boolean;
+  declare content: string;
+  declare collectionMode: number;
+  declare collectionSort: number;
+  declare titleSort: string;
   declare librarySectionTitle: string;
   declare librarySectionKey: string;
   declare contentRating: string;
   declare subtype: string;
   declare summary: string;
   declare index: number;
+  declare rating: number;
+  declare userRating: number;
   declare thumb: string;
   declare addedAt: number;
   declare updatedAt: number;
@@ -1086,6 +1093,145 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
     );
   }
 
+  /**
+   * Add items to the collection.
+   * @param items Items to add to the collection.
+   */
+  async addItems(items: CollectionVideoType[]): Promise<void> {
+    if (this.smart) {
+      throw new Unsupported('Cannot add items to a smart collection.');
+    }
+
+    const ratingKeys = items.map(item => (item as any).ratingKey).join(',');
+    const uri = `${this.server._uriRoot()}/library/metadata/${ratingKeys}`;
+    const params = new URLSearchParams({ uri });
+    const key = `/library/collections/${this.ratingKey}/items?${params.toString()}`;
+    await this.server.query({ path: key, method: 'put' });
+    await this.reload();
+  }
+
+  /**
+   * Remove items from the collection.
+   * @param items Items to remove from the collection.
+   */
+  async removeItems(items: CollectionVideoType[]): Promise<void> {
+    if (this.smart) {
+      throw new Unsupported('Cannot remove items from a smart collection.');
+    }
+
+    for (const item of items) {
+      const ratingKey = (item as any).ratingKey;
+      const key = `/library/collections/${this.ratingKey}/items/${ratingKey}`;
+      await this.server.query({ path: key, method: 'delete' });
+    }
+
+    await this.reload();
+  }
+
+  /**
+   * Move an item to a new position in the collection.
+   * @param item Item to move.
+   * @param after Item to place it after. If not provided, moves to the beginning.
+   */
+  async moveItem(item: CollectionVideoType, after?: CollectionVideoType): Promise<void> {
+    if (this.smart) {
+      throw new Unsupported('Cannot move items in a smart collection.');
+    }
+
+    const ratingKey = (item as any).ratingKey;
+    let key = `/library/collections/${this.ratingKey}/items/${ratingKey}/move`;
+    if (after) {
+      const afterKey = (after as any).ratingKey;
+      key += `?after=${afterKey}`;
+    }
+
+    await this.server.query({ path: key, method: 'put' });
+    await this.reload();
+  }
+
+  /**
+   * Update the collection display mode.
+   * @param mode Display mode: 'default' (-1), 'hide' (0), 'hideItems' (1), 'showItems' (2).
+   */
+  async modeUpdate(mode: 'default' | 'hide' | 'hideItems' | 'showItems'): Promise<void> {
+    const modeMap: Record<string, number> = {
+      default: -1,
+      hide: 0,
+      hideItems: 1,
+      showItems: 2,
+    };
+    const modeValue = modeMap[mode];
+    if (modeValue === undefined) {
+      throw new BadRequest(`Invalid collection mode: ${mode}`);
+    }
+
+    const params = new URLSearchParams({ collectionMode: modeValue.toString() });
+    const key = `/library/metadata/${this.ratingKey}/prefs?${params.toString()}`;
+    await this.server.query({ path: key, method: 'put' });
+    await this.reload();
+  }
+
+  /**
+   * Update the collection sort order.
+   * @param sort Sort order: 'release' (0), 'alpha' (1), 'custom' (2).
+   */
+  async sortUpdate(sort: 'release' | 'alpha' | 'custom'): Promise<void> {
+    const sortMap: Record<string, number> = {
+      release: 0,
+      alpha: 1,
+      custom: 2,
+    };
+    const sortValue = sortMap[sort];
+    if (sortValue === undefined) {
+      throw new BadRequest(`Invalid collection sort: ${sort}`);
+    }
+
+    const params = new URLSearchParams({ collectionSort: sortValue.toString() });
+    const key = `/library/metadata/${this.ratingKey}/prefs?${params.toString()}`;
+    await this.server.query({ path: key, method: 'put' });
+    await this.reload();
+  }
+
+  /**
+   * Create a new regular (non-smart) collection.
+   * @param server The PlexServer instance.
+   * @param title Title of the new collection.
+   * @param section The library section to create the collection in.
+   * @param items Items to add to the collection.
+   */
+  static async create<T = SectionType>(
+    server: PlexServer,
+    title: string,
+    section: LibrarySection<T>,
+    items: T[],
+  ): Promise<Collections<T>> {
+    if (!items.length) {
+      throw new BadRequest('At least one item is required to create a collection.');
+    }
+
+    const ratingKeys = items.map(item => (item as any).ratingKey).join(',');
+    const uri = `${server._uriRoot()}/library/metadata/${ratingKeys}`;
+    const sectionType = searchType(section.type);
+    const params = new URLSearchParams({
+      title,
+      type: sectionType.toString(),
+      uri,
+    });
+    const key = `/library/collections?${params.toString()}`;
+    const data = await server.query<MediaContainer<{ Metadata?: any[] }>>({
+      path: key,
+      method: 'post',
+    });
+    const metadata = data.MediaContainer.Metadata?.[0];
+    if (!metadata) {
+      throw new Error('Failed to create collection');
+    }
+
+    const collection = new Collections<T>(server, metadata, key, section);
+    collection.VIDEO_TYPE = section.SECTION_TYPE as unknown as Class<T>;
+    return collection;
+  }
+
   protected _loadFullData(data: any) {
     this._loadData(data);
   }
@@ -1093,9 +1239,14 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
   protected _loadData(data: CollectionData) {
     this.key = data.key;
     this.title = data.title;
+    this.titleSort = data.titleSort;
     this.ratingKey = data.ratingKey;
     this.guid = data.guid;
     this.type = data.type;
+    this.smart = data.smart ?? false;
+    this.content = data.content;
+    this.collectionMode = data.collectionMode;
+    this.collectionSort = data.collectionSort;
     this.librarySectionTitle = data.librarySectionTitle;
     this.librarySectionID = data.librarySectionID;
     this.librarySectionKey = data.librarySectionKey;
@@ -1103,6 +1254,8 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
     this.subtype = data.subtype;
     this.summary = data.summary;
     this.index = data.index;
+    this.rating = data.rating;
+    this.userRating = data.userRating;
     this.thumb = data.thumb;
     this.addedAt = data.addedAt;
     this.updatedAt = data.updatedAt;

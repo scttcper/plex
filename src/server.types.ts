@@ -139,3 +139,29 @@ export interface HistoryOptions {
   /** Request history for a specific library section ID. */
   librarySectionId?: number | string;
 }
+
+export interface BandwidthOptions {
+  /** Time range in seconds (e.g. 6 for 6 seconds, but typically larger). */
+  timespan?: number;
+  /** Filter by account ID. */
+  accountID?: number;
+  /** Filter by device ID. */
+  deviceID?: number;
+  /** Filter by LAN (true) or WAN (false). */
+  lan?: boolean;
+}
+
+export interface TranscodeImageOptions {
+  /** URL of the image to transcode. */
+  url: string;
+  /** Width of the transcoded image. */
+  width: number;
+  /** Height of the transcoded image. */
+  height: number;
+  /** Minimum size (0 or 1). */
+  minSize?: number;
+  /** Upscale the image (0 or 1). */
+  upscale?: number;
+  /** Opacity (0-100). */
+  opacity?: number;
+}

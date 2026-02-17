@@ -194,6 +194,11 @@ export interface CollectionData {
   guid: string;
   type: string;
   title: string;
+  titleSort?: string;
+  smart?: boolean;
+  content?: string;
+  collectionMode?: number;
+  collectionSort?: number;
   librarySectionTitle: string;
   librarySectionID: number;
   librarySectionKey: string;
@@ -201,6 +206,8 @@ export interface CollectionData {
   subtype: string;
   summary: string;
   index: number;
+  rating?: number;
+  userRating?: number;
   thumb: string;
   art?: string;
   addedAt: number;

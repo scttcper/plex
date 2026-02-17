@@ -14,12 +14,22 @@ import type { Playlist } from './playlist.js';
 import { PlayQueue } from './playqueue.js';
 import type { CreatePlayQueueOptions } from './playqueue.types.js';
 import { Agent, SEARCHTYPES } from './search.js';
+import {
+  Activity,
+  ButlerTask,
+  StatisticsBandwidth,
+  StatisticsResources,
+  SystemAccount,
+  SystemDevice,
+} from './serverModels.js';
 import type {
+  BandwidthOptions,
   ConnectionInfo,
   HistoryMediaContainer,
   HistoryResult,
   ServerRootResponse,
   HistoryOptions,
+  TranscodeImageOptions,
 } from './server.types.js';
 import { type SettingResponse, Settings } from './settings.js';
 import type { MediaContainer } from './util.js';
@@ -350,6 +360,112 @@ export class PlexServer {
     }
 
     return results;
+  }
+
+  /** Returns a list of all active session (currently playing) media objects. */
+  async sessions(): Promise<any[]> {
+    const key = '/status/sessions';
+    const data = await this.query<MediaContainer<{ Metadata?: any[] }>>({ path: key });
+    return data.MediaContainer.Metadata ?? [];
+  }
+
+  /** Returns a list of all active transcode sessions. */
+  async transcodeSessions(): Promise<any[]> {
+    const key = '/transcode/sessions';
+    const data = await this.query<MediaContainer<{ TranscodeSession?: any[] }>>({ path: key });
+    return data.MediaContainer.TranscodeSession ?? [];
+  }
+
+  /** Returns a list of all current server activities. */
+  async activities(): Promise<Activity[]> {
+    const key = '/activities';
+    return fetchItems<Activity>(this, key, undefined, Activity, this);
+  }
+
+  /** Returns a list of all scheduled butler (maintenance) tasks. */
+  async butlerTasks(): Promise<ButlerTask[]> {
+    const key = '/butler';
+    return fetchItems<ButlerTask>(this, key, undefined, ButlerTask, this);
+  }
+
+  /**
+   * Trigger a butler task to run immediately.
+   * @param taskName Name of the task to run (e.g. 'BackupDatabase', 'OptimizeDatabase', etc).
+   */
+  async runButlerTask(taskName: string): Promise<void> {
+    const key = `/butler/${taskName}`;
+    await this.query({ path: key, method: 'post' });
+  }
+
+  /**
+   * Returns server bandwidth statistics.
+   * @param options Filter options for bandwidth stats.
+   */
+  async bandwidth(options: BandwidthOptions = {}): Promise<StatisticsBandwidth[]> {
+    const params = new URLSearchParams();
+    if (options.timespan !== undefined) {
+      params.set('timespan', options.timespan.toString());
+    }
+
+    if (options.accountID !== undefined) {
+      params.set('accountID', options.accountID.toString());
+    }
+
+    if (options.deviceID !== undefined) {
+      params.set('deviceID', options.deviceID.toString());
+    }
+
+    if (options.lan !== undefined) {
+      params.set('lan', options.lan ? '1' : '0');
+    }
+
+    const search = params.toString();
+    const key = `/statistics/bandwidth${search ? `?${search}` : ''}`;
+    return fetchItems<StatisticsBandwidth>(this, key, undefined, StatisticsBandwidth, this);
+  }
+
+  /** Returns server resource usage statistics (CPU/memory). */
+  async resources(): Promise<StatisticsResources[]> {
+    const key = '/statistics/resources';
+    return fetchItems<StatisticsResources>(this, key, undefined, StatisticsResources, this);
+  }
+
+  /** Returns a list of all system accounts on the server. */
+  async systemAccounts(): Promise<SystemAccount[]> {
+    const key = '/accounts';
+    return fetchItems<SystemAccount>(this, key, undefined, SystemAccount, this);
+  }
+
+  /** Returns a list of all system devices on the server. */
+  async systemDevices(): Promise<SystemDevice[]> {
+    const key = '/devices';
+    return fetchItems<SystemDevice>(this, key, undefined, SystemDevice, this);
+  }
+
+  /**
+   * Returns a URL to a transcoded image.
+   * @param options Transcode image options.
+   */
+  transcodeImage(options: TranscodeImageOptions): URL {
+    const params = new URLSearchParams({
+      url: options.url,
+      width: options.width.toString(),
+      height: options.height.toString(),
+      minSize: (options.minSize ?? 1).toString(),
+      upscale: (options.upscale ?? 1).toString(),
+    });
+    if (options.opacity !== undefined) {
+      params.set('opacity', options.opacity.toString());
+    }
+
+    return this.url('/photo/:/transcode', { includeToken: true, params });
+  }
+
+  /** Returns items from the Continue Watching hub. */
+  async continueWatching(): Promise<any[]> {
+    const key = '/hubs/continueWatching/items';
+    const data = await this.query<MediaContainer<{ Metadata?: any[] }>>({ path: key });
+    return data.MediaContainer.Metadata ?? [];
   }
 
   async settings(): Promise<Settings> {

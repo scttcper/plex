@@ -1,6 +1,13 @@
 export * from './alert.js';
 export type { AlertTypes } from './alert.types.js';
 export * from './client.js';
+export type {
+  ClientTimelineData,
+  SendCommandParams,
+  SetParametersOptions,
+  SetStreamsOptions,
+  PlayMediaOptions,
+} from './client.types.js';
 export * from './exceptions.js';
 export * from './library.js';
 export * from './media.js';
@@ -8,7 +15,8 @@ export * from './myplex.js';
 export * from './playlist.js';
 export * from './playqueue.js';
 export * from './server.js';
-export type { HistoryResult } from './server.types.js';
+export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.js';
+export * from './serverModels.js';
 export * from './video.js';
 export * from './audio.js';
 export { X_PLEX_IDENTIFIER } from './config.js';
