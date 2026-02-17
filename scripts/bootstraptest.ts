@@ -290,8 +290,8 @@ async function main() {
   const baseUrl = advertisedUrl.origin;
   const token = argv.token || process.env.PLEXAPI_AUTH_SERVER_TOKEN;
   const { username, password } = argv;
-  if (!username && !password && !token) {
-    throw new Error('Must provide username/password or token');
+  if (!token && !(username && password)) {
+    throw new Error('Must provide token or username/password');
   }
 
   const account = await new MyPlexAccount({
@@ -300,7 +300,14 @@ async function main() {
     password: argv.password,
     token,
   }).connect();
-  const claimToken = await account.claimToken();
+
+  let claimToken: string;
+  try {
+    claimToken = await account.claimToken();
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to authenticate with Plex account credentials/token: ${reason}`);
+  }
   const destination = join(__dirname, '..', argv.destination);
   const mediaPath = join(destination, 'media');
   await makeDirectory(mediaPath);
@@ -382,6 +389,18 @@ async function main() {
   settings.get('GenerateChapterThumbBehavior').set('never');
   settings.get('LoudnessAnalysisBehavior').set('never');
 
+  const currentHour = new Date().getHours();
+  const butlerStartHour = (currentHour + 12) % 24;
+  const butlerEndHour = (currentHour + 15) % 24;
+  settings.get('ButlerStartHour').set(butlerStartHour);
+  settings.get('ButlerEndHour').set(butlerEndHour);
+
+  for (const setting of settings.all()) {
+    if (setting.id.toLowerCase().startsWith('butler') && typeof setting.value === 'boolean') {
+      setting.set(false);
+    }
+  }
+
   await settings.save();
   settingsProg.succeed();
 
@@ -409,7 +428,7 @@ async function main() {
 
   if (argv['create-shows']) {
     const showsPath = join(mediaPath, 'TV-Shows');
-    const setupMoviesProgress = ora(`Setup movie files`).start();
+    const setupMoviesProgress = ora(`Setup show files`).start();
     const numMovies = await setupShows(showsPath);
     setupMoviesProgress.succeed();
     sections.push({

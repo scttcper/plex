@@ -71,7 +71,20 @@ jobs:
 
       - name: Bootstrap Plex server
         timeout-minutes: 8
-        run: pnpm run bootstraptest -- --advertise-ip ${{ env.PLEXAPI_AUTH_SERVER_BASEURL }} --docker-tag ${{ env.PLEX_CONTAINER_TAG }} --server-wait-timeout-seconds 180 --server-connect-timeout-ms 5000
+        run: |
+          for attempt in 1 2 3; do
+            if pnpm run bootstraptest -- --advertise-ip ${{ env.PLEXAPI_AUTH_SERVER_BASEURL }} --docker-tag ${{ env.PLEX_CONTAINER_TAG }} --server-wait-timeout-seconds 180 --server-connect-timeout-ms 5000; then
+              exit 0
+            fi
+
+            echo "Bootstrap attempt ${attempt} failed"
+            pnpm run teardowntest || true
+            docker rm -f "$(docker ps -q --latest)" || true
+            sleep 3
+          done
+
+          echo "Bootstrap failed after 3 attempts"
+          exit 1
 
       - name: Unlink PMS from MyPlex account
         uses: webiny/action-post-run@3.1.0
