@@ -1,7 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { ofetch } from 'ofetch';
-import pAny from 'p-any';
 import { parseStringPromise } from 'xml2js';
 
 import { PlexObject } from './base/plexObject.js';
@@ -237,7 +236,10 @@ export class MyPlexAccount {
    */
   async resource(name: string): Promise<MyPlexResource> {
     const resources = await this.resources();
-    const matchingResource = resources.find(resource => resource.name === name);
+    const matchingResource = resources.find(
+      resource =>
+        resource.name.toLowerCase() === name.toLowerCase() || resource.clientIdentifier === name,
+    );
     if (matchingResource) {
       return matchingResource;
     }
@@ -428,6 +430,29 @@ async function connect(
 }
 
 /**
+ * Attempts connections to all candidate URLs concurrently and returns the first
+ * successful result according to the original URL preference order.
+ */
+async function connectInPreferredOrder(
+  urls: string[],
+  token: string,
+  timeout: number | undefined,
+  resourceName: string,
+): Promise<PlexServer> {
+  const results = await Promise.allSettled(
+    urls.map(async url => connect((...args) => new PlexServer(...args), url, token, timeout)),
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+  }
+
+  throw new Error(`Unable to connect to resource: ${resourceName}`);
+}
+
+/**
  * This object represents resources connected to your Plex server that can provide
  * content such as Plex Media Servers, iPhone or Android clients, etc.
  */
@@ -501,15 +526,7 @@ export class MyPlexResource {
       attemptUrls.push(this.baseUrl);
     }
 
-    // TODO: switch between PlexServer and PlexClient
-
-    // Try connecting to all known resource connections in parellel, but
-    // only return the first server (in order) that provides a response.
-    const promises = attemptUrls.map(async url =>
-      connect((...args) => new PlexServer(...args), url, this.accessToken, timeout),
-    );
-    const result = await pAny(promises);
-    return result;
+    return connectInPreferredOrder(attemptUrls, this.accessToken, timeout, this.name);
   }
 
   /** Remove this device from your account */
@@ -602,13 +619,7 @@ export class MyPlexDevice extends PlexObject {
   async connect(timeout?: number): Promise<PlexServer> {
     // TODO: switch between PlexServer and PlexClient
 
-    // Try connecting to all known resource connections in parellel, but
-    // only return the first server (in order) that provides a response.
-    const promises = (this.connections ?? []).map(async url =>
-      connect((...args) => new PlexServer(...args), url, this.token, timeout),
-    );
-    const result = await pAny(promises);
-    return result;
+    return connectInPreferredOrder(this.connections ?? [], this.token, timeout, this.name);
   }
 
   /**

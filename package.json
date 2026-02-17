@@ -34,7 +34,6 @@
   "dependencies": {
     "@ctrl/mac-address": "^3.1.0",
     "ofetch": "^1.5.1",
-    "p-any": "^4.0.0",
     "type-fest": "^5.4.4",
     "ws": "^8.19.0",
     "xml2js": "^0.6.2"
