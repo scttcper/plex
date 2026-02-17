@@ -1,8 +1,7 @@
 import { URLSearchParams } from 'node:url';
 
-import { Playable } from './base/playable.js';
-
 import { Album, Artist, Track } from './audio.js';
+import { Playable } from './base/playable.js';
 import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
 import type { Section, SectionType } from './library.js';

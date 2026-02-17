@@ -3,7 +3,6 @@ import { URL, URLSearchParams } from 'node:url';
 import { ofetch } from 'ofetch';
 
 import { Playable } from './base/playable.js';
-
 import { fetchItem, fetchItems } from './baseFunctionality.js';
 import { PlexClient } from './client.js';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.js';
@@ -322,7 +321,7 @@ export class PlexServer {
     args['X-Plex-Container-Start'] = '0';
     args['X-Plex-Container-Size'] = Math.min(X_PLEX_CONTAINER_SIZE, maxResults).toString();
 
-    let results: HistoryResult[] = [];
+    const results: HistoryResult[] = [];
     const url = new URL('/status/sessions/history/all', this.baseurl);
     url.search = new URLSearchParams(args).toString();
     let raw = await this.query<MediaContainer<HistoryMediaContainer>>({

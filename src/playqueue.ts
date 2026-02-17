@@ -1,6 +1,5 @@
 import type { Playable } from './base/playable.js';
 import { PlexObject } from './base/plexObject.js';
-
 import { findItems } from './baseFunctionality.js';
 import { BadRequest } from './exceptions.js';
 import type { Playlist } from './playlist.js';

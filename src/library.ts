@@ -2,10 +2,9 @@ import { URLSearchParams } from 'node:url';
 
 import type { Class } from 'type-fest';
 
+import { Album, Artist, Track } from './audio.js';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
-
-import { Album, Artist, Track } from './audio.js';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
 import type {

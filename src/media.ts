@@ -1,5 +1,4 @@
 import { PlexObject } from './base/plexObject.js';
-
 import type {
   ChapterData,
   MarkerData,

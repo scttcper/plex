@@ -1,7 +1,6 @@
 import type { ValueOf } from 'type-fest';
 
 import { PlexObject } from './base/plexObject.js';
-
 import type { MatchSearchResult } from './search.types.js';
 import { rsplit } from './util.js';
 

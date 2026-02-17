@@ -1,9 +1,8 @@
 import { URLSearchParams } from 'node:url';
 
+import type { AlbumData, ArtistData, TrackData } from './audio.types.js';
 import { Playable } from './base/playable.js';
 import { PlexObject } from './base/plexObject.js';
-
-import type { AlbumData, ArtistData, TrackData } from './audio.types.js';
 import { fetchItem, fetchItems } from './baseFunctionality.js';
 import {
   Chapter,

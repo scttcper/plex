@@ -80,4 +80,4 @@ jobs:
           run: pnpm run teardowntest
 
       - name: test
-        run: pnpm run test:ci
+        run: pnpm run test

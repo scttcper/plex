@@ -10,7 +10,7 @@ npm install @ctrl/plex
 
 ### Docs
 
-https://ctrl-plex.vercel.app
+https://plex.ep.workers.dev
 
 ### Use
 

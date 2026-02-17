@@ -5,7 +5,6 @@ import pAny from 'p-any';
 import { parseStringPromise } from 'xml2js';
 
 import { PlexObject } from './base/plexObject.js';
-
 import { BASE_HEADERS, TIMEOUT } from './config.js';
 import type {
   Connection,
