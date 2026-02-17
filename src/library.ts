@@ -1215,6 +1215,7 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
     const params = new URLSearchParams({
       title,
       type: sectionType.toString(),
+      sectionId: section.key,
       uri,
     });
     const key = `/library/collections?${params.toString()}`;

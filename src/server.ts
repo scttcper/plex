@@ -385,7 +385,10 @@ export class PlexServer {
   /** Returns a list of all scheduled butler (maintenance) tasks. */
   async butlerTasks(): Promise<ButlerTask[]> {
     const key = '/butler';
-    return fetchItems<ButlerTask>(this, key, undefined, ButlerTask, this);
+    const data = await this.query<{ ButlerTasks: { ButlerTask: any[] } }>({ path: key });
+    return (data.ButlerTasks.ButlerTask ?? []).map(
+      (task: any) => new ButlerTask(this, task, key),
+    );
   }
 
   /**
