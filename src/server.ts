@@ -14,14 +14,6 @@ import type { Playlist } from './playlist.js';
 import { PlayQueue } from './playqueue.js';
 import type { CreatePlayQueueOptions } from './playqueue.types.js';
 import { Agent, SEARCHTYPES } from './search.js';
-import {
-  Activity,
-  ButlerTask,
-  StatisticsBandwidth,
-  StatisticsResources,
-  SystemAccount,
-  SystemDevice,
-} from './serverModels.js';
 import type {
   BandwidthOptions,
   ConnectionInfo,
@@ -31,6 +23,14 @@ import type {
   HistoryOptions,
   TranscodeImageOptions,
 } from './server.types.js';
+import {
+  Activity,
+  ButlerTask,
+  StatisticsBandwidth,
+  StatisticsResources,
+  SystemAccount,
+  SystemDevice,
+} from './serverModels.js';
 import { type SettingResponse, Settings } from './settings.js';
 import type { MediaContainer } from './util.js';
 
@@ -386,9 +386,7 @@ export class PlexServer {
   async butlerTasks(): Promise<ButlerTask[]> {
     const key = '/butler';
     const data = await this.query<{ ButlerTasks: { ButlerTask: any[] } }>({ path: key });
-    return (data.ButlerTasks.ButlerTask ?? []).map(
-      (task: any) => new ButlerTask(this, task, key),
-    );
+    return (data.ButlerTasks.ButlerTask ?? []).map((task: any) => new ButlerTask(this, task, key));
   }
 
   /**

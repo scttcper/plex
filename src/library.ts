@@ -418,9 +418,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * @param options.libtype Filter by a specific library type (movie, show, episode, etc.).
    * @param options.includeCollections Whether to include collections in the count. Default true.
    */
-  async totalViewSize(
-    options?: { libtype?: string; includeCollections?: boolean },
-  ): Promise<number> {
+  async totalViewSize(options?: {
+    libtype?: string;
+    includeCollections?: boolean;
+  }): Promise<number> {
     const params = new URLSearchParams({
       includeCollections: (options?.includeCollections ?? true) ? '1' : '0',
       'X-Plex-Container-Start': '0',
@@ -839,14 +840,23 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     return this._fieldTypes;
   }
 
-  private async _fetchDurationStorage(): Promise<{ duration: number | null; storage: number | null }> {
-    if (this._durationStorageCache) return this._durationStorageCache;
+  private async _fetchDurationStorage(): Promise<{
+    duration: number | null;
+    storage: number | null;
+  }> {
+    if (this._durationStorageCache) {
+      return this._durationStorageCache;
+    }
     const data = await this.server.query<any>({ path: '/media/providers?includeStorage=1' });
     const providers = data.MediaContainer?.MediaProvider ?? [];
     for (const provider of providers) {
-      if (provider.identifier !== 'com.plexapp.plugins.library') continue;
+      if (provider.identifier !== 'com.plexapp.plugins.library') {
+        continue;
+      }
       for (const feature of provider.Feature ?? []) {
-        if (feature.type !== 'content') continue;
+        if (feature.type !== 'content') {
+          continue;
+        }
         for (const dir of feature.Directory ?? []) {
           if (String(dir.id) === String(this.key)) {
             this._durationStorageCache = {
@@ -1070,7 +1080,11 @@ export class ShowSection extends LibrarySection<Show> {
    * @param maxResults Maximum number of results to return. Default 50.
    */
   override async recentlyAdded(maxResults = 50): Promise<Show[]> {
-    return this.search({ libtype: 'episode', maxresults: maxResults, sort: 'episode.addedAt:desc' });
+    return this.search({
+      libtype: 'episode',
+      maxresults: maxResults,
+      sort: 'episode.addedAt:desc',
+    });
   }
 }
 
@@ -1346,7 +1360,7 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
     section: LibrarySection<T>,
     items: T[],
   ): Promise<Collections<T>> {
-    if (!items.length) {
+    if (items.length === 0) {
       throw new BadRequest('At least one item is required to create a collection.');
     }
 

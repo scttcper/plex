@@ -521,7 +521,8 @@ export class PlexClient {
     }
 
     if (options.shuffle !== undefined) {
-      params.shuffle = typeof options.shuffle === 'boolean' ? (options.shuffle ? 1 : 0) : options.shuffle;
+      params.shuffle =
+        typeof options.shuffle === 'boolean' ? (options.shuffle ? 1 : 0) : options.shuffle;
     }
 
     if (options.repeat !== undefined) {

@@ -89,8 +89,8 @@ describe('Collections', () => {
   });
 
   it('should reject creating a collection with no items', async () => {
-    await expect(
-      Collections.create(plex, '__empty_test__', movieSection, []),
-    ).rejects.toThrow('At least one item is required');
+    await expect(Collections.create(plex, '__empty_test__', movieSection, [])).rejects.toThrow(
+      'At least one item is required',
+    );
   });
 });

@@ -100,8 +100,8 @@ describe('ClientTimeline', () => {
     const tl = new ClientTimeline({
       type: 'music',
       state: 'paused',
-      time: 30000,
-      duration: 180000,
+      time: 30_000,
+      duration: 180_000,
       volume: 75,
       shuffle: true,
       repeat: 1,
@@ -111,8 +111,8 @@ describe('ClientTimeline', () => {
     });
     expect(tl.type).toBe('music');
     expect(tl.state).toBe('paused');
-    expect(tl.time).toBe(30000);
-    expect(tl.duration).toBe(180000);
+    expect(tl.time).toBe(30_000);
+    expect(tl.duration).toBe(180_000);
     expect(tl.volume).toBe(75);
     expect(tl.shuffle).toBe(true);
     expect(tl.repeat).toBe(1);
