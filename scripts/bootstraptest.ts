@@ -92,7 +92,7 @@ const yarg = yargs(hideBin(process.argv))
 const dockerCmd = ({
   imageTag,
   claimToken,
-  advertiseIp,
+  advertiseUrl,
   containerNameExtra,
   timezone,
   language,
@@ -127,7 +127,7 @@ const dockerCmd = ({
   '-e',
   `PLEX_CLAIM=${claimToken}`,
   '-e',
-  `ADVERTISE_IP=http://${advertiseIp}:32400/`,
+  `ADVERTISE_IP=${advertiseUrl}`,
   '-e',
   `TZ=${timezone}`,
   '-e',
@@ -160,7 +160,7 @@ type Options = {
   claimToken: string;
   timezone: string;
   language: string;
-  advertiseIp: string;
+  advertiseUrl: string;
   imageTag: string;
   containerNameExtra: string;
 };
@@ -277,6 +277,17 @@ async function setupAudio(audioPath: string): Promise<number> {
 
 async function main() {
   const argv = await Promise.resolve(yarg.argv);
+  const advertisedAddress = argv['advertise-ip'];
+  const advertisedUrl = new URL(
+    advertisedAddress.startsWith('http://') || advertisedAddress.startsWith('https://')
+      ? advertisedAddress
+      : `http://${advertisedAddress}`,
+  );
+  if (!advertisedUrl.port) {
+    advertisedUrl.port = '32400';
+  }
+  const advertiseUrl = `${advertisedUrl.origin}/`;
+  const baseUrl = advertisedUrl.origin;
   const token = argv.token || process.env.PLEXAPI_AUTH_SERVER_TOKEN;
   const { username, password } = argv;
   if (!username && !password && !token) {
@@ -284,7 +295,7 @@ async function main() {
   }
 
   const account = await new MyPlexAccount({
-    baseUrl: 'http://localhost:32400',
+    baseUrl,
     username: argv.username,
     password: argv.password,
     token,
@@ -301,7 +312,7 @@ async function main() {
     claimToken,
     timezone: 'UTC',
     language: 'en_US.UTF-8',
-    advertiseIp: argv['advertise-ip'],
+    advertiseUrl,
     imageTag: argv['docker-tag'],
     containerNameExtra: '',
   };
