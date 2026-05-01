@@ -5,3 +5,34 @@ export interface SearchResultData {
   year: number;
   lifespanEnded: boolean;
 }
+
+export interface CommonSenseMediaData {
+  AgeRating?: AgeRatingData[];
+  anyGood?: string;
+  id?: number | string;
+  key?: string;
+  oneLiner?: string;
+  ParentalAdvisoryTopic?: ParentalAdvisoryTopicData[];
+  parentsNeedToKnow?: string;
+  TalkingPoint?: TalkingPointData[];
+}
+
+export interface AgeRatingData {
+  age?: number | string;
+  ageGroup?: string;
+  rating?: number | string;
+  ratingCount?: number | string;
+  type?: string;
+}
+
+export interface TalkingPointData {
+  tag?: string;
+}
+
+export interface ParentalAdvisoryTopicData {
+  id?: string;
+  label?: string;
+  positive?: boolean | number | string;
+  rating?: number | string;
+  tag?: string;
+}

@@ -1,3 +1,4 @@
+import type { CommonSenseMediaData } from './media.types.js';
 import type { ChapterSource, MarkerData, MediaTagData } from './video.types.js';
 
 export interface LibraryRootResponse {
@@ -115,6 +116,7 @@ export interface MovieData {
   Writer: MediaTag[];
   Country: MediaTag[];
   Collection?: MediaTagData[];
+  CommonSenseMedia?: CommonSenseMediaData[];
   Role?: MediaTag[];
   Similar?: MediaTagData[];
   Producer?: MediaTagData[];
@@ -190,6 +192,7 @@ export interface ShowData {
   updatedAt: number;
   Genre: MediaTag[];
   Role: MediaTag[];
+  CommonSenseMedia?: CommonSenseMediaData[];
 }
 
 export interface CollectionData {

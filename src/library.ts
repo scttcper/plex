@@ -5,7 +5,7 @@ import type { Class } from 'type-fest';
 import { Album, Artist, Track } from './audio.js';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
-import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
+import { buildQueryKey, fetchItem, fetchItems, findItems } from './baseFunctionality.js';
 import { BadRequest, NotFound, Unsupported } from './exceptions.js';
 import type {
   CollectionData,
@@ -259,7 +259,7 @@ export class Library {
    * On-deck items are media that is currently in progress.
    */
   async onDeck(): Promise<any[]> {
-    const key = '/library/onDeck';
+    const key = buildQueryKey('/library/onDeck');
     return fetchItems(this.server, key);
   }
 
@@ -487,12 +487,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   async all(sort = ''): Promise<SType[]> {
-    let sortStr = '';
-    if (sort) {
-      sortStr = `?sort=${sort}`;
-    }
-
-    const key = `/library/sections/${this.key}/all${sortStr}`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/all`, sort ? { sort } : {});
     const items = await fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
     return items;
   }
@@ -506,7 +501,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * @returns the media item with the specified title.
    */
   async get(title: string): Promise<SType> {
-    const key = `/library/sections/${this.key}/all?includeGuids=1&title=${title}`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/all`, { title });
     const data = await fetchItem(this.server, key, { title__iexact: title });
     return new this.SECTION_TYPE(this.server, data, key, this);
   }
@@ -537,7 +532,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * 				result3 = guidLookup['tvdb://121361']
    */
   async getGuid(guid: string): Promise<SType> {
-    const key = `/library/sections/${this.key}/all?includeGuids=1`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/all`);
     return fetchItem(this.server, key, { Guid__id__iexact: guid });
   }
 
@@ -605,7 +600,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       params.append('type', searchType(args.libtype).toString());
     }
 
-    const key = `/library/sections/${this.key}/all?${params.toString()}`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/all?${params.toString()}`);
     const ClsToUse = Cls ?? (this.SECTION_TYPE as unknown as Class<C>);
     const data = await fetchItems(this.server, key, undefined, ClsToUse, this);
     return data;
@@ -697,7 +692,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   async hubs(): Promise<Hub[]> {
-    const key = `/hubs/sections/${this.key}`;
+    const key = this._buildQueryKey(`/hubs/sections/${this.key}`, { includeStations: 1 });
     const hubs = await fetchItems<Hub>(this.server, key, undefined, Hub, this);
     return hubs;
   }
@@ -740,7 +735,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * Returns a list of items currently on deck (in progress) for this library section.
    */
   async onDeck(): Promise<SType[]> {
-    const key = `/library/sections/${this.key}/onDeck`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/onDeck`);
     return fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
   }
 
@@ -1097,7 +1092,7 @@ export class MusicSection extends LibrarySection<Track> {
 
   /** Returns a list of Album objects in this section. */
   async albums(): Promise<Album[]> {
-    const key = `/library/sections/${this.key}/albums`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/albums`);
     return fetchItems<Album>(this.server, key, undefined, Album, this);
   }
 
@@ -1150,7 +1145,10 @@ export class MusicSection extends LibrarySection<Track> {
   async sonicAdventure(start: Track | number, end: Track | number): Promise<Track[]> {
     const startID = typeof start === 'number' ? start : start.ratingKey;
     const endID = typeof end === 'number' ? end : end.ratingKey;
-    const key = `/library/sections/${this.key}/computePath?startID=${startID}&endID=${endID}`;
+    const key = this._buildQueryKey(`/library/sections/${this.key}/computePath`, {
+      startID,
+      endID,
+    });
     return fetchItems<Track>(this.server, key, undefined, Track, this);
   }
 }
@@ -1164,6 +1162,8 @@ export class Hub extends PlexObject {
   declare size: number;
   declare title: string;
   declare type: string;
+  /** True if the hub items are randomized. */
+  declare random: boolean;
   declare Directory: SearchResultContainer['Directory'];
   declare Metadata: SearchResultContainer['Metadata'];
 
@@ -1172,6 +1172,7 @@ export class Hub extends PlexObject {
     this.size = data.size;
     this.title = data.title;
     this.type = data.type;
+    this.random = Boolean(Number.parseInt((data as any).random ?? '0', 10));
     this.Directory = data.Directory;
     this.Metadata = data.Metadata;
   }
@@ -1239,7 +1240,7 @@ export class Collections<CollectionVideoType = SectionType> extends PartialPlexO
    * Returns a list of all items in the collection.
    */
   async items() {
-    const key = `/library/metadata/${this.ratingKey}/children`;
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
     const data = await this.server.query<MediaContainer<{ Metadata?: any[] }>>({ path: key });
     return (
       data.MediaContainer.Metadata?.map(

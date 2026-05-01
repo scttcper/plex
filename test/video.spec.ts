@@ -1,6 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src/index.js';
+import {
+  CommonSenseMedia,
+  type Movie,
+  type MovieSection,
+  type PlexServer,
+  type Show,
+  type ShowSection,
+} from '../src/index.js';
 
 import { createClient } from './test-client.js';
 
@@ -30,6 +37,28 @@ describe('Shows', () => {
     const episodes = await seasons[0].episodes();
     // Season 1 of Silicon Valley
     expect(episodes.length).toBe(8);
+  });
+
+  it('should get a show season by title and number', async () => {
+    const seasonByTitle = await show.season('Season 1');
+    const seasonByNumber = await show.season(1);
+    expect(seasonByTitle.key).toBe(seasonByNumber.key);
+    expect(seasonByTitle.guids.length).toBeGreaterThan(0);
+  });
+
+  it('should get a show episode by title and season index', async () => {
+    const episodeByTitle = await show.episode({ title: 'Minimum Viable Product' });
+    const episodeByIndex = await show.episode({ season: 1, episode: 1 });
+    expect(episodeByTitle.key).toBe(episodeByIndex.key);
+    expect(episodeByTitle.guids.length).toBeGreaterThan(0);
+  });
+
+  it('should get a season episode by title and number', async () => {
+    const season = await show.season(1);
+    const episodeByTitle = await season.episode('Minimum Viable Product');
+    const episodeByNumber = await season.episode(1);
+    expect(episodeByTitle.key).toBe(episodeByNumber.key);
+    expect(episodeByTitle.guids.length).toBeGreaterThan(0);
   });
 
   it("should get an episode's full data", async () => {
@@ -108,6 +137,20 @@ describe('Shows', () => {
   it('should search shows', async () => {
     const shows = await showSection.search({ title: 'Silicon Valley' });
     expect(shows[0].title).toContain('Silicon Valley');
+  });
+
+  it('should get common sense media data', async () => {
+    await show.reload(undefined, { includeReviews: 1 });
+
+    const commonSenseMedia = show.commonSenseMedia;
+    const [ageRating] = commonSenseMedia.ageRatings;
+
+    expect(commonSenseMedia).toBeInstanceOf(CommonSenseMedia);
+    expect(typeof commonSenseMedia.id).toBe('number');
+    expect(commonSenseMedia.oneLiner).toBeDefined();
+    expect(ageRating.type).toBe('official');
+    expect(typeof ageRating.age).toBe('number');
+    expect(typeof ageRating.rating).toBe('number');
   });
 });
 

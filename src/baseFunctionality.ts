@@ -1,5 +1,39 @@
+import { URLSearchParams } from 'node:url';
+
 import type { PlexServer } from './server.js';
 import type { MediaContainer } from './util.js';
+
+export type QueryParamValue = string | number | boolean | null | undefined;
+
+/**
+ * Builds a Plex object query path and ensures object fetches include GUID data.
+ */
+export function buildQueryKey(
+  ekey: string | number,
+  params: Record<string, QueryParamValue> = {},
+): string {
+  const key = typeof ekey === 'number' ? `/library/metadata/${ekey.toString()}` : ekey;
+  const [path, existingSearch = ''] = key.split('?', 2);
+  const searchParams = new URLSearchParams(existingSearch);
+
+  if (!searchParams.has('includeGuids')) {
+    searchParams.set('includeGuids', '1');
+  }
+
+  for (const [name, value] of Object.entries(params)) {
+    if (value === undefined || value === null) {
+      continue;
+    }
+
+    if (typeof value === 'boolean') {
+      searchParams.set(name, value ? '1' : '0');
+    } else {
+      searchParams.set(name, value.toString());
+    }
+  }
+
+  return `${path}?${searchParams.toString()}`;
+}
 
 export const OPERATORS = {
   exact: (v: string | number, q: string | number) => v === q,

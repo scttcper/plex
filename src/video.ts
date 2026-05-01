@@ -6,10 +6,12 @@ import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.ty
 import {
   Chapter,
   Collection,
+  CommonSenseMedia,
   Country,
   Director,
   Genre,
   Guid,
+  Image,
   Marker,
   Media,
   Poster,
@@ -19,7 +21,17 @@ import {
   Similar,
   Writer,
 } from './media.js';
+import type { CommonSenseMediaData } from './media.types.js';
 import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
+
+type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
+  CommonSenseMedia?: CommonSenseMediaData[];
+  Guid?: Array<{ id: string }>;
+  Image?: Array<{ alt?: string; type?: string; url?: string }>;
+  playlistItemID?: number;
+  artBlurHash?: string;
+  thumbBlurHash?: string;
+};
 
 abstract class Video extends Playable {
   /** Datetime this item was added to the library. */
@@ -40,6 +52,12 @@ abstract class Video extends Playable {
   declare viewCount?: number;
   declare art?: string;
   declare grandparentArt?: string;
+  /** Common Sense Media rating and advisory data, when returned by Plex. */
+  declare commonSenseMedia?: CommonSenseMedia;
+  /** External GUID objects for this video item. */
+  declare guids: Guid[];
+  /** Image tags for this video item. */
+  declare images: Image[];
   /**
    * BlurHash string for artwork image.
    */
@@ -154,6 +172,7 @@ abstract class Video extends Playable {
   }
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
+    const videoData = data as VideoMetadataData;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
     this.title = data.title;
@@ -170,10 +189,16 @@ abstract class Video extends Playable {
     this.viewCount = (data as MovieData).viewCount ?? 0;
     this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.viewCount = (data as MovieData).viewCount;
-    this.playlistItemID = (data as any).playlistItemID;
+    this.playlistItemID = videoData.playlistItemID;
     // todo: update one of them with this property
-    this.artBlurHash = (data as any).artBlurHash;
-    this.thumbBlurHash = (data as any).thumbBlurHash;
+    this.artBlurHash = videoData.artBlurHash;
+    this.thumbBlurHash = videoData.thumbBlurHash;
+    this.guids = videoData.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
+    this.images = videoData.Image?.map(d => new Image(this.server, d, undefined, this)) ?? [];
+    const [commonSenseMedia] = videoData.CommonSenseMedia ?? [];
+    this.commonSenseMedia = commonSenseMedia
+      ? new CommonSenseMedia(this.server, commonSenseMedia, undefined, this)
+      : undefined;
   }
 }
 
@@ -378,13 +403,35 @@ export class Show extends Video {
   //   // return items;
   // }
 
+  async season(titleOrIndex: string | number): Promise<Season> {
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`, {
+      excludeAllLeaves: 1,
+    });
+    const query =
+      typeof titleOrIndex === 'string' ? { title__iexact: titleOrIndex } : { index: titleOrIndex };
+    const data = await fetchItem(this.server, key, query);
+    return new Season(this.server, data, key, this);
+  }
+
   async seasons(query?: Record<string, string | number>): Promise<Season[]> {
-    const key = `/library/metadata/${this.ratingKey}/children?excludeAllLeaves=1`;
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`, {
+      excludeAllLeaves: 1,
+    });
     return fetchItems(this.server, key, query, Season, this);
   }
 
+  async episode(args: { title: string } | { season: number; episode: number }): Promise<Episode> {
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/allLeaves`);
+    const query =
+      'title' in args
+        ? { title__iexact: args.title }
+        : { parentIndex: args.season, index: args.episode };
+    const data = await fetchItem(this.server, key, query);
+    return new Episode(this.server, data, key, this);
+  }
+
   async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
-    const key = `/library/metadata/${this.ratingKey}/allLeaves`;
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/allLeaves`);
     const episodes = await fetchItems(this.server, key, query);
     return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
@@ -450,8 +497,16 @@ export class Season extends Video {
   /**
    * @returns a list of :class:`~plexapi.video.Episode` objects.
    */
+  async episode(titleOrIndex: string | number): Promise<Episode> {
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
+    const query =
+      typeof titleOrIndex === 'string' ? { title__iexact: titleOrIndex } : { index: titleOrIndex };
+    const data = await fetchItem(this.server, key, query);
+    return new Episode(this.server, data, key, this);
+  }
+
   async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
-    const key = `/library/metadata/${this.ratingKey}/children`;
+    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
     const episodes = await fetchItems<EpisodeMetadata>(this.server, key, query);
     return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
@@ -536,12 +591,14 @@ export class Episode extends Video {
   }
 
   async season(): Promise<Season> {
-    const data = await fetchItem(this.server, this.parentKey);
+    const key = this._buildQueryKey(this.parentKey);
+    const data = await fetchItem(this.server, key);
     return new Season(this.server, data, this.parentKey, this);
   }
 
   async show(): Promise<Show> {
-    const data = await fetchItem(this.server, this.grandparentKey);
+    const key = this._buildQueryKey(this.grandparentKey);
+    const data = await fetchItem(this.server, key);
     return new Show(this.server, data, this.grandparentKey, this);
   }
 
