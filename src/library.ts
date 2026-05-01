@@ -5,7 +5,13 @@ import type { Class } from 'type-fest';
 import { Album, Artist, Track } from './audio.js';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { PlexObject } from './base/plexObject.js';
-import { buildQueryKey, fetchItem, fetchItems } from './baseFunctionality.js';
+import {
+  buildQueryKey,
+  fetchItem,
+  fetchItems,
+  type ItemFilterValue,
+  OPERATORS,
+} from './baseFunctionality.js';
 import { BadRequest, NotFound, Unsupported } from './exceptions.js';
 import type {
   CommonData,
@@ -366,17 +372,11 @@ export class Library {
 export type Libtype = keyof typeof SEARCHTYPES;
 
 export interface SearchArgs {
-  [key: string]:
-    | number
-    | string
-    | boolean
-    | string[]
-    | FilteringSort
-    | Record<string, string | number | boolean>;
+  [key: string]: SearchArgValue;
   /** General string query to search for. Partial string matches are allowed. */
-  title: string;
+  title: string | string[];
   /** A string of comma separated sort fields or a list of sort fields in the format ``column:dir``. */
-  sort: string | string[] | FilteringSort;
+  sort: string | string[] | FilteringSort | FilteringSort[];
   /** Only return the specified number of results. */
   maxresults: number;
   /** Default 0 */
@@ -395,13 +395,35 @@ export interface SearchArgs {
    * Return only results that have duplicates.
    */
   duplicate: number;
+  /** Include GUID data in metadata responses. Defaults to true. */
+  includeGuids: boolean;
   /** Advanced filters object used by music searches. */
-  filters?: Record<string, string | number | boolean>;
+  filters?: AdvancedSearchFilters;
 }
 
 export type SectionType = Movie | Show | Artist | Album | Track;
 export type LibrarySearchItem = SectionType | Season | Episode | Collections;
 type RatingKeyItem = { ratingKey?: number | string };
+type SearchTagValue = { id: number | string; tag?: string } | { id?: number | string; tag: string };
+export type SearchFilterPrimitive =
+  | boolean
+  | Date
+  | FilterChoice
+  | number
+  | SearchTagValue
+  | string;
+export type SearchFilterValue = SearchFilterPrimitive | SearchFilterPrimitive[];
+export type SearchArgValue =
+  | AdvancedSearchFilters
+  | FilteringSort
+  | FilteringSort[]
+  | SearchFilterValue
+  | undefined;
+export type AdvancedSearchFilters = {
+  [field: string]: AdvancedSearchFilters[] | SearchFilterValue;
+  and?: AdvancedSearchFilters[];
+  or?: AdvancedSearchFilters[];
+};
 type LibraryItemParent = {
   key?: number | string;
   librarySectionID?: number | string;
@@ -429,6 +451,22 @@ export type SearchClassForLibtype<T extends Libtype> = T extends 'movie'
             : T extends 'track'
               ? Track
               : SectionType;
+type SearchBuildResult = {
+  key: string;
+  localFilters: Record<string, ItemFilterValue>;
+};
+type SearchParamEntry = [string, string];
+const FILTER_VALUE_TYPES = [
+  'audioLanguage',
+  'boolean',
+  'date',
+  'integer',
+  'resolution',
+  'string',
+  'subtitleLanguage',
+  'tag',
+] as const;
+type FilterValueType = (typeof FILTER_VALUE_TYPES)[number];
 
 function parsePlexBoolean(value: unknown, fallback = false): boolean {
   if (value === undefined || value === null) {
@@ -444,6 +482,29 @@ function parseOptionalNumber(value: unknown): number | undefined {
   }
 
   return Number(value);
+}
+
+function isItemFilterValue(value: SearchArgValue): value is ItemFilterValue {
+  return ['boolean', 'number', 'string'].includes(typeof value);
+}
+
+function isFilterValueType(type: string): type is FilterValueType {
+  return FILTER_VALUE_TYPES.includes(type as FilterValueType);
+}
+
+function isAdvancedFilterGroupValue(
+  value: AdvancedSearchFilters[] | SearchFilterValue,
+): value is AdvancedSearchFilters[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      item =>
+        typeof item === 'object' &&
+        item !== null &&
+        !(item instanceof Date) &&
+        !(item instanceof FilterChoice),
+    )
+  );
 }
 
 function reverseSearchType(type: string | number | null): Libtype | undefined {
@@ -707,36 +768,12 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * @param args Search using a number of different attributes
    */
   async search<C = SType>(args: Partial<SearchArgs> = {}, Cls?: Class<C>): Promise<C[]> {
-    const params = new URLSearchParams();
-
-    for (const [key, value] of Object.entries(args)) {
-      if (key === 'libtype' || value === undefined || value === null) {
-        continue;
-      }
-
-      let strValue: string;
-      if (typeof value === 'string') {
-        strValue = value;
-      } else if (value instanceof FilteringSort) {
-        strValue = value.key;
-      } else if (Array.isArray(value)) {
-        strValue = value.join(',');
-      } else if (typeof value === 'boolean') {
-        strValue = value ? '1' : '0';
-      } else {
-        strValue = JSON.stringify(value);
-      }
-
-      params.append(key, strValue);
-    }
-
-    if (args.libtype) {
-      params.append('type', searchType(args.libtype).toString());
-    }
-
-    const key = this._buildQueryKey(`/library/sections/${this.key}/all?${params.toString()}`);
-    const ClsToUse = Cls ?? (this.SECTION_TYPE as unknown as Class<C>);
-    const data = await fetchItems(this.server, key, undefined, ClsToUse, this);
+    const { key, localFilters } = await this._buildSearchKey(args);
+    const ClsToUse =
+      Cls ??
+      (args.libtype ? (classForLibtype(args.libtype) as Class<C> | undefined) : undefined) ??
+      (this.SECTION_TYPE as unknown as Class<C>);
+    const data = await fetchItems(this.server, key, localFilters, ClsToUse, this);
     return data;
   }
 
@@ -1239,70 +1276,372 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     );
   }
 
-  // /**
-  //  * Validates a filter field and values are available as a custom filter for the library.
-  //  * Returns the validated field and values as a URL encoded parameter string.
-  //  */
-  // private async _validateFilterField(field: string, libtype?: Libtype) {
-  //   const match = /(?:([a-zA-Z]*)\.)?(?<field>[a-zA-Z]+)(?<operator>[!<>=&]*)/.exec(field);
-  //   if (!match || !match.groups) {
-  //     throw new BadRequest(`Invalid filter field: ${field}`);
-  //   }
+  /**
+   * Validates a filter field and value against the section filter metadata.
+   */
+  private async _validateFilterField(
+    field: string,
+    values: SearchFilterValue,
+    libtype?: Libtype,
+  ): Promise<SearchParamEntry[]> {
+    const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+)([!<>=&]*)$/.exec(field);
+    if (!match) {
+      throw new BadRequest(`Invalid filter field "${field}".`);
+    }
 
-  //   const { libtype: _libtype, field: parsedField, operator: operatorMatch } = match.groups;
-  //   libtype = (_libtype as Libtype) ?? libtype ?? this.type;
-  //   const filterField = (await this.listFields(libtype)).find(
-  //     f => f.key.split('.')[-1] === parsedField,
-  //   );
+    const [, parsedLibtype, parsedField, operatorMatch] = match;
+    const requestedLibtype = (parsedLibtype as Libtype) || libtype || (this.type as Libtype);
+    const filterField = await this._getFilterField(parsedField, requestedLibtype);
+    const operator = await this._validateFieldOperator(filterField, operatorMatch);
+    const result = await this._validateFieldValue(filterField, values, requestedLibtype);
+    if (operator === '&=') {
+      return result.map(value => [filterField.key, value]);
+    }
 
-  //   if (!filterField) {
-  //     throw new NotFound('Unknown filter field');
-  //   }
+    return [[`${filterField.key}${operator.slice(0, -1)}`, result.join(',')]];
+  }
 
-  //   field = filterField.key;
-  //   const operator = await this._validateFieldOperator(filterField, operatorMatch);
-  //   const result = this._validateFieldValue(filterField, values, libtype);
+  private async _getFilterField(field: string, libtype: Libtype): Promise<FilteringField> {
+    const fieldMatches = (filterField: FilteringField) =>
+      filterField.key.split('.').at(-1) === field;
+    const fields = await this.listFields(libtype);
+    const filterField =
+      fields.find(fieldMatches) ??
+      [...(await this.filterTypes())]
+        .reverse()
+        .flatMap(filterType => (filterType.type === libtype ? [] : filterType.fields))
+        .find(fieldMatches);
 
-  //   if (operator === '&=') {
-  //     const args = { [field]: result };
-  //     return args;
-  //   }
+    if (!filterField) {
+      throw new NotFound(
+        `Unknown filter field "${field}" for "${libtype}". Available fields: ${fields
+          .map(f => f.key)
+          .join(', ')}`,
+      );
+    }
 
-  //   return { [field + operator.slice(0, operator.length - 1)]: result.join(',') };
-  // }
+    return filterField;
+  }
 
-  // /**
-  //  * Validates filter operator is in the available operators.
-  //  * Returns the validated operator string.
-  //  */
-  // private async _validateFieldOperator(filterField: FilteringField, operator: string) {
-  //   const fieldType = await this.getFieldType(filterField.type);
+  /**
+   * Validates a filter operator against the field type metadata.
+   */
+  private async _validateFieldOperator(
+    filterField: FilteringField,
+    operator: string,
+  ): Promise<string> {
+    const fieldType = await this.getFieldType(filterField.type);
+    const andOperator = operator === '&' || operator === '&=';
+    if (andOperator) {
+      operator = '';
+    }
 
-  //   let andOperator = false;
-  //   if (['&', '&='].includes(operator)) {
-  //     andOperator = true;
-  //     operator = '';
-  //   } else if (['=', '!='].includes(operator)) {
-  //     operator += '=';
-  //   }
+    if (fieldType.type === 'string' && (operator === '=' || operator === '!=')) {
+      operator += '=';
+    }
 
-  //   operator = operator.endsWith('=') ? operator.slice(0, operator.length - 1) : operator + '=';
+    operator = `${operator.endsWith('=') ? operator.slice(0, -1) : operator}=`;
+    const exists = fieldType.operators.some(o => o.key === operator);
+    if (!exists) {
+      const availableOperators = (await this.listOperators(filterField.type)).map(o => o.key);
+      throw new NotFound(
+        `Unknown operator "${operator}" for "${filterField.key}". Available operators: ${availableOperators.join(
+          ', ',
+        )}`,
+      );
+    }
 
-  //   const exists = fieldType.operators.find(o => o.key === operator);
-  //   if (!exists) {
-  //     throw new NotFound('Unknown operator');
-  //   }
+    return andOperator ? '&=' : operator;
+  }
 
-  //   return andOperator ? '&=' : operator;
-  // }
+  /**
+   * Validates filter values are the correct data type and available where the server exposes choices.
+   */
+  private async _validateFieldValue(
+    filterField: FilteringField,
+    values: SearchFilterValue,
+    libtype?: Libtype,
+  ): Promise<string[]> {
+    const fieldType = await this.getFieldType(filterField.type);
+    if (!isFilterValueType(fieldType.type)) {
+      throw new BadRequest(`Unsupported filter type "${fieldType.type}" for "${filterField.key}".`);
+    }
 
-  // /**
-  //  * Validates filter values are the correct datatype and in the available filter choices.
-  //  * @returns the validated list of values.
-  //  */
-  // private async _validateFieldValue(filterField: FilteringField, values, libtype): Promise<any> {
-  //   // todo
-  // }
+    const valueList = Array.isArray(values) ? values : [values];
+    const results: string[] = [];
+
+    for (const value of valueList) {
+      try {
+        let result: number | string;
+        switch (fieldType.type) {
+          case 'boolean': {
+            result = value ? 1 : 0;
+            break;
+          }
+
+          case 'date': {
+            result = this._validateFieldValueDate(value);
+            break;
+          }
+
+          case 'integer': {
+            result = Number(value);
+            if (Number.isNaN(result)) {
+              throw new TypeError('Invalid integer');
+            }
+            break;
+          }
+
+          case 'string': {
+            result = String(value);
+            break;
+          }
+
+          case 'tag':
+          case 'subtitleLanguage':
+          case 'audioLanguage':
+          case 'resolution': {
+            result = await this._validateFieldValueTag(value, filterField, libtype);
+            break;
+          }
+        }
+
+        results.push(result.toString());
+      } catch (error) {
+        if (error instanceof BadRequest || error instanceof NotFound) {
+          throw error;
+        }
+
+        throw new BadRequest(
+          `Invalid value for "${filterField.key}": expected ${fieldType.type}, got ${String(value)}.`,
+        );
+      }
+    }
+
+    return results;
+  }
+
+  private _validateFieldValueDate(value: SearchFilterPrimitive): number | string {
+    if (value instanceof Date) {
+      return Math.floor(value.getTime() / 1000);
+    }
+
+    const dateValue = String(value);
+    if (/^-?\d+(mon|[smhdwy])$/.test(dateValue)) {
+      return `-${dateValue.replace(/^-/, '')}`;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      throw new Error('Invalid date');
+    }
+
+    const timestamp = Date.parse(`${dateValue}T00:00:00Z`);
+    if (Number.isNaN(timestamp)) {
+      throw new TypeError('Invalid date');
+    }
+
+    return Math.floor(timestamp / 1000);
+  }
+
+  private async _validateFieldValueTag(
+    value: SearchFilterPrimitive,
+    filterField: FilteringField,
+    libtype?: Libtype,
+  ): Promise<string> {
+    if (value instanceof FilterChoice) {
+      return value.key;
+    }
+
+    let matchValue: string;
+    if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+      matchValue = String(value.id ?? value.tag);
+    } else {
+      matchValue = String(value);
+    }
+
+    const filterChoices = await this.listFilterChoices(filterField.key, libtype);
+    const normalizedValue = matchValue.toLowerCase();
+    return (
+      filterChoices.find(
+        choice =>
+          choice.key.toLowerCase() === normalizedValue ||
+          choice.title.toLowerCase() === normalizedValue,
+      )?.key ?? matchValue
+    );
+  }
+
+  private async _validateSortFields(
+    sort: FilteringSort | FilteringSort[] | string | string[],
+    libtype?: Libtype,
+  ): Promise<string> {
+    const sortList =
+      typeof sort === 'string' ? sort.split(',') : Array.isArray(sort) ? sort : [sort];
+    const validatedSorts: string[] = [];
+    for (const sortField of sortList) {
+      validatedSorts.push(await this._validateSortField(sortField, libtype));
+    }
+
+    return validatedSorts.join(',');
+  }
+
+  private async _validateSortField(
+    sort: FilteringSort | string,
+    libtype?: Libtype,
+  ): Promise<string> {
+    const requestedLibtype = libtype ?? (this.type as Libtype);
+    if (sort instanceof FilteringSort) {
+      return sort.defaultDirection
+        ? `${requestedLibtype}.${sort.key}:${sort.defaultDirection}`
+        : `${requestedLibtype}.${sort.key}`;
+    }
+
+    const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+):?([a-zA-Z]*)$/.exec(sort.trim());
+    if (!match) {
+      throw new BadRequest(`Invalid sort "${sort}".`);
+    }
+
+    const [, parsedLibtype, sortField, sortDir] = match;
+    const sortLibtype = (parsedLibtype as Libtype) || requestedLibtype;
+    const filterSort = (await this.listSorts(sortLibtype)).find(f => f.key === sortField);
+    if (!filterSort) {
+      const availableSorts = (await this.listSorts(sortLibtype)).map(f => f.key);
+      throw new NotFound(
+        `Unknown sort field "${sortField}" for "${sortLibtype}". Available sorts: ${availableSorts.join(
+          ', ',
+        )}`,
+      );
+    }
+
+    const availableDirections = ['', 'asc', 'desc', 'nullsLast'];
+    if (!availableDirections.includes(sortDir)) {
+      throw new NotFound(
+        `Unknown sort direction "${sortDir}". Available directions: ${availableDirections.join(', ')}`,
+      );
+    }
+
+    return sortDir
+      ? `${sortLibtype}.${filterSort.key}:${sortDir}`
+      : `${sortLibtype}.${filterSort.key}`;
+  }
+
+  private async _validateAdvancedSearch(
+    filters: AdvancedSearchFilters,
+    libtype?: Libtype,
+  ): Promise<SearchParamEntry[]> {
+    if (typeof filters !== 'object' || filters === null || Array.isArray(filters)) {
+      throw new BadRequest('filters must be an object.');
+    }
+
+    const validatedFilters: SearchParamEntry[] = [];
+    const entries = Object.entries(filters);
+    for (const [field, values] of entries) {
+      const normalizedField = field.toLowerCase();
+      if (normalizedField === 'and' || normalizedField === 'or') {
+        if (entries.length > 1) {
+          throw new BadRequest('"and" and "or" filter groups cannot include sibling filters.');
+        }
+
+        if (!isAdvancedFilterGroupValue(values)) {
+          throw new BadRequest('"and" and "or" filter groups must be arrays.');
+        }
+
+        validatedFilters.push(['push', '1']);
+        for (const value of values) {
+          validatedFilters.push(...(await this._validateAdvancedSearch(value, libtype)));
+          validatedFilters.push([normalizedField, '1']);
+        }
+
+        validatedFilters.pop();
+        validatedFilters.push(['pop', '1']);
+      } else {
+        validatedFilters.push(
+          ...(await this._validateFilterField(field, values as SearchFilterValue, libtype)),
+        );
+      }
+    }
+
+    return validatedFilters;
+  }
+
+  private async _buildSearchKey(args: Partial<SearchArgs> = {}): Promise<SearchBuildResult> {
+    const {
+      container_size: containerSize,
+      container_start: containerStart,
+      filters,
+      includeGuids = true,
+      libtype,
+      limit,
+      maxresults,
+      sort,
+      title,
+      ...customFilters
+    } = args;
+    const params = new URLSearchParams({
+      includeGuids: includeGuids ? '1' : '0',
+    });
+
+    const filterArgs: SearchParamEntry[] = [];
+    const localFilters: Record<string, ItemFilterValue> = {};
+    for (const [field, values] of Object.entries(customFilters)) {
+      if (values === undefined) {
+        continue;
+      }
+
+      if (Object.hasOwn(OPERATORS, field.split('__').at(-1))) {
+        if (!isItemFilterValue(values)) {
+          throw new BadRequest(`Invalid local filter value for "${field}".`);
+        }
+
+        localFilters[field] = values;
+      } else {
+        filterArgs.push(
+          ...(await this._validateFilterField(field, values as SearchFilterValue, libtype)),
+        );
+      }
+    }
+
+    if (title !== undefined) {
+      if (Array.isArray(title)) {
+        filterArgs.push(...(await this._validateFilterField('title', title, libtype)));
+      } else {
+        params.set('title', title);
+      }
+    }
+
+    if (filters !== undefined) {
+      filterArgs.push(...(await this._validateAdvancedSearch(filters, libtype)));
+    }
+
+    if (sort !== undefined) {
+      params.set('sort', await this._validateSortFields(sort, libtype));
+    }
+
+    if (libtype !== undefined) {
+      params.set('type', searchType(libtype).toString());
+    }
+
+    if (limit !== undefined) {
+      params.set('limit', limit.toString());
+    }
+
+    if (containerStart !== undefined) {
+      params.set('X-Plex-Container-Start', containerStart.toString());
+    }
+
+    if (containerSize !== undefined || maxresults !== undefined) {
+      params.set('X-Plex-Container-Size', (containerSize ?? maxresults).toString());
+    }
+
+    for (const [key, value] of filterArgs) {
+      params.append(key, value);
+    }
+
+    const query = params.toString();
+    return {
+      key: `/library/sections/${this.key}/all?${query}`,
+      localFilters,
+    };
+  }
 }
 
 export class MovieSection extends LibrarySection<Movie> {

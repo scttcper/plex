@@ -4,6 +4,7 @@ import type { PlexServer } from './server.js';
 import type { MediaContainer } from './util.js';
 
 export type QueryParamValue = string | number | boolean | null | undefined;
+export type ItemFilterValue = string | number | boolean;
 
 /**
  * Builds a Plex object query path and ensures object fetches include GUID data.
@@ -91,7 +92,7 @@ export async function fetchItem(
 export async function fetchItems<T = any>(
   server: PlexServer,
   ekey: string,
-  options?: Record<string, string | number>,
+  options?: Record<string, ItemFilterValue>,
   Cls?: any,
   parent?: any,
 ): Promise<T[]> {
@@ -109,7 +110,7 @@ export async function fetchItems<T = any>(
  */
 export function findItems(
   data: any[],
-  options: Record<string, string | number> = {},
+  options: Record<string, ItemFilterValue> = {},
   Cls?: any,
   server?: PlexServer,
   parent?: any,
@@ -132,7 +133,7 @@ export function findItems(
   return items;
 }
 
-function checkAttrs<T>(elem: T, obj: Record<string, string | number> = {}): boolean {
+function checkAttrs<T>(elem: T, obj: Record<string, ItemFilterValue> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
     const [key, , operator] = getAttrOperator(attr);
