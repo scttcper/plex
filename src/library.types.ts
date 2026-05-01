@@ -96,18 +96,18 @@ export interface FirstCharacterData {
 }
 
 export interface LibraryTimelineData {
-  size?: number | string;
-  allowSync?: PlexBoolean;
+  size: number | string;
+  allowSync: PlexBoolean;
   art?: string;
-  content?: string;
-  identifier?: string;
-  latestEntryTime?: number | string;
-  mediaTagPrefix?: string;
-  mediaTagVersion?: number | string;
+  content: string;
+  identifier: string;
+  latestEntryTime: number | string;
+  mediaTagPrefix: string;
+  mediaTagVersion: number | string;
   thumb?: string;
-  title1?: string;
-  updateQueueSize?: number | string;
-  viewGroup?: string;
+  title1: string;
+  updateQueueSize: number | string;
+  viewGroup: string;
   viewMode?: number | string;
 }
 
@@ -120,11 +120,11 @@ export interface ManagedHubData {
   promotedToRecommended?: PlexBoolean;
   promotedToSharedHome?: PlexBoolean;
   recommendationsVisibility?: string;
-  title?: string;
+  title: string;
 }
 
 export interface FilterChoiceData {
-  fastKey?: string;
+  fastKey: string;
   key: string;
   thumb?: string;
   title: string;
@@ -174,7 +174,7 @@ export interface FilteringFieldTypeData {
 
 export interface FilteringOperatorData {
   key: string;
-  type: string;
+  title: string;
 }
 
 export interface LibraryFilterMetaData {
@@ -204,7 +204,7 @@ export interface CommonData {
   guid?: string;
   index?: number | string;
   key?: string;
-  mixedFields?: string;
+  mixedFields: string;
   originallyAvailableAt?: string;
   parentRatingKey?: number | string;
   parentTitle?: string;

@@ -1542,7 +1542,7 @@ export class ManagedHub extends PlexObject {
   declare promotedToRecommended: boolean;
   declare promotedToSharedHome: boolean;
   declare recommendationsVisibility: string;
-  declare title?: string;
+  declare title: string;
 
   override async reload(): Promise<void> {
     const key = `/hubs/sections/${this.librarySectionID}/manage`;
@@ -2083,15 +2083,15 @@ export class FilteringSort extends PlexObject {
   /** True if the sort is currently active. */
   declare active: boolean;
   /** The currently active sorting direction. */
-  declare activeDirection: string;
+  declare activeDirection?: string;
   /** The currently active default sorting direction. */
-  declare default: string;
+  declare default?: string;
   /** The default sorting direction. */
-  declare defaultDirection: string;
+  declare defaultDirection?: string;
   /** The URL key for sorting with desc. */
-  declare descKey: string;
+  declare descKey?: string;
   /** API URL path for first character endpoint. */
-  declare firstCharacterKey: string;
+  declare firstCharacterKey?: string;
   /** The title of the sorting. */
   declare title: string;
 
@@ -2116,7 +2116,7 @@ export class FilteringField extends PlexObject {
   declare type: string;
   declare title: string;
   /** The subtype of the filter (decade, rating, etc) */
-  declare subType: string;
+  declare subType?: string;
 
   _loadData(data: FilteringFieldData) {
     this.key = data.key;
@@ -2150,11 +2150,11 @@ export class FilteringFieldType extends PlexObject {
 export class FilteringOperator extends PlexObject {
   static override TAG = 'Operator';
 
-  /** The libtype for the filter. */
-  declare type: string;
+  /** The title of the operator. */
+  declare title: string;
 
   _loadData(data: FilteringOperatorData) {
     this.key = data.key;
-    this.type = data.type;
+    this.title = data.title;
   }
 }
