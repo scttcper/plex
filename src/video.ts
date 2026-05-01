@@ -21,7 +21,17 @@ import {
   Similar,
   Writer,
 } from './media.js';
+import type { CommonSenseMediaData } from './media.types.js';
 import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
+
+type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
+  CommonSenseMedia?: CommonSenseMediaData[];
+  Guid?: Array<{ id: string }>;
+  Image?: Array<{ alt?: string; type?: string; url?: string }>;
+  playlistItemID?: number;
+  artBlurHash?: string;
+  thumbBlurHash?: string;
+};
 
 abstract class Video extends Playable {
   /** Datetime this item was added to the library. */
@@ -162,6 +172,7 @@ abstract class Video extends Playable {
   }
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
+    const videoData = data as VideoMetadataData;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
     this.title = data.title;
@@ -178,20 +189,16 @@ abstract class Video extends Playable {
     this.viewCount = (data as MovieData).viewCount ?? 0;
     this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.viewCount = (data as MovieData).viewCount;
-    this.playlistItemID = (data as any).playlistItemID;
+    this.playlistItemID = videoData.playlistItemID;
     // todo: update one of them with this property
-    this.artBlurHash = (data as any).artBlurHash;
-    this.thumbBlurHash = (data as any).thumbBlurHash;
-    this.guids =
-      (data as any).Guid?.map((d: any) => new Guid(this.server, d, undefined, this)) ?? [];
-    this.images =
-      (data as any).Image?.map((d: any) => new Image(this.server, d, undefined, this)) ?? [];
-    const commonSenseMedia = (data as any).CommonSenseMedia;
-    this.commonSenseMedia = Array.isArray(commonSenseMedia)
-      ? new CommonSenseMedia(this.server, commonSenseMedia[0], undefined, this)
-      : commonSenseMedia
-        ? new CommonSenseMedia(this.server, commonSenseMedia, undefined, this)
-        : undefined;
+    this.artBlurHash = videoData.artBlurHash;
+    this.thumbBlurHash = videoData.thumbBlurHash;
+    this.guids = videoData.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
+    this.images = videoData.Image?.map(d => new Image(this.server, d, undefined, this)) ?? [];
+    const [commonSenseMedia] = videoData.CommonSenseMedia ?? [];
+    this.commonSenseMedia = commonSenseMedia
+      ? new CommonSenseMedia(this.server, commonSenseMedia, undefined, this)
+      : undefined;
   }
 }
 

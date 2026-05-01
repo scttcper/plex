@@ -1,5 +1,12 @@
 import { PlexObject } from './base/plexObject.js';
 import type {
+  AgeRatingData,
+  CommonSenseMediaData,
+  ParentalAdvisoryTopicData,
+  TalkingPointData,
+} from './media.types.js';
+import type { MediaContainer } from './util.js';
+import type {
   ChapterData,
   MarkerData,
   MediaData,
@@ -516,7 +523,11 @@ export class CommonSenseMedia extends PlexObject {
 
     const ratingKey = guid.split('/').at(-1);
     const account = this.server.myPlexAccount();
-    const data = await account.query<any>({
+    const data = await account.query<
+      MediaContainer<{
+        CommonSenseMedia?: CommonSenseMediaData | CommonSenseMediaData[];
+      }>
+    >({
       url: `https://metadata.provider.plex.tv/library/metadata/${ratingKey}/commonsensemedia`,
     });
     const commonSenseMedia = data.MediaContainer?.CommonSenseMedia;
@@ -526,20 +537,20 @@ export class CommonSenseMedia extends PlexObject {
     }
   }
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: CommonSenseMediaData): void {
     this.ageRatings = (data.AgeRating ?? []).map(
-      (d: any) => new AgeRating(this.server, d, undefined, this),
+      d => new AgeRating(this.server, d, undefined, this),
     );
     this.anyGood = data.anyGood;
-    this.id = data.id ? Number.parseInt(data.id, 10) : undefined;
+    this.id = data.id ? Number.parseInt(String(data.id), 10) : undefined;
     this.key = data.key;
     this.oneLiner = data.oneLiner;
     this.parentalAdvisoryTopics = (data.ParentalAdvisoryTopic ?? []).map(
-      (d: any) => new ParentalAdvisoryTopic(this.server, d, undefined, this),
+      d => new ParentalAdvisoryTopic(this.server, d, undefined, this),
     );
     this.parentsNeedToKnow = data.parentsNeedToKnow;
     this.talkingPoints = (data.TalkingPoint ?? []).map(
-      (d: any) => new TalkingPoint(this.server, d, undefined, this),
+      d => new TalkingPoint(this.server, d, undefined, this),
     );
   }
 }
@@ -553,11 +564,11 @@ export class AgeRating extends PlexObject {
   declare ratingCount?: number;
   declare type?: string;
 
-  protected _loadData(data: any): void {
-    this.age = data.age ? Number.parseFloat(data.age) : undefined;
+  protected _loadData(data: AgeRatingData): void {
+    this.age = data.age ? Number.parseFloat(String(data.age)) : undefined;
     this.ageGroup = data.ageGroup;
-    this.rating = data.rating ? Number.parseFloat(data.rating) : undefined;
-    this.ratingCount = data.ratingCount ? Number.parseInt(data.ratingCount, 10) : undefined;
+    this.rating = data.rating ? Number.parseFloat(String(data.rating)) : undefined;
+    this.ratingCount = data.ratingCount ? Number.parseInt(String(data.ratingCount), 10) : undefined;
     this.type = data.type;
   }
 }
@@ -567,7 +578,7 @@ export class TalkingPoint extends PlexObject {
 
   declare tag?: string;
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: TalkingPointData): void {
     this.tag = data.tag;
   }
 }
@@ -581,12 +592,17 @@ export class ParentalAdvisoryTopic extends PlexObject {
   declare rating?: number;
   declare tag?: string;
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: ParentalAdvisoryTopicData): void {
     this.id = data.id;
     this.label = data.label;
     this.positive =
-      data.positive === undefined ? undefined : Boolean(Number.parseInt(data.positive, 10));
-    this.rating = data.rating ? Number.parseFloat(data.rating) : undefined;
+      data.positive === undefined
+        ? undefined
+        : data.positive === true ||
+          data.positive === 1 ||
+          data.positive === '1' ||
+          data.positive === 'true';
+    this.rating = data.rating ? Number.parseFloat(String(data.rating)) : undefined;
     this.tag = data.tag;
   }
 }

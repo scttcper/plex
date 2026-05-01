@@ -1,6 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { Movie, MovieSection, PlexServer, Show, ShowSection } from '../src/index.js';
+import {
+  CommonSenseMedia,
+  type Movie,
+  type MovieSection,
+  type PlexServer,
+  type Show,
+  type ShowSection,
+} from '../src/index.js';
+import type { CommonSenseMediaData } from '../src/media.types.js';
+import type { MediaContainer } from '../src/util.js';
 
 import { createClient } from './test-client.js';
 
@@ -130,6 +139,25 @@ describe('Shows', () => {
   it('should search shows', async () => {
     const shows = await showSection.search({ title: 'Silicon Valley' });
     expect(shows[0].title).toContain('Silicon Valley');
+  });
+
+  it('should get common sense media data', async () => {
+    const data = await plex.query<
+      MediaContainer<{
+        Metadata: Array<{ CommonSenseMedia: CommonSenseMediaData[] }>;
+      }>
+    >({ path: `${show.key}?includeReviews=1` });
+    const [payload] = data.MediaContainer.Metadata[0].CommonSenseMedia;
+    console.log('CommonSenseMedia payload', JSON.stringify(payload, null, 2));
+
+    const parsed = new CommonSenseMedia(plex, payload, undefined, show);
+    const [ageRating] = parsed.ageRatings;
+
+    expect(parsed.id).toBe(Number(payload.id));
+    expect(parsed.oneLiner).toBe(payload.oneLiner);
+    expect(ageRating.type).toBe('official');
+    expect(typeof ageRating.age).toBe('number');
+    expect(typeof ageRating.rating).toBe('number');
   });
 });
 
