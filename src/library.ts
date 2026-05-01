@@ -402,8 +402,14 @@ export interface SearchArgs {
 export type SectionType = Movie | Show | Artist | Album | Track;
 export type LibrarySearchItem = SectionType | Season | Episode | Collections;
 type RatingKeyItem = { ratingKey?: number | string };
+type LibraryItemParent = {
+  key?: number | string;
+  librarySectionID?: number | string;
+  parent?: WeakRef<LibraryItemParent>;
+};
 export type EditableLibraryItem = LibrarySearchItem & {
   librarySectionID?: number | string;
+  parent?: WeakRef<LibraryItemParent>;
   ratingKey?: number | string;
   title?: string;
   type?: string;
@@ -1138,7 +1144,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const [firstItem] = itemList;
     const itemType = firstItem.type;
     for (const item of itemList) {
-      if (String(item.librarySectionID) !== String(this.key)) {
+      if (!this._itemBelongsToThisSection(item)) {
         throw new BadRequest(`${item.title ?? item.ratingKey} is not from this library.`);
       }
 
@@ -1148,6 +1154,23 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     }
 
     return itemList;
+  }
+
+  private _itemBelongsToThisSection(item: EditableLibraryItem): boolean {
+    let current: LibraryItemParent | undefined = item;
+    while (current) {
+      if (current.librarySectionID !== undefined && current.librarySectionID !== null) {
+        return String(current.librarySectionID) === String(this.key);
+      }
+
+      if (current instanceof LibrarySection) {
+        return String(current.key) === String(this.key);
+      }
+
+      current = current.parent?.deref();
+    }
+
+    return false;
   }
 
   private async _lockUnlockAllField(
