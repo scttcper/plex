@@ -456,6 +456,7 @@ type SearchBuildResult = {
   localFilters: Record<string, ItemFilterValue>;
 };
 type SearchParamEntry = [string, string];
+type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
 const FILTER_VALUE_TYPES = [
   'audioLanguage',
   'boolean',
@@ -1301,7 +1302,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     return [[`${filterField.key}${operator.slice(0, -1)}`, result.join(',')]];
   }
 
-  private async _getFilterField(field: string, libtype: Libtype): Promise<FilteringField> {
+  private async _getFilterField(field: string, libtype: Libtype): Promise<SearchFilterField> {
     const fieldMatches = (filterField: FilteringField) =>
       filterField.key.split('.').at(-1) === field;
     const fields = await this.listFields(libtype);
@@ -1311,6 +1312,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
         .reverse()
         .flatMap(filterType => (filterType.type === libtype ? [] : filterType.fields))
         .find(fieldMatches);
+
+    if (!filterField && field === 'id') {
+      return { key: `${libtype}.id`, type: 'integer' };
+    }
 
     if (!filterField) {
       throw new NotFound(
@@ -1327,7 +1332,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * Validates a filter operator against the field type metadata.
    */
   private async _validateFieldOperator(
-    filterField: FilteringField,
+    filterField: SearchFilterField,
     operator: string,
   ): Promise<string> {
     const fieldType = await this.getFieldType(filterField.type);
@@ -1358,7 +1363,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    * Validates filter values are the correct data type and available where the server exposes choices.
    */
   private async _validateFieldValue(
-    filterField: FilteringField,
+    filterField: SearchFilterField,
     values: SearchFilterValue,
     libtype?: Libtype,
   ): Promise<string[]> {
@@ -1445,7 +1450,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
   private async _validateFieldValueTag(
     value: SearchFilterPrimitive,
-    filterField: FilteringField,
+    filterField: SearchFilterField,
     libtype?: Libtype,
   ): Promise<string> {
     if (value instanceof FilterChoice) {
@@ -1504,7 +1509,15 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const sortLibtype = (parsedLibtype as Libtype) || requestedLibtype;
     const filterSort = (await this.listSorts(sortLibtype)).find(f => f.key === sortField);
     if (!filterSort) {
-      const availableSorts = (await this.listSorts(sortLibtype)).map(f => f.key);
+      const staticSorts = (this.constructor as typeof LibrarySection).ALLOWED_SORT;
+      if (staticSorts.includes(sortField)) {
+        return sortDir ? `${sortLibtype}.${sortField}:${sortDir}` : `${sortLibtype}.${sortField}`;
+      }
+
+      const availableSorts = [
+        ...(await this.listSorts(sortLibtype)).map(f => f.key),
+        ...staticSorts,
+      ];
       throw new NotFound(
         `Unknown sort field "${sortField}" for "${sortLibtype}". Available sorts: ${availableSorts.join(
           ', ',
@@ -1543,6 +1556,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
         if (!isAdvancedFilterGroupValue(values)) {
           throw new BadRequest('"and" and "or" filter groups must be arrays.');
+        }
+
+        if (values.length === 0) {
+          continue;
         }
 
         validatedFilters.push(['push', '1']);

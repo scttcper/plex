@@ -247,6 +247,33 @@ describe('LibrarySection search filters', () => {
     ]);
   });
 
+  it('allows static sort fields that are missing from filter metadata', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.recentlyAddedMovies(10);
+
+    expect(lastQueryEntries(query)).toContainEqual(['sort', 'movie.addedAt:desc']);
+  });
+
+  it('allows id filters that are missing from filter metadata', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.search({ filters: { 'movie.id': 99 } });
+
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['movie.id', '99'],
+    ]);
+  });
+
+  it('skips empty advanced filter groups', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.search({ filters: { and: [] } });
+
+    expect(lastQueryEntries(query)).toEqual([['includeGuids', '1']]);
+  });
+
   it('keeps PlexAPI operators as local filters instead of server filters', async () => {
     const { query, section } = createMovieSection();
 
