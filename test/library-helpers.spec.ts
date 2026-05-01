@@ -379,7 +379,33 @@ describe('LibrarySection edit helpers', () => {
   it('rejects unknown advanced section settings', async () => {
     const { section } = createMovieSection();
 
-    await expect(section.editAdvanced({ missingSetting: true })).rejects.toThrow(NotFound);
+    await expect(section.editAdvanced({ missingSetting: true })).rejects.toThrow(
+      'missingSetting not found',
+    );
+  });
+
+  it('rejects unknown setting types', async () => {
+    const { section } = createMovieSection();
+
+    expect(
+      () =>
+        new Setting(
+          section.server,
+          {
+            advanced: '0',
+            default: 'value',
+            group: 'library',
+            hidden: '0',
+            id: 'unexpectedSetting',
+            label: 'Unexpected',
+            summary: 'Unexpected setting type.',
+            type: 'mystery',
+            value: 'value',
+          },
+          '/library/sections/1/prefs',
+          section,
+        ),
+    ).toThrow(BadRequest);
   });
 
   it('resets advanced section settings to their defaults', async () => {

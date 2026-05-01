@@ -165,6 +165,11 @@ export class Setting extends PlexObject {
       case 'text': {
         return value.toString();
       }
+
+      default: {
+        const settingType = this.type as string;
+        throw new BadRequest(`Unknown setting type "${settingType}" for ${this.id}.`);
+      }
     }
   }
 

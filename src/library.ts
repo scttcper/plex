@@ -912,7 +912,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     for (const [id, value] of Object.entries(changes)) {
       const setting = settings.get(id);
       if (!setting) {
-        throw new NotFound(`${String(value)} not found in ${[...settings.keys()].join(', ')}`);
+        throw new NotFound(`${id} not found in ${[...settings.keys()].join(', ')}`);
       }
 
       setting.set(value);
