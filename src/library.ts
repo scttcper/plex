@@ -1317,6 +1317,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       return { key: `${libtype}.id`, type: 'integer' };
     }
 
+    if (!filterField && this._isStaticBooleanFilter(field)) {
+      return { key: `${libtype}.${field}`, type: 'boolean' };
+    }
+
     if (!filterField) {
       throw new NotFound(
         `Unknown filter field "${field}" for "${libtype}". Available fields: ${fields
@@ -1326,6 +1330,11 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     }
 
     return filterField;
+  }
+
+  private _isStaticBooleanFilter(field: string): boolean {
+    const staticFilters = (this.constructor as typeof LibrarySection).ALLOWED_FILTERS;
+    return staticFilters.includes(field) && LibrarySection.BOOLEAN_FILTERS.includes(field);
   }
 
   /**

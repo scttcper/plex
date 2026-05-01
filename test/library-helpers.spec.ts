@@ -266,6 +266,17 @@ describe('LibrarySection search filters', () => {
     ]);
   });
 
+  it('allows static boolean filters that are missing from filter metadata', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.search({ duplicate: 1 });
+
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['movie.duplicate', '1'],
+    ]);
+  });
+
   it('skips empty advanced filter groups', async () => {
     const { query, section } = createMovieSection();
 
