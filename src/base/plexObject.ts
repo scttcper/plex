@@ -1,5 +1,6 @@
 import { URLSearchParams } from 'node:url';
 
+import { buildQueryKey, type QueryParamValue } from '../baseFunctionality.js';
 import type { PlexServer } from '../server.js';
 
 /**
@@ -83,6 +84,13 @@ export abstract class PlexObject {
     }
 
     return detailsKey;
+  }
+
+  protected _buildQueryKey(
+    key: string | number,
+    params: Record<string, QueryParamValue> = {},
+  ): string {
+    return buildQueryKey(key, params);
   }
 
   protected abstract _loadData(data: any): void;

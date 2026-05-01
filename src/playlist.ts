@@ -223,7 +223,7 @@ export class Playlist extends Playable {
 
   async items<T extends PlaylistContent>(): Promise<T[]> {
     if (this._items === null) {
-      const key = `/playlists/${this.ratingKey}/items`;
+      const key = this._buildQueryKey(`/playlists/${this.ratingKey}/items`);
       const items = await fetchItems(this.server, key);
       this._items = items.map(data => {
         const Cls = contentClass(data);

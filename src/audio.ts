@@ -133,16 +133,10 @@ export class Audio extends Playable {
     if (!this.key) {
       throw new Error('Cannot fetch similar items for an object without a key.');
     }
-    const baseKey = `${this.key}/nearest`;
-    const params = new URLSearchParams();
-    if (limit !== undefined) {
-      params.append('limit', limit.toString());
-    }
-    if (maxDistance !== undefined) {
-      params.append('maxDistance', maxDistance.toString());
-    }
-
-    const finalKey = params.toString() ? `${baseKey}?${params.toString()}` : baseKey;
+    const finalKey = this._buildQueryKey(`${this.key}/nearest`, {
+      limit,
+      maxDistance,
+    });
 
     return fetchItems<Audio>(
       this.server,
@@ -351,7 +345,8 @@ export class Track extends Audio {
     if (!this.parentKey) {
       throw new Error('Missing parentKey to fetch album');
     }
-    const data = await fetchItem(this.server, this.parentKey);
+    const key = this._buildQueryKey(this.parentKey);
+    const data = await fetchItem(this.server, key);
     return new Album(this.server, data, this.parentKey, this);
   }
 
@@ -362,7 +357,8 @@ export class Track extends Audio {
     if (!this.grandparentKey) {
       throw new Error('Missing grandparentKey to fetch artist');
     }
-    const data = await fetchItem(this.server, this.grandparentKey);
+    const key = this._buildQueryKey(this.grandparentKey);
+    const data = await fetchItem(this.server, key);
     return new Artist(this.server, data, this.grandparentKey, this);
   }
 
@@ -561,7 +557,7 @@ export class Artist extends Audio {
   async track(
     args: { title: string } | { album: string; track: number },
   ): Promise<Track | undefined> {
-    const key = `${this.key}/allLeaves`;
+    const key = this._buildQueryKey(`${this.key}/allLeaves`);
     let query: Record<string, any> = {};
 
     if ('title' in args) {
@@ -589,7 +585,7 @@ export class Artist extends Audio {
    * @param options Additional fetch options.
    */
   async tracks(options: Record<string, string | number> = {}): Promise<Track[]> {
-    const key = `${this.key}/allLeaves`;
+    const key = this._buildQueryKey(`${this.key}/allLeaves`);
     return fetchItems(this.server, key, options, Track, this);
   }
 
@@ -776,7 +772,7 @@ export class Album extends Audio {
    * @param options Additional fetch options.
    */
   async tracks(options: Record<string, string | number> = {}): Promise<Track[]> {
-    const key = `${this.key}/children`;
+    const key = this._buildQueryKey(`${this.key}/children`);
     return fetchItems(this.server, key, options, Track, this);
   }
 
@@ -787,7 +783,8 @@ export class Album extends Audio {
     if (!this.parentKey) {
       throw new Error('Missing parentKey to fetch artist');
     }
-    const data = await fetchItem(this.server, this.parentKey);
+    const key = this._buildQueryKey(this.parentKey);
+    const data = await fetchItem(this.server, key);
     return new Artist(this.server, data, this.parentKey, this);
   }
 
