@@ -440,14 +440,6 @@ function parseOptionalNumber(value: unknown): number | undefined {
   return Number(value);
 }
 
-function asArray<T>(value?: T | T[]): T[] {
-  if (value === undefined) {
-    return [];
-  }
-
-  return Array.isArray(value) ? value : [value];
-}
-
 function reverseSearchType(type: string | number | null): Libtype | undefined {
   const entry = Object.entries(SEARCHTYPES).find(([, value]) => value.toString() === `${type}`);
   return entry?.[0] as Libtype | undefined;
@@ -1213,11 +1205,13 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     >({
       path: key,
     });
-    const [meta = {}] = asArray(data.MediaContainer.Meta);
-    this._filterTypes = asArray(meta.Type).map(
+    const meta = Array.isArray(data.MediaContainer.Meta)
+      ? data.MediaContainer.Meta[0]
+      : data.MediaContainer.Meta;
+    this._filterTypes = (meta?.Type ?? []).map(
       type => new FilteringType(this.server, type, undefined, this),
     );
-    this._fieldTypes = asArray(meta.FieldType).map(
+    this._fieldTypes = (meta?.FieldType ?? []).map(
       fieldType => new FilteringFieldType(this.server, fieldType, undefined, this),
     );
   }
@@ -1922,42 +1916,42 @@ export class Common extends PlexObject {
   }
 
   protected _loadData(data: CommonData): void {
-    this.collections = asArray(data.Collection).map(
+    this.collections = (data.Collection ?? []).map(
       d => new Collection(this.server, d, undefined, this),
     );
     this.contentRating = data.contentRating;
-    this.countries = asArray(data.Country).map(d => new Country(this.server, d, undefined, this));
-    this.directors = asArray(data.Director).map(d => new Director(this.server, d, undefined, this));
+    this.countries = (data.Country ?? []).map(d => new Country(this.server, d, undefined, this));
+    this.directors = (data.Director ?? []).map(d => new Director(this.server, d, undefined, this));
     this.editionTitle = data.editionTitle;
-    this.fields = asArray(data.Field).map(d => new Field(this.server, d, undefined, this));
-    this.genres = asArray(data.Genre).map(d => new Genre(this.server, d, undefined, this));
+    this.fields = (data.Field ?? []).map(d => new Field(this.server, d, undefined, this));
+    this.genres = (data.Genre ?? []).map(d => new Genre(this.server, d, undefined, this));
     this.grandparentRatingKey = parseOptionalNumber(data.grandparentRatingKey);
     this.grandparentTitle = data.grandparentTitle;
     this.guid = data.guid;
-    this.guids = asArray(data.Guid).map(d => new Guid(this.server, d, undefined, this));
+    this.guids = (data.Guid ?? []).map(d => new Guid(this.server, d, undefined, this));
     this.index = parseOptionalNumber(data.index);
     this.key = data.key;
-    this.labels = asArray(data.Label).map(d => new Label(this.server, d, undefined, this));
+    this.labels = (data.Label ?? []).map(d => new Label(this.server, d, undefined, this));
     this.mixedFields = data.mixedFields ? data.mixedFields.split(',') : [];
-    this.moods = asArray(data.Mood).map(d => new Mood(this.server, d, undefined, this));
+    this.moods = (data.Mood ?? []).map(d => new Mood(this.server, d, undefined, this));
     this.originallyAvailableAt = data.originallyAvailableAt
       ? new Date(data.originallyAvailableAt)
       : undefined;
     this.parentRatingKey = parseOptionalNumber(data.parentRatingKey);
     this.parentTitle = data.parentTitle;
-    this.producers = asArray(data.Producer).map(d => new Producer(this.server, d, undefined, this));
+    this.producers = (data.Producer ?? []).map(d => new Producer(this.server, d, undefined, this));
     this.ratingKey = parseOptionalNumber(data.ratingKey);
-    this.ratings = asArray(data.Rating).map(d => new Rating(this.server, d, undefined, this));
-    this.roles = asArray(data.Role).map(d => new Role(this.server, d, undefined, this));
+    this.ratings = (data.Rating ?? []).map(d => new Rating(this.server, d, undefined, this));
+    this.roles = (data.Role ?? []).map(d => new Role(this.server, d, undefined, this));
     this.studio = data.studio;
-    this.styles = asArray(data.Style).map(d => new Style(this.server, d, undefined, this));
+    this.styles = (data.Style ?? []).map(d => new Style(this.server, d, undefined, this));
     this.summary = data.summary;
-    this.tags = asArray(data.Tag).map(d => new Tag(this.server, d, undefined, this));
+    this.tags = (data.Tag ?? []).map(d => new Tag(this.server, d, undefined, this));
     this.tagline = data.tagline;
     this.title = data.title;
     this.titleSort = data.titleSort;
     this.type = data.type;
-    this.writers = asArray(data.Writer).map(d => new Writer(this.server, d, undefined, this));
+    this.writers = (data.Writer ?? []).map(d => new Writer(this.server, d, undefined, this));
     this.year = parseOptionalNumber(data.year);
   }
 }
@@ -2039,12 +2033,12 @@ export class FilteringType extends PlexObject {
 
   _loadData(data: FilteringTypeData) {
     this.active = parsePlexBoolean(data.active);
-    this.fields = asArray(data.Field).map(d => new FilteringField(this.server, d, undefined, this));
-    this.filters = asArray(data.Filter).map(
+    this.fields = (data.Field ?? []).map(d => new FilteringField(this.server, d, undefined, this));
+    this.filters = (data.Filter ?? []).map(
       d => new FilteringFilter(this.server, d, undefined, this),
     );
     this.key = data.key;
-    this.sorts = asArray(data.Sort).map(d => new FilteringSort(this.server, d, undefined, this));
+    this.sorts = (data.Sort ?? []).map(d => new FilteringSort(this.server, d, undefined, this));
     this.title = data.title;
     this.type = data.type;
   }
@@ -2138,7 +2132,7 @@ export class FilteringFieldType extends PlexObject {
 
   _loadData(data: FilteringFieldTypeData) {
     this.type = data.type;
-    this.operators = asArray(data.Operator).map(
+    this.operators = (data.Operator ?? []).map(
       d => new FilteringOperator(this.server, d, undefined, this),
     );
   }
