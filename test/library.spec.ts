@@ -2,6 +2,11 @@ import { beforeAll, expect, it } from 'vitest';
 
 import {
   Movie,
+  Season,
+  Episode,
+  FilteringSort,
+  FilterChoice,
+  LibraryTimeline,
   type MovieSection,
   type PlexServer,
   type ShowSection,
@@ -136,6 +141,56 @@ it('should get show section recently added items', async () => {
   const section = await library.section<ShowSection>('TV Shows');
   const recentlyAdded = await section.recentlyAdded();
   expect(recentlyAdded.length).toBeGreaterThan(0);
+});
+
+it('should search show seasons and episodes', async () => {
+  const library = await plex.library();
+  const section = await library.section<ShowSection>('TV Shows');
+  const seasons = await section.searchSeasons({ 'show.title': 'Silicon Valley' });
+  const episodes = await section.searchEpisodes({ title: 'Minimum Viable Product' });
+  expect(seasons[0]).toBeInstanceOf(Season);
+  expect(episodes[0]).toBeInstanceOf(Episode);
+});
+
+it('should get recently added show content by type', async () => {
+  const library = await plex.library();
+  const section = await library.section<ShowSection>('TV Shows');
+  const shows = await section.recentlyAddedShows();
+  const seasons = await section.recentlyAddedSeasons();
+  const episodes = await section.recentlyAddedEpisodes();
+  expect(shows.length).toBeGreaterThan(0);
+  expect(seasons[0]).toBeInstanceOf(Season);
+  expect(episodes[0]).toBeInstanceOf(Episode);
+});
+
+it('should list sorts and filter choices', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const sorts = await section.listSorts();
+  const genres = await section.listFilterChoices('genre');
+  const sortedItems = await section.search({ sort: sorts[0], maxresults: 1 });
+  expect(sorts[0]).toBeInstanceOf(FilteringSort);
+  expect(genres[0]).toBeInstanceOf(FilterChoice);
+  expect(sortedItems[0]).toBeInstanceOf(Movie);
+});
+
+it('should get items for a filter choice', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const genres = await section.listFilterChoices('genre');
+  const items = await genres[0].items();
+  expect(items.length).toBeGreaterThan(0);
+  expect(items[0]).toBeInstanceOf(Movie);
+});
+
+it('should get library section managed hubs and timeline', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const hubs = await section.managedHubs();
+  const timeline = await section.timeline();
+  expect(hubs.length).toBeGreaterThan(0);
+  expect(typeof hubs[0].identifier).toBe('string');
+  expect(timeline).toBeInstanceOf(LibraryTimeline);
 });
 
 it('should get movie section first character data', async () => {

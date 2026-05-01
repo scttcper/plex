@@ -62,6 +62,162 @@ export interface Location {
   path: string;
 }
 
+export type PlexBoolean = boolean | number | string;
+
+export interface MediaProvidersResponse {
+  MediaProvider?: MediaProviderData[];
+}
+
+export interface MediaProviderData {
+  identifier: string;
+  Feature?: MediaProviderFeatureData[];
+}
+
+export interface MediaProviderFeatureData {
+  type: string;
+  Directory?: MediaProviderDirectoryData[];
+}
+
+export interface MediaProviderDirectoryData {
+  id: number | string;
+  durationTotal?: number | string;
+  storageTotal?: number | string;
+}
+
+export interface FolderData {
+  key: string;
+  title: string;
+}
+
+export interface FirstCharacterData {
+  key: string;
+  title: string;
+  size: number;
+}
+
+export interface LibraryTimelineData {
+  size?: number | string;
+  allowSync?: PlexBoolean;
+  art?: string;
+  content?: string;
+  identifier?: string;
+  latestEntryTime?: number | string;
+  mediaTagPrefix?: string;
+  mediaTagVersion?: number | string;
+  thumb?: string;
+  title1?: string;
+  updateQueueSize?: number | string;
+  viewGroup?: string;
+  viewMode?: number | string;
+}
+
+export interface ManagedHubData {
+  deletable?: PlexBoolean;
+  homeVisibility?: string;
+  identifier: string;
+  librarySectionID?: number | string;
+  promotedToOwnHome?: PlexBoolean;
+  promotedToRecommended?: PlexBoolean;
+  promotedToSharedHome?: PlexBoolean;
+  recommendationsVisibility?: string;
+  title?: string;
+}
+
+export interface FilterChoiceData {
+  fastKey?: string;
+  key: string;
+  thumb?: string;
+  title: string;
+  type: string;
+}
+
+export interface FilteringTypeData {
+  active?: PlexBoolean;
+  key: string;
+  title: string;
+  type: string;
+  Field?: FilteringFieldData[];
+  Filter?: FilteringFilterData[];
+  Sort?: FilteringSortData[];
+}
+
+export interface FilteringFilterData {
+  filter: string;
+  filterType: string;
+  key: string;
+  title: string;
+  type: string;
+}
+
+export interface FilteringSortData {
+  active?: PlexBoolean;
+  activeDirection?: string;
+  default?: string;
+  defaultDirection?: string;
+  descKey?: string;
+  firstCharacterKey?: string;
+  key: string;
+  title: string;
+}
+
+export interface FilteringFieldData {
+  key: string;
+  title: string;
+  type: string;
+  subType?: string;
+}
+
+export interface FilteringFieldTypeData {
+  type: string;
+  Operator?: FilteringOperatorData[];
+}
+
+export interface FilteringOperatorData {
+  key: string;
+  type: string;
+}
+
+export interface LibraryFilterMetaData {
+  Type?: FilteringTypeData[];
+  FieldType?: FilteringFieldTypeData[];
+}
+
+export interface CommonData {
+  Collection?: MediaTagData[];
+  Country?: MediaTagData[];
+  Director?: MediaTagData[];
+  Field?: Array<{ locked?: PlexBoolean; name: string }>;
+  Genre?: MediaTagData[];
+  Guid?: Guid[];
+  Label?: MediaTagData[];
+  Mood?: MediaTagData[];
+  Producer?: MediaTagData[];
+  Rating?: MediaRating[];
+  Role?: MediaTag[];
+  Style?: MediaTagData[];
+  Tag?: MediaTagData[];
+  Writer?: MediaTag[];
+  contentRating?: string;
+  editionTitle?: string;
+  grandparentRatingKey?: number | string;
+  grandparentTitle?: string;
+  guid?: string;
+  index?: number | string;
+  key?: string;
+  mixedFields?: string;
+  originallyAvailableAt?: string;
+  parentRatingKey?: number | string;
+  parentTitle?: string;
+  ratingKey?: number | string;
+  studio?: string;
+  summary?: string;
+  tagline?: string;
+  title?: string;
+  titleSort?: string;
+  type?: string;
+  year?: number | string;
+}
+
 export interface MediaItems {
   size: number;
   allowSync: boolean;
