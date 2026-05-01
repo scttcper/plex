@@ -408,6 +408,12 @@ export class Subformat extends MediaTag {
   FILTER = 'subformat' as const;
 }
 
+/** Represents a single Tag media tag. */
+export class Tag extends MediaTag {
+  static override TAG = 'Tag' as const;
+  FILTER = 'tag' as const;
+}
+
 export class Optimized extends PlexObject {
   static override TAG = 'Item';
   declare id: string;

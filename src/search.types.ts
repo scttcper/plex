@@ -14,6 +14,7 @@ export interface SearchResultContainer {
   context: string;
   size: number;
   more: boolean;
+  random?: boolean | number | string;
   style: string;
   Directory?: Directory[];
   Metadata?: SearchResult[];
