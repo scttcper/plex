@@ -17,6 +17,8 @@ export * from './playqueue.js';
 export * from './server.js';
 export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.js';
 export * from './serverModels.js';
+export { Setting, Settings } from './settings.js';
+export type { SettingEnumValues, SettingType, SettingValue } from './settings.js';
 export * from './video.js';
 export * from './audio.js';
 export { X_PLEX_IDENTIFIER } from './config.js';
