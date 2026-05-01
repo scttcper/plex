@@ -5,6 +5,7 @@ import {
   Movie,
   MovieSection,
   NotFound,
+  Setting,
   ShowSection,
   type EditableLibraryItem,
   type PlexServer,
@@ -122,13 +123,83 @@ const genreChoices = [
   { fastKey: '/library/sections/1/all?genre=2&type=1', key: '2', title: 'Comedy', type: 'genre' },
 ];
 
+const collectionData = {
+  childCount: 1,
+  key: '/library/metadata/99',
+  ratingKey: 99,
+  smart: false,
+  title: 'Test Collection',
+  type: 'collection',
+};
+
+const playlistData = {
+  addedAt: 1,
+  composite: '/playlists/88/composite',
+  guid: 'playlist://88',
+  key: '/playlists/88/items',
+  leafCount: 1,
+  playlistType: 'video',
+  ratingKey: '88',
+  smart: false,
+  summary: '',
+  title: 'Test Playlist',
+  type: 'playlist',
+  updatedAt: 1,
+};
+
 function createMovieSection() {
+  const createCollectionParams = new URLSearchParams({
+    title: 'Test Collection',
+    type: '1',
+    sectionId: '1',
+    uri: 'server://machine/library/metadata/10',
+  });
   const responses = new Map<string, unknown>([
     [
       '/library/sections/1/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0',
       { MediaContainer: { Meta: [filterMeta] } },
     ],
     ['/library/sections/1/genre', { MediaContainer: { Directory: genreChoices } }],
+    [
+      '/library/sections/1/prefs',
+      {
+        MediaContainer: {
+          Setting: [
+            {
+              advanced: '1',
+              default: '0',
+              enumValues: '0:Disabled|1:Enabled',
+              group: 'library',
+              hidden: '0',
+              id: 'includeInGlobal',
+              label: 'Include in dashboard',
+              summary: 'Show this library on the dashboard.',
+              type: 'bool',
+              value: '1',
+            },
+          ],
+        },
+      },
+    ],
+    [
+      '/hubs/search?includeCollections=1&includeExternalMedia=1&query=bunny&sectionId=1&limit=2&section=1',
+      {
+        MediaContainer: {
+          Hub: [
+            {
+              context: 'hub.search',
+              hubIdentifier: 'movie',
+              key: '/hubs/search',
+              more: false,
+              size: 1,
+              style: 'shelf',
+              title: 'Movies',
+              type: 'movie',
+            },
+          ],
+        },
+      },
+    ],
     [
       '/hubs/sections/1/continueWatching/items?includeGuids=1',
       {
@@ -145,12 +216,39 @@ function createMovieSection() {
         },
       },
     ],
+    [
+      `/library/collections?${createCollectionParams.toString()}`,
+      { MediaContainer: { Metadata: [collectionData] } },
+    ],
+    [
+      '/library/sections/1/all?includeGuids=1&title=Test+Collection&type=18',
+      { MediaContainer: { Directory: [collectionData] } },
+    ],
+    [
+      '/playlists?uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F10&type=video&title=Test+Playlist&smart=0',
+      { MediaContainer: { Metadata: [playlistData] } },
+    ],
+    [
+      '/playlists?type=15&playlistType=video&sectionID=1',
+      { MediaContainer: { Playlist: [playlistData] } },
+    ],
   ]);
   const query = vi.fn(({ path }: { path: string }) =>
     Promise.resolve(responses.get(path) ?? { MediaContainer: { Metadata: [] } }),
   );
-  const section = new MovieSection({ query } as unknown as PlexServer, movieSectionData);
-  return { query, section };
+  const history = vi.fn(async () => []);
+  const sections: MovieSection[] = [];
+  const server = {
+    history,
+    _uriRoot: vi.fn(() => 'server://machine'),
+    query,
+    library: vi.fn(async () => ({
+      sections: vi.fn(async () => sections),
+    })),
+  } as unknown as PlexServer;
+  const section = new MovieSection(server, movieSectionData);
+  sections.push(section);
+  return { history, query, section };
 }
 
 function lastQueryPath(query: ReturnType<typeof vi.fn>): string {
@@ -168,6 +266,21 @@ function lastQueryEntries(query: ReturnType<typeof vi.fn>): Array<[string, strin
 }
 
 describe('LibrarySection edit helpers', () => {
+  it('returns typed advanced settings for the section', async () => {
+    const { query, section } = createMovieSection();
+
+    const settings = await section.settings();
+
+    expect(settings[0]).toBeInstanceOf(Setting);
+    expect(settings[0].id).toBe('includeInGlobal');
+    expect(settings[0].value).toBe(true);
+    expect(settings[0].default).toBe(false);
+    expect(settings[0].advanced).toBe(true);
+    expect(settings[0].hidden).toBe(false);
+    expect(settings[0].enumValues).toEqual({ '0': 'Disabled', '1': 'Enabled' });
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/1/prefs' });
+  });
+
   it('returns typed continue watching items for the section hub', async () => {
     const { query, section } = createMovieSection();
 
@@ -177,6 +290,107 @@ describe('LibrarySection edit helpers', () => {
     expect(items[0].title).toBe('Continue Movie');
     expect(query).toHaveBeenCalledWith({
       path: '/hubs/sections/1/continueWatching/items?includeGuids=1',
+    });
+  });
+
+  it('searches hubs scoped to the section', async () => {
+    const { query, section } = createMovieSection();
+
+    const hubs = await section.hubSearch('bunny', { limit: 2, mediatype: 'movie' });
+
+    expect(hubs[0].title).toBe('Movies');
+    expect(hubs[0].type).toBe('movie');
+    expect(query).toHaveBeenCalledWith({
+      path: '/hubs/search?includeCollections=1&includeExternalMedia=1&query=bunny&sectionId=1&limit=2&section=1',
+    });
+  });
+
+  it('fetches watched history scoped to the section', async () => {
+    const { history, section } = createMovieSection();
+
+    await section.history({ maxResults: 2, ratingKey: 10 });
+
+    expect(history).toHaveBeenCalledWith({
+      accountId: 1,
+      librarySectionId: '1',
+      maxResults: 2,
+      ratingKey: 10,
+    });
+  });
+
+  it('creates a typed collection in the section', async () => {
+    const { query, section } = createMovieSection();
+
+    const collection = await section.createCollection('Test Collection', [{ ratingKey: 10 }]);
+
+    expect(collection.title).toBe('Test Collection');
+    expect(collection.ratingKey).toBe(99);
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/collections?title=Test+Collection&type=1&sectionId=1&uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F10',
+      method: 'post',
+    });
+  });
+
+  it('finds a typed collection by exact title', async () => {
+    const { section } = createMovieSection();
+
+    const collection = await section.collection('Test Collection');
+
+    expect(collection.title).toBe('Test Collection');
+    expect(collection.ratingKey).toBe(99);
+  });
+
+  it('creates a typed playlist in the section', async () => {
+    const { query, section } = createMovieSection();
+
+    const playlist = await section.createPlaylist('Test Playlist', {
+      items: [{ listType: 'video', ratingKey: 10 } as unknown as Movie],
+    });
+
+    expect(playlist.title).toBe('Test Playlist');
+    expect(playlist.ratingKey).toBe('88');
+    expect(query).toHaveBeenCalledWith({
+      path: '/playlists?uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F10&type=video&title=Test+Playlist&smart=0',
+      method: 'post',
+    });
+  });
+
+  it('finds a typed playlist by exact title', async () => {
+    const { section } = createMovieSection();
+
+    const playlist = await section.playlist('Test Playlist');
+
+    expect(playlist.title).toBe('Test Playlist');
+    expect(playlist.ratingKey).toBe('88');
+  });
+
+  it('edits advanced section settings with validated values', async () => {
+    const { query, section } = createMovieSection();
+
+    const editedSection = await section.editAdvanced({ includeInGlobal: true });
+
+    expect(editedSection).toBe(section);
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1?prefs%5BincludeInGlobal%5D=1',
+      method: 'put',
+    });
+  });
+
+  it('rejects unknown advanced section settings', async () => {
+    const { section } = createMovieSection();
+
+    await expect(section.editAdvanced({ missingSetting: true })).rejects.toThrow(NotFound);
+  });
+
+  it('resets advanced section settings to their defaults', async () => {
+    const { query, section } = createMovieSection();
+
+    const editedSection = await section.defaultAdvanced();
+
+    expect(editedSection).toBe(section);
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1?prefs%5BincludeInGlobal%5D=0',
+      method: 'put',
     });
   });
 

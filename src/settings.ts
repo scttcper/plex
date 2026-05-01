@@ -1,39 +1,24 @@
 import { URLSearchParams } from 'node:url';
 
 import { PlexObject } from './base/plexObject.js';
-import { NotFound } from './exceptions.js';
+import { BadRequest, NotFound } from './exceptions.js';
 import { lowerFirst } from './util.js';
+
+export type SettingType = 'bool' | 'double' | 'enum' | 'int' | 'text';
+export type SettingValue = boolean | number | string;
+export type SettingEnumValues = Record<string, string> | string[];
 
 export interface SettingResponse {
   id: string;
   label: string;
   summary: string;
-  type: Type;
-  default: boolean | number | string;
-  value: boolean | number | string;
-  hidden: boolean;
-  advanced: boolean;
-  group: SettingsGroup;
-  // enumValues?: string;
-}
-
-enum SettingsGroup {
-  Butler = 'butler',
-  Channels = 'channels',
-  Dlna = 'dlna',
-  Empty = '',
-  Extras = 'extras',
-  General = 'general',
-  Library = 'library',
-  Network = 'network',
-  Transcoder = 'transcoder',
-}
-
-enum Type {
-  Bool = 'bool',
-  Double = 'double',
-  Int = 'int',
-  Text = 'text',
+  type: SettingType;
+  default: SettingValue;
+  value: SettingValue;
+  hidden: boolean | number | string;
+  advanced: boolean | number | string;
+  group: string;
+  enumValues?: string;
 }
 
 export class Settings extends PlexObject {
@@ -100,11 +85,11 @@ export class Setting extends PlexObject {
   /** Long description of what this setting is. */
   declare summary: string;
   /** Setting type (text, int, double, bool). */
-  declare type: string;
+  declare type: SettingType;
   /** Default value for this setting. */
-  declare default: string | boolean | number;
+  declare default: SettingValue;
   /** Current value for this setting. */
-  declare value: string | boolean | number;
+  declare value: SettingValue;
   /** True if this is a hidden setting. */
   declare hidden: boolean;
   /** True if this is an advanced setting. */
@@ -112,34 +97,92 @@ export class Setting extends PlexObject {
   /** Group name this setting is categorized as. */
   declare group: string;
   /** List or dictionary of valis values for this setting. */
-  declare enumValues: any[] | any;
-  _setValue: string | boolean | number | null = null;
+  declare enumValues?: SettingEnumValues;
+  _setValue: SettingValue | null = null;
 
   /**
    * Set a new value for this setitng. NOTE: You must call {@link Settings.save} before
    * any changes to setting values are persisted to the PlexServer.
    */
-  set(value: string | boolean | number): void {
-    if (typeof value !== typeof this.value) {
-      throw new TypeError('Invalid type');
+  set(value: SettingValue): void {
+    const castValue = this._cast(value);
+    if (typeof castValue !== typeof this.value) {
+      throw new BadRequest(`Invalid value for ${this.id}: expected ${this.type}.`);
     }
 
-    this._setValue = value;
+    if (this.enumValues) {
+      const allowedValues = Array.isArray(this.enumValues)
+        ? this.enumValues
+        : Object.keys(this.enumValues);
+      const allowedValue = this.toQueryValue(castValue);
+      if (!allowedValues.includes(allowedValue)) {
+        throw new BadRequest(`Invalid value for ${this.id}: ${castValue} not in ${allowedValues}`);
+      }
+    }
+
+    this._setValue = castValue;
+  }
+
+  toQueryValue(value: SettingValue = this._setValue ?? this.value): string {
+    if (this.type === 'bool') {
+      return value ? '1' : '0';
+    }
+
+    return value.toString();
   }
 
   override _loadData(data: SettingResponse) {
-    // this._setValue = None
+    this._setValue = null;
     this.id = data.id;
     this.label = data.label;
     this.summary = data.summary;
     this.type = data.type;
-    this.default = data.default;
-    this.value = data.value;
-    this.hidden = data.hidden;
-    this.advanced = data.advanced;
+    this.default = this._cast(data.default);
+    this.value = this._cast(data.value);
+    this.hidden = parsePlexBoolean(data.hidden);
+    this.advanced = parsePlexBoolean(data.advanced);
     this.group = data.group;
-    // this.enumValues = this._getEnumValues(data);
+    this.enumValues = this._getEnumValues(data.enumValues);
   }
+
+  private _cast(value: SettingValue): SettingValue {
+    switch (this.type) {
+      case 'bool': {
+        return parsePlexBoolean(value);
+      }
+
+      case 'double':
+      case 'int': {
+        const numericValue = Number(value);
+        if (Number.isNaN(numericValue)) {
+          throw new BadRequest(`Invalid value for ${this.id}: expected ${this.type}.`);
+        }
+
+        return numericValue;
+      }
+
+      case 'enum':
+      case 'text': {
+        return value.toString();
+      }
+    }
+  }
+
+  private _getEnumValues(enumValues?: string): SettingEnumValues | undefined {
+    if (!enumValues) {
+      return undefined;
+    }
+
+    if (enumValues.includes(':')) {
+      return Object.fromEntries(enumValues.split('|').map(value => value.split(':', 2)));
+    }
+
+    return enumValues.split('|');
+  }
+}
+
+function parsePlexBoolean(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 export class Preferences extends Setting {

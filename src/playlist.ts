@@ -4,7 +4,7 @@ import { Album, Artist, Track } from './audio.js';
 import { Playable } from './base/playable.js';
 import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
-import type { Section, SectionType } from './library.js';
+import type { LibrarySection, SectionType } from './library.js';
 import type { PlaylistResponse } from './playlist.types.js';
 import { searchType } from './search.js';
 import type { PlexServer } from './server.js';
@@ -36,18 +36,18 @@ function contentClass(data: any) {
   }
 }
 
-interface CreateRegularPlaylistOptions {
+export interface CreateRegularPlaylistOptions {
   /** True to create a smart playlist */
   smart?: false;
   /** Regular playlists only */
-  items?: SectionType[];
+  items: SectionType[];
 }
 
-interface CreateSmartPlaylistOptions {
+export interface CreateSmartPlaylistOptions {
   /** True to create a smart playlist */
   smart: true;
   /** Smart playlists only, the library section to create the playlist in. */
-  section?: Section;
+  section?: LibrarySection<unknown>;
   /** Smart playlists only, limit the number of items in the playlist. */
   limit?: number;
   /**
@@ -60,10 +60,10 @@ interface CreateSmartPlaylistOptions {
    * Smart playlists only, a dictionary of advanced filters.
    * See {@link Section.search}  for more info.
    */
-  filters?: Record<string, any>;
+  filters?: Record<string, boolean | number | string>;
 }
 
-type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
+export type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
 type PlaylistContent = Episode | Movie | Track | Album | Artist;
 
 export interface UpdatePlaylistOptions {
@@ -173,7 +173,13 @@ export class Playlist extends Playable {
     }
 
     const { listType } = items[0];
-    const ratingKeys = items ? items.map(x => x.ratingKey) : [];
+    const ratingKeys = items.map(item => {
+      if (!item.ratingKey) {
+        throw new BadRequest(`Cannot add item without a ratingKey to playlist "${title}".`);
+      }
+
+      return item.ratingKey;
+    });
     const uri = `${server._uriRoot()}/library/metadata/${ratingKeys.join(',')}`;
     const params = new URLSearchParams({
       uri,

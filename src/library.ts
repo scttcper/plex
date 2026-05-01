@@ -50,10 +50,16 @@ import {
   Tag,
   Writer,
 } from './media.js';
-import { Playlist } from './playlist.js';
+import {
+  Playlist,
+  type CreateRegularPlaylistOptions,
+  type CreateSmartPlaylistOptions,
+} from './playlist.js';
 import { type Agent, searchType, SEARCHTYPES } from './search.js';
 import type { SearchResultContainer } from './search.types.js';
 import type { PlexServer } from './server.js';
+import type { HistoryOptions, HistoryResult } from './server.types.js';
+import { Setting, type SettingResponse, type SettingValue } from './settings.js';
 import type { MediaContainer } from './util.js';
 import { Episode, Movie, Season, Show } from './video.js';
 
@@ -401,6 +407,21 @@ export interface SearchArgs {
   filters?: AdvancedSearchFilters;
 }
 
+export interface HubSearchOptions {
+  /** Optionally limit search results to a media type. */
+  mediatype?: keyof typeof SEARCHTYPES;
+  /** Limit the number of results per hub. */
+  limit?: number;
+}
+
+export interface PlaylistSearchOptions {
+  sort?: string;
+  [filter: string]: ItemFilterValue | undefined;
+}
+
+export type SectionAdvancedSettings = Record<string, SettingValue>;
+export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
+
 export type SectionType = Movie | Show | Artist | Album | Track;
 export type LibrarySearchItem = SectionType | Season | Episode | Collections;
 type RatingKeyItem = { ratingKey?: number | string };
@@ -699,6 +720,19 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
+   * Returns the advanced preference settings for this library section.
+   */
+  async settings(): Promise<Setting[]> {
+    const key = `/library/sections/${this.key}/prefs`;
+    const data = await this.server.query<MediaContainer<{ Setting?: SettingResponse[] }>>({
+      path: key,
+    });
+    return (data.MediaContainer.Setting ?? []).map(
+      setting => new Setting(this.server, setting, key, this),
+    );
+  }
+
+  /**
    * @param title Title of the item to return.
    * @returns the media item with the specified title.
    */
@@ -810,15 +844,6 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
-   * Get Play History for this library Section for the owner.
-   * @param maxresults (int): Only return the specified number of results (optional).
-   * @param mindate (datetime): Min datetime to return results from.
-   */
-  // async history(maxresults=9999999, mindate?: Date): Promise<any> {
-  //   return this.server.history({ maxResults, minDate, librarySectionId: this.key, accountId: 1 })
-  // }
-
-  /**
    * Scan this section for new media.
    */
   async update(): Promise<void> {
@@ -878,6 +903,52 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
+   * Edit this library section's advanced preference settings.
+   */
+  async editAdvanced(changes: SectionAdvancedSettings): Promise<Section> {
+    const settings = new Map((await this.settings()).map(setting => [setting.id, setting]));
+    const params: Record<string, string> = {};
+
+    for (const [id, value] of Object.entries(changes)) {
+      const setting = settings.get(id);
+      if (!setting) {
+        throw new NotFound(`${String(value)} not found in ${[...settings.keys()].join(', ')}`);
+      }
+
+      setting.set(value);
+      params[`prefs[${setting.id}]`] = setting.toQueryValue();
+    }
+
+    return this.edit(params);
+  }
+
+  /**
+   * Reset this library section's advanced preference settings to their defaults.
+   */
+  async defaultAdvanced(): Promise<Section> {
+    const params: Record<string, string> = {};
+    for (const setting of await this.settings()) {
+      setting.set(setting.default);
+      params[`prefs[${setting.id}]`] = setting.toQueryValue();
+    }
+
+    return this.edit(params);
+  }
+
+  /**
+   * Get watched history for this library section.
+   */
+  async history({ accountId = 1, ...options }: LibrarySectionHistoryOptions = {}): Promise<
+    HistoryResult[]
+  > {
+    return this.server.history({
+      ...options,
+      accountId,
+      librarySectionId: this.key,
+    });
+  }
+
+  /**
    * Returns the managed recommendation hubs for this library section.
    */
   async managedHubs(): Promise<ManagedHub[]> {
@@ -900,6 +971,28 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
+   * Returns section-scoped hub search results.
+   */
+  async hubSearch(query: string, { mediatype, limit }: HubSearchOptions = {}): Promise<Hub[]> {
+    const params: Record<string, string> = {
+      includeCollections: '1',
+      includeExternalMedia: '1',
+      query,
+      sectionId: this.key.toString(),
+    };
+    if (limit !== undefined) {
+      params.limit = limit.toString();
+    }
+
+    if (mediatype !== undefined) {
+      params.section = SEARCHTYPES[mediatype].toString();
+    }
+
+    const key = `/hubs/search?${new URLSearchParams(params).toString()}`;
+    return fetchItems<Hub>(this.server, key, undefined, Hub, this);
+  }
+
+  /**
    * Returns the current library section timeline status.
    */
   async timeline(): Promise<LibraryTimeline> {
@@ -911,9 +1004,52 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /**
    * Returns a list of playlists from this library section.
    */
-  async playlists(): Promise<Playlist[]> {
-    const key = `/playlists?type=15&playlistType=${this.CONTENT_TYPE}&sectionID=${this.key}`;
-    return fetchItems<Playlist>(this.server, key, undefined, Playlist, this);
+  async playlists(args: PlaylistSearchOptions = {}): Promise<Playlist[]> {
+    const { sort, ...filterOptions } = args;
+    const filters: Record<string, ItemFilterValue> = {};
+    for (const [key, value] of Object.entries(filterOptions)) {
+      if (value !== undefined) {
+        filters[key] = value;
+      }
+    }
+
+    const params = new URLSearchParams({
+      type: '15',
+      playlistType: this.CONTENT_TYPE,
+      sectionID: this.key,
+    });
+    if (sort !== undefined) {
+      params.set('sort', sort);
+    }
+
+    const key = `/playlists?${params.toString()}`;
+    return fetchItems<Playlist>(this.server, key, filters, Playlist, this);
+  }
+
+  /**
+   * Create a regular or smart playlist scoped to this library section.
+   */
+  async createPlaylist(
+    title: string,
+    options: CreateRegularPlaylistOptions | Omit<CreateSmartPlaylistOptions, 'section'>,
+  ): Promise<Playlist> {
+    if (options.smart) {
+      return Playlist.create(this.server, title, { ...options, section: this });
+    }
+
+    return Playlist.create(this.server, title, options);
+  }
+
+  /**
+   * Returns the playlist with the exact title.
+   */
+  async playlist(title: string): Promise<Playlist> {
+    const [playlist] = await this.playlists({ title, title__iexact: title });
+    if (!playlist) {
+      throw new NotFound(`Unable to find playlist with title "${title}".`);
+    }
+
+    return playlist;
   }
 
   async collections(
@@ -927,6 +1063,28 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       collection.VIDEO_TYPE = this.SECTION_TYPE;
     });
     return collections;
+  }
+
+  /**
+   * Create a regular collection in this library section.
+   */
+  async createCollection<T extends RatingKeyItem>(
+    title: string,
+    items: T[],
+  ): Promise<Collections<T>> {
+    return Collections.create(this.server, title, this as unknown as LibrarySection<T>, items);
+  }
+
+  /**
+   * Returns the collection with the exact title.
+   */
+  async collection(title: string): Promise<Collections<SType>> {
+    const [collection] = await this.collections({ title, title__iexact: title });
+    if (!collection) {
+      throw new NotFound(`Unable to find collection with title "${title}".`);
+    }
+
+    return collection;
   }
 
   /**
@@ -2211,7 +2369,13 @@ export class Collections<
       throw new BadRequest('At least one item is required to create a collection.');
     }
 
-    const ratingKeys = items.map(item => item.ratingKey).join(',');
+    const ratingKeys = items.map(item => {
+      if (!item.ratingKey) {
+        throw new BadRequest(`Cannot add item without a ratingKey to collection "${title}".`);
+      }
+
+      return item.ratingKey;
+    });
     const uri = `${server._uriRoot()}/library/metadata/${ratingKeys}`;
     const sectionType = searchType(section.type);
     const params = new URLSearchParams({
