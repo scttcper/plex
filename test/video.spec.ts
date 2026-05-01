@@ -8,8 +8,6 @@ import {
   type Show,
   type ShowSection,
 } from '../src/index.js';
-import type { CommonSenseMediaData } from '../src/media.types.js';
-import type { MediaContainer } from '../src/util.js';
 
 import { createClient } from './test-client.js';
 
@@ -142,19 +140,14 @@ describe('Shows', () => {
   });
 
   it('should get common sense media data', async () => {
-    const data = await plex.query<
-      MediaContainer<{
-        Metadata: Array<{ CommonSenseMedia: CommonSenseMediaData[] }>;
-      }>
-    >({ path: `${show.key}?includeReviews=1` });
-    const [payload] = data.MediaContainer.Metadata[0].CommonSenseMedia;
-    console.log('CommonSenseMedia payload', JSON.stringify(payload, null, 2));
+    await show.reload(undefined, { includeReviews: 1 });
 
-    const parsed = new CommonSenseMedia(plex, payload, undefined, show);
-    const [ageRating] = parsed.ageRatings;
+    const commonSenseMedia = show.commonSenseMedia;
+    const [ageRating] = commonSenseMedia.ageRatings;
 
-    expect(parsed.id).toBe(Number(payload.id));
-    expect(parsed.oneLiner).toBe(payload.oneLiner);
+    expect(commonSenseMedia).toBeInstanceOf(CommonSenseMedia);
+    expect(typeof commonSenseMedia.id).toBe('number');
+    expect(commonSenseMedia.oneLiner).toBeDefined();
     expect(ageRating.type).toBe('official');
     expect(typeof ageRating.age).toBe('number');
     expect(typeof ageRating.rating).toBe('number');
