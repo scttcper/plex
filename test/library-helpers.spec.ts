@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BadRequest,
+  Movie,
   MovieSection,
   NotFound,
   ShowSection,
@@ -128,6 +129,22 @@ function createMovieSection() {
       { MediaContainer: { Meta: [filterMeta] } },
     ],
     ['/library/sections/1/genre', { MediaContainer: { Directory: genreChoices } }],
+    [
+      '/hubs/sections/1/continueWatching/items?includeGuids=1',
+      {
+        MediaContainer: {
+          Metadata: [
+            {
+              addedAt: 1,
+              key: '/library/metadata/10',
+              ratingKey: 10,
+              title: 'Continue Movie',
+              type: 'movie',
+            },
+          ],
+        },
+      },
+    ],
   ]);
   const query = vi.fn(({ path }: { path: string }) =>
     Promise.resolve(responses.get(path) ?? { MediaContainer: { Metadata: [] } }),
@@ -151,6 +168,18 @@ function lastQueryEntries(query: ReturnType<typeof vi.fn>): Array<[string, strin
 }
 
 describe('LibrarySection edit helpers', () => {
+  it('returns typed continue watching items for the section hub', async () => {
+    const { query, section } = createMovieSection();
+
+    const items = await section.continueWatching();
+
+    expect(items[0]).toBeInstanceOf(Movie);
+    expect(items[0].title).toBe('Continue Movie');
+    expect(query).toHaveBeenCalledWith({
+      path: '/hubs/sections/1/continueWatching/items?includeGuids=1',
+    });
+  });
+
   it('accepts child items that belong to the section through their parent', async () => {
     const query = vi.fn().mockResolvedValue({
       MediaContainer: {

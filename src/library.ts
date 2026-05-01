@@ -457,6 +457,7 @@ type SearchBuildResult = {
 };
 type SearchParamEntry = [string, string];
 type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
+type LibrarySearchMetadata = { type?: Libtype } & Record<string, unknown>;
 const FILTER_VALUE_TYPES = [
   'audioLanguage',
   'boolean',
@@ -551,6 +552,19 @@ function classForLibtype(libtype?: Libtype): Class<LibrarySearchItem> | undefine
       return undefined;
     }
   }
+}
+
+function createLibrarySearchItem(
+  server: PlexServer,
+  data: LibrarySearchMetadata,
+  parent?: PlexObject,
+): LibrarySearchItem {
+  const Cls = classForLibtype(data.type);
+  if (!Cls) {
+    throw new Unsupported(`Unsupported library item type: ${String(data.type)}`);
+  }
+
+  return new Cls(server, data, undefined, parent) as LibrarySearchItem;
 }
 
 /**
@@ -934,6 +948,19 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   async onDeck(): Promise<SType[]> {
     const key = this._buildQueryKey(`/library/sections/${this.key}/onDeck`);
     return fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
+  }
+
+  /**
+   * Returns items from this library section's Continue Watching hub.
+   */
+  async continueWatching(): Promise<LibrarySearchItem[]> {
+    const key = this._buildQueryKey(`/hubs/sections/${this.key}/continueWatching/items`);
+    const data = await this.server.query<MediaContainer<{ Metadata?: LibrarySearchMetadata[] }>>({
+      path: key,
+    });
+    return (data.MediaContainer.Metadata ?? []).map(item =>
+      createLibrarySearchItem(this.server, item, this),
+    );
   }
 
   /**
