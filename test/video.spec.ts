@@ -32,6 +32,28 @@ describe('Shows', () => {
     expect(episodes.length).toBe(8);
   });
 
+  it('should get a show season by title and number', async () => {
+    const seasonByTitle = await show.season('Season 1');
+    const seasonByNumber = await show.season(1);
+    expect(seasonByTitle.key).toBe(seasonByNumber.key);
+    expect(seasonByTitle.guids.length).toBeGreaterThan(0);
+  });
+
+  it('should get a show episode by title and season index', async () => {
+    const episodeByTitle = await show.episode({ title: 'Minimum Viable Product' });
+    const episodeByIndex = await show.episode({ season: 1, episode: 1 });
+    expect(episodeByTitle.key).toBe(episodeByIndex.key);
+    expect(episodeByTitle.guids.length).toBeGreaterThan(0);
+  });
+
+  it('should get a season episode by title and number', async () => {
+    const season = await show.season(1);
+    const episodeByTitle = await season.episode('Minimum Viable Product');
+    const episodeByNumber = await season.episode(1);
+    expect(episodeByTitle.key).toBe(episodeByNumber.key);
+    expect(episodeByTitle.guids.length).toBeGreaterThan(0);
+  });
+
   it("should get an episode's full data", async () => {
     const [season] = await show.seasons();
     const [episode] = await season.episodes();
