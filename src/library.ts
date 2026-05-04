@@ -438,6 +438,7 @@ export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionI
 
 export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
 export type LibrarySearchItem = SectionType | Season | Episode | Photo | Collections;
+export type HubItem = LibrarySearchItem | Playlist;
 type RatingKeyItem = { ratingKey?: number | string };
 type SearchTagValue = { id: number | string; tag?: string } | { id?: number | string; tag: string };
 export type SearchFilterPrimitive =
@@ -618,7 +619,7 @@ function createLibrarySearchItem(
   return new Cls(server, data, undefined, parent) as LibrarySearchItem;
 }
 
-function createHubItem<T extends LibrarySearchItem>(
+function createHubItem<T extends HubItem>(
   server: PlexServer,
   data: LibrarySearchMetadata,
   parent: PlexObject,
@@ -626,6 +627,10 @@ function createHubItem<T extends LibrarySearchItem>(
 ): T {
   if (Cls) {
     return new Cls(server, data, undefined, parent);
+  }
+
+  if (data.type === 'station' || data.type === 'playlist') {
+    return new Playlist(server, data, undefined, parent) as T;
   }
 
   return createLibrarySearchItem(server, data, parent) as T;
@@ -2499,7 +2504,7 @@ export class Hub extends PlexObject {
   declare Directory: SearchResultContainer['Directory'];
   declare Metadata: SearchResultContainer['Metadata'];
   declare private _metadata?: LibrarySearchMetadata[];
-  declare private _items?: LibrarySearchItem[];
+  declare private _items?: HubItem[];
 
   /**
    * Return items from this hub.
@@ -2508,9 +2513,9 @@ export class Hub extends PlexObject {
    * `more` is true, this fetches the hub key first so callers get the full item
    * list instead of only the preview items.
    */
-  async items(): Promise<LibrarySearchItem[]>;
-  async items<T extends LibrarySearchItem>(Cls: Class<T>): Promise<T[]>;
-  async items<T extends LibrarySearchItem>(Cls?: Class<T>): Promise<LibrarySearchItem[] | T[]> {
+  async items(): Promise<HubItem[]>;
+  async items<T extends HubItem>(Cls: Class<T>): Promise<T[]>;
+  async items<T extends HubItem>(Cls?: Class<T>): Promise<HubItem[] | T[]> {
     if (this.more && this.key) {
       const data = await this.server.query<MediaContainer<{ Metadata?: LibrarySearchMetadata[] }>>({
         path: this._buildQueryKey(this.key),

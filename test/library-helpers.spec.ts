@@ -6,6 +6,7 @@ import {
   Movie,
   MovieSection,
   NotFound,
+  Playlist,
   Setting,
   ShowSection,
   type EditableLibraryItem,
@@ -186,6 +187,21 @@ const managedHubData = {
   title: 'On Deck',
 };
 
+const stationData = {
+  addedAt: 1,
+  composite: '/station/composite',
+  guid: 'station://1',
+  key: '/library/metadata/1/station/radio',
+  leafCount: 1,
+  playlistType: 'audio',
+  ratingKey: 'station-1',
+  smart: false,
+  summary: 'Artist radio',
+  title: 'Artist Radio',
+  type: 'station',
+  updatedAt: 1,
+};
+
 function createMovieSection() {
   const createCollectionParams = new URLSearchParams({
     title: 'Test Collection',
@@ -283,6 +299,18 @@ function createMovieSection() {
               title: 'More Hub',
               type: 'movie',
               Metadata: [hubMovieData],
+            },
+            {
+              context: 'hub.music.stations',
+              hubIdentifier: 'hub.music.stations',
+              key: '/hubs/sections/1/stations',
+              librarySectionID: '1',
+              more: false,
+              size: 1,
+              style: 'shelf',
+              title: 'Stations',
+              type: 'station',
+              Metadata: [stationData],
             },
           ],
         },
@@ -611,6 +639,16 @@ describe('Hub helpers', () => {
     expect(hubs[1].more).toBe(false);
     expect(hubs[1].size).toBe(1);
     expect(query).toHaveBeenCalledWith({ path: '/hubs/sections/1/more?includeGuids=1' });
+  });
+
+  it('returns station hub items as playlists', async () => {
+    const { section } = createMovieSection();
+
+    const hubs = await section.hubs();
+    const items = await hubs[2].items();
+
+    expect(items[0]).toBeInstanceOf(Playlist);
+    expect(items[0].title).toBe('Artist Radio');
   });
 });
 
