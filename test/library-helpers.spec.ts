@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BadRequest,
+  ManagedHub,
   Movie,
   MovieSection,
   NotFound,
+  Playlist,
   Setting,
   ShowSection,
   type EditableLibraryItem,
@@ -156,6 +158,50 @@ const playlistData = {
   updatedAt: 1,
 };
 
+const hubMovieData = {
+  addedAt: 1,
+  key: '/library/metadata/10',
+  ratingKey: '10',
+  summary: 'A movie from a hub.',
+  thumb: '/library/metadata/10/thumb',
+  title: 'Hub Movie',
+  type: 'movie',
+};
+
+const fetchedHubMovieData = {
+  ...hubMovieData,
+  key: '/library/metadata/11',
+  ratingKey: '11',
+  title: 'Fetched Hub Movie',
+};
+
+const managedHubData = {
+  deletable: 1,
+  homeVisibility: 'all',
+  identifier: 'com.plexapp.plugins.library.onDeck',
+  librarySectionID: '1',
+  promotedToOwnHome: 1,
+  promotedToRecommended: 0,
+  promotedToSharedHome: 0,
+  recommendationsVisibility: 'none',
+  title: 'On Deck',
+};
+
+const stationData = {
+  addedAt: 1,
+  composite: '/station/composite',
+  guid: 'station://1',
+  key: '/library/metadata/1/station/radio',
+  leafCount: 1,
+  playlistType: 'audio',
+  ratingKey: 'station-1',
+  smart: false,
+  summary: 'Artist radio',
+  title: 'Artist Radio',
+  type: 'station',
+  updatedAt: 1,
+};
+
 function createMovieSection() {
   const createCollectionParams = new URLSearchParams({
     title: 'Test Collection',
@@ -224,6 +270,64 @@ function createMovieSection() {
           ],
         },
       },
+    ],
+    [
+      '/hubs/sections/1?includeGuids=1&includeStations=1',
+      {
+        MediaContainer: {
+          Hub: [
+            {
+              context: 'hub.library',
+              hubIdentifier: 'movie.inline',
+              key: '/hubs/sections/1/inline',
+              librarySectionID: '1',
+              more: false,
+              size: 1,
+              style: 'shelf',
+              title: 'Inline Hub',
+              type: 'movie',
+              Metadata: [hubMovieData],
+            },
+            {
+              context: 'hub.library',
+              hubIdentifier: 'movie.more',
+              key: '/hubs/sections/1/more',
+              librarySectionID: '1',
+              more: true,
+              size: 2,
+              style: 'shelf',
+              title: 'More Hub',
+              type: 'movie',
+              Metadata: [hubMovieData],
+            },
+            {
+              context: 'hub.music.stations',
+              hubIdentifier: 'hub.music.stations',
+              key: '/hubs/sections/1/stations',
+              librarySectionID: '1',
+              more: false,
+              size: 1,
+              style: 'shelf',
+              title: 'Stations',
+              type: 'station',
+              Metadata: [stationData],
+            },
+          ],
+        },
+      },
+    ],
+    [
+      '/hubs/sections/1/more?includeGuids=1',
+      { MediaContainer: { Metadata: [fetchedHubMovieData] } },
+    ],
+    ['/hubs/sections/1/manage', { MediaContainer: { Hub: [managedHubData] } }],
+    [
+      '/hubs/sections/1/manage/com.plexapp.plugins.library.onDeck?promotedToRecommended=1&promotedToOwnHome=1&promotedToSharedHome=1',
+      { MediaContainer: {} },
+    ],
+    [
+      '/hubs/sections/1/manage/com.plexapp.plugins.library.onDeck?promotedToRecommended=0&promotedToOwnHome=1&promotedToSharedHome=1',
+      { MediaContainer: {} },
     ],
     [
       `/library/collections?${createCollectionParams.toString()}`,
@@ -505,6 +609,79 @@ describe('LibrarySection edit helpers', () => {
 
     await expect(section.common(item)).rejects.toThrow(BadRequest);
     expect(query).not.toHaveBeenCalled();
+  });
+});
+
+describe('Hub helpers', () => {
+  it('returns typed items from inline hub metadata', async () => {
+    const { query, section } = createMovieSection();
+
+    const hubs = await section.hubs();
+    const items = await hubs[0].items();
+    const hubSection = await hubs[0].section();
+
+    expect(items[0]).toBeInstanceOf(Movie);
+    expect(items[0].title).toBe('Hub Movie');
+    expect(hubSection).toBe(section);
+    expect(query).toHaveBeenCalledWith({
+      path: '/hubs/sections/1?includeGuids=1&includeStations=1',
+    });
+  });
+
+  it('fetches typed items when a hub has more results', async () => {
+    const { query, section } = createMovieSection();
+
+    const hubs = await section.hubs();
+    const items = await hubs[1].items();
+
+    expect(items[0]).toBeInstanceOf(Movie);
+    expect(items[0].title).toBe('Fetched Hub Movie');
+    expect(hubs[1].more).toBe(false);
+    expect(hubs[1].size).toBe(1);
+    expect(query).toHaveBeenCalledWith({ path: '/hubs/sections/1/more?includeGuids=1' });
+  });
+
+  it('returns station hub items as playlists', async () => {
+    const { section } = createMovieSection();
+
+    const hubs = await section.hubs();
+    const items = await hubs[2].items();
+
+    expect(items[0]).toBeInstanceOf(Playlist);
+    expect(items[0].title).toBe('Artist Radio');
+  });
+});
+
+describe('ManagedHub helpers', () => {
+  it('updates managed hub visibility with typed helpers', async () => {
+    const { query, section } = createMovieSection();
+
+    const hubs = await section.managedHubs();
+    const hub = await hubs[0].updateVisibility({ recommended: true, shared: true });
+
+    expect(hub).toBeInstanceOf(ManagedHub);
+    expect(hub.promotedToRecommended).toBe(true);
+    expect(hub.promotedToOwnHome).toBe(true);
+    expect(hub.promotedToSharedHome).toBe(true);
+    expect(query).toHaveBeenCalledWith({
+      path: '/hubs/sections/1/manage/com.plexapp.plugins.library.onDeck?promotedToRecommended=1&promotedToOwnHome=1&promotedToSharedHome=1',
+      method: 'put',
+    });
+  });
+
+  it('supports managed hub visibility convenience methods', async () => {
+    const { query, section } = createMovieSection();
+
+    const hubs = await section.managedHubs();
+    const hub = await hubs[0].promoteShared();
+
+    expect(hub.promotedToRecommended).toBe(false);
+    expect(hub.promotedToOwnHome).toBe(true);
+    expect(hub.promotedToSharedHome).toBe(true);
+    expect(query).toHaveBeenCalledWith({
+      path: '/hubs/sections/1/manage/com.plexapp.plugins.library.onDeck?promotedToRecommended=0&promotedToOwnHome=1&promotedToSharedHome=1',
+      method: 'put',
+    });
   });
 });
 
