@@ -605,12 +605,20 @@ function createLibrarySearchItem(
   return new Cls(server, data, undefined, parent) as LibrarySearchItem;
 }
 
+// Plex filter metadata is incomplete on some servers. Keep server-provided
+// entries first and append manual entries only when the key is missing.
 function addUniqueByKey<T extends { key: string }>(items: T[], additions: T[]): T[] {
   const existingKeys = new Set(items.map(item => item.key));
   return [...items, ...additions.filter(item => !existingKeys.has(item.key))];
 }
 
+/**
+ * Fields accepted by Plex search but not reliably advertised in filter metadata.
+ * This mirrors Python PlexAPI's manual field list without constructing XML.
+ */
 function manualFilteringFields(libtype: string): ManualFilteringField[] {
+  // Python sends movie manual fields without a `movie.` prefix; other libtypes
+  // need the libtype prefix for Plex to accept them.
   const prefix = libtype === 'movie' ? '' : `${libtype}.`;
   const fields: ManualFilteringField[] = [
     { key: `${prefix}guid`, title: 'Guid', type: 'guid' },
@@ -698,6 +706,10 @@ function manualFilteringFields(libtype: string): ManualFilteringField[] {
   return fields;
 }
 
+/**
+ * Label choice endpoints exist for these secondary libtypes even when Plex
+ * leaves them out of the advertised filter menu metadata.
+ */
 function manualFilteringFilters(libtype: string, sectionKey?: string): FilteringFilterData[] {
   const filterTypes: Record<string, ManualFilteringFilter[]> = {
     artist: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
@@ -713,6 +725,9 @@ function manualFilteringFilters(libtype: string, sectionKey?: string): Filtering
   }));
 }
 
+/**
+ * Sorts accepted by Plex search but often omitted from the advertised sort list.
+ */
 function manualFilteringSorts(libtype: string): FilteringSortData[] {
   const sorts: ManualFilteringSort[] = [
     { defaultDirection: 'asc', key: 'guid', title: 'Guid' },
@@ -1627,6 +1642,9 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     this._fieldTypes = (meta?.FieldType ?? []).map(
       fieldType => new FilteringFieldType(this.server, fieldType, undefined, this),
     );
+    // Plex accepts `guid` as a search field, but does not advertise a guid field
+    // type. Add minimal operator metadata so validation can treat it like the
+    // server-advertised field types.
     if (!this._fieldTypes.some(fieldType => fieldType.type === 'guid')) {
       this._fieldTypes.push(
         new FilteringFieldType(
@@ -2844,6 +2862,8 @@ export class FilteringType extends PlexObject {
   _loadData(data: FilteringTypeData) {
     this.active = parsePlexBoolean(data.active);
     const section = this.parent?.deref() as LibrarySection | undefined;
+    // Merge hidden-but-valid metadata into the server response here so list and
+    // validation helpers expose the same augmented view.
     const fields = addUniqueByKey(data.Field ?? [], manualFilteringFields(data.type));
     const filters = addUniqueByKey(
       data.Filter ?? [],
