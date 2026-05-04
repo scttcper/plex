@@ -420,6 +420,19 @@ export interface PlaylistSearchOptions {
   [filter: string]: ItemFilterValue | undefined;
 }
 
+export interface ManagedHubVisibilityOptions {
+  /** Show or hide this hub on the library Recommended tab. */
+  recommended?: boolean;
+  /** Show or hide this hub on the owner's Home page. */
+  home?: boolean;
+  /** Show or hide this hub on shared users' Home pages. */
+  shared?: boolean;
+}
+
+type RequireAtLeastOne<T> = {
+  [K in keyof T]-?: Required<Pick<T, K>> & Partial<Omit<T, K>>;
+}[keyof T];
+export type ManagedHubVisibilityChanges = RequireAtLeastOne<ManagedHubVisibilityOptions>;
 export type SectionAdvancedSettings = Record<string, SettingValue>;
 export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
 
@@ -483,7 +496,7 @@ type SearchBuildResult = {
 };
 type SearchParamEntry = [string, string];
 type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
-type LibrarySearchMetadata = { type?: Libtype } & Record<string, unknown>;
+type LibrarySearchMetadata = { type?: string };
 type ManualFilteringField = Pick<FilteringFieldData, 'key' | 'title' | 'type'>;
 type ManualFilteringFilter = Pick<FilteringFilterData, 'filter' | 'filterType' | 'title'>;
 type ManualFilteringSort = Pick<FilteringSortData, 'defaultDirection' | 'key' | 'title'>;
@@ -544,7 +557,7 @@ function reverseSearchType(type: string | number | null): Libtype | undefined {
   return entry?.[0] as Libtype | undefined;
 }
 
-function classForLibtype(libtype?: Libtype): Class<LibrarySearchItem> | undefined {
+function classForLibtype(libtype?: string): Class<LibrarySearchItem> | undefined {
   switch (libtype) {
     case 'movie': {
       return Movie;
@@ -603,6 +616,19 @@ function createLibrarySearchItem(
   }
 
   return new Cls(server, data, undefined, parent) as LibrarySearchItem;
+}
+
+function createHubItem<T extends LibrarySearchItem>(
+  server: PlexServer,
+  data: LibrarySearchMetadata,
+  parent: PlexObject,
+  Cls?: Class<T>,
+): T {
+  if (Cls) {
+    return new Cls(server, data, undefined, parent);
+  }
+
+  return createLibrarySearchItem(server, data, parent) as T;
 }
 
 // Plex filter metadata is incomplete on some servers. Keep server-provided
@@ -2388,6 +2414,55 @@ export class ManagedHub extends PlexObject {
     await this.server.query({ path: key, method: 'delete' });
   }
 
+  /**
+   * Update where this managed hub is visible.
+   * Omitted flags preserve the hub's current visibility state.
+   */
+  async updateVisibility(changes: ManagedHubVisibilityChanges): Promise<this> {
+    const {
+      recommended = this.promotedToRecommended,
+      home = this.promotedToOwnHome,
+      shared = this.promotedToSharedHome,
+    } = changes;
+    const params = new URLSearchParams({
+      promotedToRecommended: recommended ? '1' : '0',
+      promotedToOwnHome: home ? '1' : '0',
+      promotedToSharedHome: shared ? '1' : '0',
+    });
+    const key = `/hubs/sections/${this.librarySectionID}/manage/${
+      this.identifier
+    }?${params.toString()}`;
+    await this.server.query({ path: key, method: 'put' });
+    this.promotedToRecommended = recommended;
+    this.promotedToOwnHome = home;
+    this.promotedToSharedHome = shared;
+    return this;
+  }
+
+  promoteRecommended(): Promise<this> {
+    return this.updateVisibility({ recommended: true });
+  }
+
+  demoteRecommended(): Promise<this> {
+    return this.updateVisibility({ recommended: false });
+  }
+
+  promoteHome(): Promise<this> {
+    return this.updateVisibility({ home: true });
+  }
+
+  demoteHome(): Promise<this> {
+    return this.updateVisibility({ home: false });
+  }
+
+  promoteShared(): Promise<this> {
+    return this.updateVisibility({ shared: true });
+  }
+
+  demoteShared(): Promise<this> {
+    return this.updateVisibility({ shared: false });
+  }
+
   protected _loadData(data: ManagedHubData): void {
     this.deletable = parsePlexBoolean(data.deletable, true);
     this.homeVisibility = data.homeVisibility ?? 'none';
@@ -2408,24 +2483,86 @@ export class ManagedHub extends PlexObject {
 export class Hub extends PlexObject {
   static override TAG = 'Hub';
 
+  declare context?: string;
+  declare hubKey?: string;
   declare hubIdentifier: string;
+  declare librarySectionID?: string;
+  /** True if Plex has more items available at this hub's key. */
+  declare more: boolean;
   /** Number of items found. */
   declare size: number;
+  declare style?: string;
   declare title: string;
   declare type: string;
   /** True if the hub items are randomized. */
   declare random: boolean;
   declare Directory: SearchResultContainer['Directory'];
   declare Metadata: SearchResultContainer['Metadata'];
+  declare private _metadata?: LibrarySearchMetadata[];
+  declare private _items?: LibrarySearchItem[];
+
+  /**
+   * Return items from this hub.
+   *
+   * Plex often includes a partial `Metadata` list with the hub response. When
+   * `more` is true, this fetches the hub key first so callers get the full item
+   * list instead of only the preview items.
+   */
+  async items(): Promise<LibrarySearchItem[]>;
+  async items<T extends LibrarySearchItem>(Cls: Class<T>): Promise<T[]>;
+  async items<T extends LibrarySearchItem>(Cls?: Class<T>): Promise<LibrarySearchItem[] | T[]> {
+    if (this.more && this.key) {
+      const data = await this.server.query<MediaContainer<{ Metadata?: LibrarySearchMetadata[] }>>({
+        path: this._buildQueryKey(this.key),
+      });
+      this._metadata = data.MediaContainer.Metadata ?? [];
+      this._items = undefined;
+      this.more = false;
+      this.size = this._metadata.length;
+    }
+
+    if (Cls) {
+      return (this._metadata ?? []).map(item => createHubItem(this.server, item, this, Cls));
+    }
+
+    if (!this._items) {
+      this._items = (this._metadata ?? []).map(item => createHubItem(this.server, item, this));
+    }
+
+    return this._items as T[];
+  }
+
+  async section(): Promise<Section> {
+    const parent = this.parent?.deref();
+    if (parent instanceof LibrarySection) {
+      return parent as Section;
+    }
+
+    const sectionID = this.librarySectionID;
+    if (!sectionID) {
+      throw new NotFound(`Unable to find library section for hub "${this.title}".`);
+    }
+
+    const library = await this.server.library();
+    return library.sectionByID(sectionID);
+  }
 
   protected _loadData(data: SearchResultContainer) {
+    this.context = data.context;
+    this.hubKey = data.hubKey;
     this.hubIdentifier = data.hubIdentifier;
+    this.key = data.key ?? data.hubKey ?? '';
+    this.librarySectionID = data.librarySectionID?.toString();
+    this.more = parsePlexBoolean(data.more);
     this.size = data.size;
+    this.style = data.style;
     this.title = data.title;
     this.type = data.type;
     this.random = parsePlexBoolean(data.random);
     this.Directory = data.Directory;
     this.Metadata = data.Metadata;
+    this._metadata = data.Metadata ?? [];
+    this._items = undefined;
   }
 }
 

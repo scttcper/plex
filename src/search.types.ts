@@ -10,8 +10,11 @@ export interface MatchSearchResult {
 export interface SearchResultContainer {
   title: string;
   type: string;
+  key?: string;
+  hubKey?: string;
   hubIdentifier: string;
   context: string;
+  librarySectionID?: number | string;
   size: number;
   more: boolean;
   random?: boolean | number | string;
