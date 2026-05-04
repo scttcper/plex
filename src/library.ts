@@ -484,10 +484,14 @@ type SearchBuildResult = {
 type SearchParamEntry = [string, string];
 type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
 type LibrarySearchMetadata = { type?: Libtype } & Record<string, unknown>;
+type ManualFilteringField = Pick<FilteringFieldData, 'key' | 'title' | 'type'>;
+type ManualFilteringFilter = Pick<FilteringFilterData, 'filter' | 'filterType' | 'title'>;
+type ManualFilteringSort = Pick<FilteringSortData, 'defaultDirection' | 'key' | 'title'>;
 const FILTER_VALUE_TYPES = [
   'audioLanguage',
   'boolean',
   'date',
+  'guid',
   'integer',
   'resolution',
   'string',
@@ -599,6 +603,156 @@ function createLibrarySearchItem(
   }
 
   return new Cls(server, data, undefined, parent) as LibrarySearchItem;
+}
+
+function addUniqueByKey<T extends { key: string }>(items: T[], additions: T[]): T[] {
+  const existingKeys = new Set(items.map(item => item.key));
+  return [...items, ...additions.filter(item => !existingKeys.has(item.key))];
+}
+
+function manualFilteringFields(libtype: string): ManualFilteringField[] {
+  const prefix = libtype === 'movie' ? '' : `${libtype}.`;
+  const fields: ManualFilteringField[] = [
+    { key: `${prefix}guid`, title: 'Guid', type: 'guid' },
+    { key: `${prefix}id`, title: 'Rating Key', type: 'integer' },
+    {
+      key: `${prefix}index`,
+      title: `${libtype[0].toUpperCase()}${libtype.slice(1)} Number`,
+      type: 'integer',
+    },
+    {
+      key: `${prefix}lastRatedAt`,
+      title: `${libtype[0].toUpperCase()}${libtype.slice(1)} Last Rated`,
+      type: 'date',
+    },
+    { key: `${prefix}updatedAt`, title: 'Date Updated', type: 'date' },
+    { key: 'group', title: 'SQL Group By Statement', type: 'string' },
+    { key: 'having', title: 'SQL Having Clause', type: 'string' },
+  ];
+
+  switch (libtype) {
+    case 'movie': {
+      fields.push(
+        { key: 'audienceRating', title: 'Audience Rating', type: 'integer' },
+        { key: 'rating', title: 'Critic Rating', type: 'integer' },
+        { key: 'viewOffset', title: 'View Offset', type: 'integer' },
+      );
+      break;
+    }
+
+    case 'show': {
+      fields.push(
+        { key: 'show.audienceRating', title: 'Audience Rating', type: 'integer' },
+        { key: 'show.originallyAvailableAt', title: 'Show Release Date', type: 'date' },
+        { key: 'show.rating', title: 'Critic Rating', type: 'integer' },
+        { key: 'show.unviewedLeafCount', title: 'Episode Unplayed Count', type: 'integer' },
+      );
+      break;
+    }
+
+    case 'season': {
+      fields.push(
+        { key: 'season.addedAt', title: 'Date Season Added', type: 'date' },
+        { key: 'season.unviewedLeafCount', title: 'Episode Unplayed Count', type: 'integer' },
+        { key: 'season.year', title: 'Season Year', type: 'integer' },
+        { key: 'season.label', title: 'Label', type: 'tag' },
+      );
+      break;
+    }
+
+    case 'episode': {
+      fields.push(
+        { key: 'episode.audienceRating', title: 'Audience Rating', type: 'integer' },
+        { key: 'episode.duration', title: 'Duration', type: 'integer' },
+        { key: 'episode.rating', title: 'Critic Rating', type: 'integer' },
+        { key: 'episode.viewOffset', title: 'View Offset', type: 'integer' },
+        { key: 'episode.label', title: 'Label', type: 'tag' },
+      );
+      break;
+    }
+
+    case 'artist': {
+      fields.push({ key: 'artist.label', title: 'Label', type: 'tag' });
+      break;
+    }
+
+    case 'track': {
+      fields.push(
+        { key: 'track.duration', title: 'Duration', type: 'integer' },
+        { key: 'track.viewOffset', title: 'View Offset', type: 'integer' },
+        { key: 'track.label', title: 'Label', type: 'tag' },
+        { key: 'track.ratingCount', title: 'Rating Count', type: 'integer' },
+      );
+      break;
+    }
+
+    case 'collection': {
+      fields.push(
+        { key: 'collection.addedAt', title: 'Date Added', type: 'date' },
+        { key: 'collection.label', title: 'Label', type: 'tag' },
+      );
+      break;
+    }
+  }
+
+  return fields;
+}
+
+function manualFilteringFilters(libtype: string, sectionKey?: string): FilteringFilterData[] {
+  const filterTypes: Record<string, ManualFilteringFilter[]> = {
+    artist: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+    collection: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+    episode: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+    season: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+    track: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+  };
+  return (filterTypes[libtype] ?? []).map(filter => ({
+    ...filter,
+    key: `/library/sections/${sectionKey ?? ''}/${filter.filter}?type=${searchType(libtype)}`,
+    type: 'filter',
+  }));
+}
+
+function manualFilteringSorts(libtype: string): FilteringSortData[] {
+  const sorts: ManualFilteringSort[] = [
+    { defaultDirection: 'asc', key: 'guid', title: 'Guid' },
+    { defaultDirection: 'asc', key: 'id', title: 'Rating Key' },
+    {
+      defaultDirection: 'asc',
+      key: 'index',
+      title: `${libtype[0].toUpperCase()}${libtype.slice(1)} Number`,
+    },
+    { defaultDirection: 'asc', key: 'summary', title: 'Summary' },
+    { defaultDirection: 'asc', key: 'tagline', title: 'Tagline' },
+    { defaultDirection: 'asc', key: 'updatedAt', title: 'Date Updated' },
+  ];
+
+  switch (libtype) {
+    case 'season': {
+      sorts.push({ defaultDirection: 'asc', key: 'titleSort', title: 'Title' });
+      break;
+    }
+
+    case 'track': {
+      sorts.push({ defaultDirection: 'asc', key: 'absoluteIndex', title: 'Absolute Index' });
+      break;
+    }
+
+    case 'photo': {
+      sorts.push({ defaultDirection: 'desc', key: 'viewUpdatedAt', title: 'View Updated At' });
+      break;
+    }
+
+    case 'collection': {
+      sorts.push({ defaultDirection: 'asc', key: 'addedAt', title: 'Date Added' });
+      break;
+    }
+  }
+
+  return sorts.map(sort => ({
+    ...sort,
+    descKey: `${sort.key}:desc`,
+  }));
 }
 
 /**
@@ -1473,6 +1627,16 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     this._fieldTypes = (meta?.FieldType ?? []).map(
       fieldType => new FilteringFieldType(this.server, fieldType, undefined, this),
     );
+    if (!this._fieldTypes.some(fieldType => fieldType.type === 'guid')) {
+      this._fieldTypes.push(
+        new FilteringFieldType(
+          this.server,
+          { type: 'guid', Operator: [{ key: '=', title: 'is' }] },
+          undefined,
+          this,
+        ),
+      );
+    }
   }
 
   /**
@@ -1605,6 +1769,11 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
           }
 
           case 'string': {
+            result = String(value);
+            break;
+          }
+
+          case 'guid': {
             result = String(value);
             break;
           }
@@ -2674,12 +2843,17 @@ export class FilteringType extends PlexObject {
 
   _loadData(data: FilteringTypeData) {
     this.active = parsePlexBoolean(data.active);
-    this.fields = (data.Field ?? []).map(d => new FilteringField(this.server, d, undefined, this));
-    this.filters = (data.Filter ?? []).map(
-      d => new FilteringFilter(this.server, d, undefined, this),
+    const section = this.parent?.deref() as LibrarySection | undefined;
+    const fields = addUniqueByKey(data.Field ?? [], manualFilteringFields(data.type));
+    const filters = addUniqueByKey(
+      data.Filter ?? [],
+      manualFilteringFilters(data.type, section?.key),
     );
+    const sorts = addUniqueByKey(data.Sort ?? [], manualFilteringSorts(data.type));
+    this.fields = fields.map(d => new FilteringField(this.server, d, undefined, this));
+    this.filters = filters.map(d => new FilteringFilter(this.server, d, undefined, this));
     this.key = data.key;
-    this.sorts = (data.Sort ?? []).map(d => new FilteringSort(this.server, d, undefined, this));
+    this.sorts = sorts.map(d => new FilteringSort(this.server, d, undefined, this));
     this.title = data.title;
     this.type = data.type;
   }

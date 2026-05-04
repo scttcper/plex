@@ -123,6 +123,15 @@ const genreChoices = [
   { fastKey: '/library/sections/1/all?genre=2&type=1', key: '2', title: 'Comedy', type: 'genre' },
 ];
 
+const labelChoices = [
+  {
+    fastKey: '/library/sections/2/all?label=99&type=4',
+    key: '99',
+    title: 'Favorite',
+    type: 'label',
+  },
+];
+
 const collectionData = {
   childCount: 1,
   key: '/library/metadata/99',
@@ -249,6 +258,43 @@ function createMovieSection() {
   const section = new MovieSection(server, movieSectionData);
   sections.push(section);
   return { history, query, section };
+}
+
+function createShowSection() {
+  const filterMeta = {
+    Type: [
+      {
+        active: true,
+        key: '/library/sections/2/all?type=4',
+        title: 'Episodes',
+        type: 'episode',
+        Field: [],
+        Filter: [],
+        Sort: [],
+      },
+    ],
+    FieldType: [
+      {
+        type: 'tag',
+        Operator: [
+          { key: '=', title: 'is' },
+          { key: '!=', title: 'is not' },
+        ],
+      },
+    ],
+  };
+  const responses = new Map<string, unknown>([
+    [
+      '/library/sections/2/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0',
+      { MediaContainer: { Meta: [filterMeta] } },
+    ],
+    ['/library/sections/2/label?type=4', { MediaContainer: { Directory: labelChoices } }],
+  ]);
+  const query = vi.fn(({ path }: { path: string }) =>
+    Promise.resolve(responses.get(path) ?? { MediaContainer: { Metadata: [] } }),
+  );
+  const section = new ShowSection({ query } as unknown as PlexServer, showSectionData);
+  return { query, section };
 }
 
 function lastQueryPath(query: ReturnType<typeof vi.fn>): string {
@@ -531,7 +577,68 @@ describe('LibrarySection search filters', () => {
 
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
-      ['movie.id', '99'],
+      ['id', '99'],
+    ]);
+  });
+
+  it('adds manual filter fields and guid operators missing from plex metadata', async () => {
+    const { query, section } = createMovieSection();
+
+    const fields = await section.listFields();
+    const fieldTypes = await section.fieldTypes();
+    await section.search({
+      filters: {
+        guid: 'plex://movie/123',
+        viewOffset: 10,
+      },
+    });
+
+    expect(fields.map(field => field.key)).toEqual(
+      expect.arrayContaining([
+        'guid',
+        'id',
+        'lastRatedAt',
+        'updatedAt',
+        'viewOffset',
+        'group',
+        'having',
+      ]),
+    );
+    expect(fieldTypes.find(fieldType => fieldType.type === 'guid')?.operators[0].key).toBe('=');
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['guid', 'plex://movie/123'],
+      ['viewOffset', '10'],
+    ]);
+  });
+
+  it('adds manual sort fields missing from plex metadata', async () => {
+    const { query, section } = createMovieSection();
+
+    const sorts = await section.listSorts();
+    await section.search({ sort: 'guid:desc' });
+
+    expect(sorts.map(sort => sort.key)).toEqual(
+      expect.arrayContaining(['guid', 'id', 'updatedAt']),
+    );
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['sort', 'movie.guid:desc'],
+    ]);
+  });
+
+  it('adds manual label filters for episode searches', async () => {
+    const { query, section } = createShowSection();
+
+    const filters = await section.listFilters('episode');
+    await section.searchEpisodes({ filters: { label: 'Favorite' } });
+
+    expect(filters.map(filter => filter.filter)).toContain('label');
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/2/label?type=4' });
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['type', '4'],
+      ['episode.label', '99'],
     ]);
   });
 
