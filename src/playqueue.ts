@@ -79,8 +79,8 @@ export class PlayQueue extends PlexObject {
     }
 
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(args)) {
-      params.set(key, value.toString());
+    for (const [paramKey, value] of Object.entries(args)) {
+      params.set(paramKey, value.toString());
     }
     const path = `/playQueues/${playQueueID}?${params.toString()}`;
     const data = await server.query({ path });
@@ -155,8 +155,8 @@ export class PlayQueue extends PlexObject {
     };
 
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(args)) {
-      params.set(key, value.toString());
+    for (const [paramKey, value] of Object.entries(args)) {
+      params.set(paramKey, value.toString());
     }
     const path = `/playQueues?${params.toString()}`;
     const data = await server.query({ path, method: 'post' });

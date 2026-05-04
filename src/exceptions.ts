@@ -1,49 +1,40 @@
-export class BadRequest extends Error {
-  override message = 'An invalid request, generally a user error.';
-
-  constructor(message: string) {
+export class BadRequestError extends Error {
+  constructor(message = 'An invalid request, generally a user error.') {
     super(message);
-    this.name = 'BadRequest';
-    this.message = message;
+    this.name = 'BadRequestError';
   }
 }
 
-export class NotFound extends Error {
-  override message = 'Request media item or device is not found.';
-
-  constructor(message: string) {
+export class NotFoundError extends Error {
+  constructor(message = 'Request media item or device is not found.') {
     super(message);
-    this.name = 'NotFound';
-    this.message = message;
+    this.name = 'NotFoundError';
   }
 }
 
-export class UnknownType extends Error {
-  override message = 'Unknown library type.';
-
-  constructor(message: string) {
+export class UnknownTypeError extends Error {
+  constructor(message = 'Unknown library type.') {
     super(message);
-    this.name = 'UnknownType';
-    this.message = message;
+    this.name = 'UnknownTypeError';
   }
 }
 
-export class Unsupported extends Error {
-  override message = 'Unsupported client request.';
-
-  constructor(message: string) {
+export class UnsupportedError extends Error {
+  constructor(message = 'Unsupported client request.') {
     super(message);
-    this.name = 'Unsupported';
-    this.message = message;
+    this.name = 'UnsupportedError';
   }
 }
 
-export class Unauthorized extends Error {
-  override message = 'Invalid username or password.';
-
-  constructor(message: string) {
+export class UnauthorizedError extends Error {
+  constructor(message = 'Invalid username or password.') {
     super(message);
-    this.name = 'Unauthorized';
-    this.message = message;
+    this.name = 'UnauthorizedError';
   }
 }
+
+export const BadRequest = BadRequestError;
+export const NotFound = NotFoundError;
+export const UnknownType = UnknownTypeError;
+export const Unsupported = UnsupportedError;
+export const Unauthorized = UnauthorizedError;

@@ -65,11 +65,11 @@ export async function prepareTvDir(showPath = tvDir): Promise<void> {
     for (let index = 0; index < seasons.length; index++) {
       const season = seasons[index];
       for (const episode of season) {
-        const showPath = path.join(
+        const episodePath = path.join(
           showDir,
           `/S${(index + 1).toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}.mp4`,
         );
-        fs.copyFileSync(videoStubPath, showPath);
+        fs.copyFileSync(videoStubPath, episodePath);
       }
     }
   }

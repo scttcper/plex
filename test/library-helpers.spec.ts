@@ -365,7 +365,7 @@ function createMovieSection() {
 }
 
 function createShowSection() {
-  const filterMeta = {
+  const showFilterMeta = {
     Type: [
       {
         active: true,
@@ -390,7 +390,7 @@ function createShowSection() {
   const responses = new Map<string, unknown>([
     [
       '/library/sections/2/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0',
-      { MediaContainer: { Meta: [filterMeta] } },
+      { MediaContainer: { Meta: [showFilterMeta] } },
     ],
     ['/library/sections/2/label?type=4', { MediaContainer: { Directory: labelChoices } }],
   ]);

@@ -355,8 +355,8 @@ export class PlexServer {
         path: url.pathname + url.search,
       });
       // Filter out null/undefined items from the metadata
-      const validMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
-      results.push(...validMetadata);
+      const pageMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
+      results.push(...pageMetadata);
     }
 
     return results;

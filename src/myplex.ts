@@ -259,8 +259,9 @@ export class MyPlexAccount {
   async device(name = '', clientId?: string): Promise<MyPlexDevice> {
     const devices = await this.devices();
     const device = devices.find(
-      device =>
-        device.name?.toLowerCase() === name.toLowerCase() || device.clientIdentifier === clientId,
+      candidate =>
+        candidate.name?.toLowerCase() === name.toLowerCase() ||
+        candidate.clientIdentifier === clientId,
     );
     if (!device) {
       throw new Error('Unable to find device');

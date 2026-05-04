@@ -4,6 +4,7 @@ import type { AlbumData, ArtistData, TrackData } from './audio.types.js';
 import { Playable } from './base/playable.js';
 import { PlexObject } from './base/plexObject.js';
 import { fetchItem, fetchItems } from './baseFunctionality.js';
+import { NotFound } from './exceptions.js';
 import {
   Chapter,
   Collection,
@@ -569,11 +570,10 @@ export class Artist extends Audio {
     }
 
     try {
-      // fetchItem might throw NotFound, return undefined in that case
       const data = await fetchItem(this.server, key, query);
       return new Track(this.server, data, key, this);
     } catch (e) {
-      if (e.constructor.name === 'NotFound') {
+      if (e instanceof NotFound) {
         return undefined;
       }
       throw e;
