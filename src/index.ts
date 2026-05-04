@@ -14,6 +14,8 @@ export * from './media.js';
 export * from './myplex.js';
 export * from './playlist.js';
 export * from './playqueue.js';
+export * from './photo.js';
+export type { PhotoalbumData, PhotoData, PhotoMediaData, PhotoPartData } from './photo.types.js';
 export * from './server.js';
 export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.js';
 export * from './serverModels.js';

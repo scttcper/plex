@@ -50,6 +50,7 @@ import {
   Tag,
   Writer,
 } from './media.js';
+import { Photo, Photoalbum } from './photo.js';
 import {
   Playlist,
   type CreateRegularPlaylistOptions,
@@ -63,7 +64,7 @@ import { Setting, type SettingResponse, type SettingValue } from './settings.js'
 import type { MediaContainer } from './util.js';
 import { Episode, Movie, Season, Show } from './video.js';
 
-export type Section = MovieSection | ShowSection | MusicSection;
+export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
 
 export class Library {
   static key = '/library';
@@ -95,7 +96,7 @@ export class Library {
     }
 
     for (const elem of elems.MediaContainer.Directory) {
-      for (const cls of [MovieSection, ShowSection, MusicSection]) {
+      for (const cls of [MovieSection, ShowSection, MusicSection, PhotoSection]) {
         if (cls.TYPE === elem.type) {
           const instance = new cls(this.server, elem, key);
           sections.push(instance);
@@ -422,8 +423,8 @@ export interface PlaylistSearchOptions {
 export type SectionAdvancedSettings = Record<string, SettingValue>;
 export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
 
-export type SectionType = Movie | Show | Artist | Album | Track;
-export type LibrarySearchItem = SectionType | Season | Episode | Collections;
+export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
+export type LibrarySearchItem = SectionType | Season | Episode | Photo | Collections;
 type RatingKeyItem = { ratingKey?: number | string };
 type SearchTagValue = { id: number | string; tag?: string } | { id?: number | string; tag: string };
 export type SearchFilterPrimitive =
@@ -471,7 +472,11 @@ export type SearchClassForLibtype<T extends Libtype> = T extends 'movie'
             ? Album
             : T extends 'track'
               ? Track
-              : SectionType;
+              : T extends 'photoalbum'
+                ? Photoalbum
+                : T extends 'photo'
+                  ? Photo
+                  : SectionType;
 type SearchBuildResult = {
   key: string;
   localFilters: Record<string, ItemFilterValue>;
@@ -563,6 +568,14 @@ function classForLibtype(libtype?: Libtype): Class<LibrarySearchItem> | undefine
 
     case 'track': {
       return Track;
+    }
+
+    case 'photoalbum': {
+      return Photoalbum;
+    }
+
+    case 'photo': {
+      return Photo;
     }
 
     case 'collection': {
@@ -2061,6 +2074,55 @@ export class MusicSection extends LibrarySection<Track> {
       endID,
     });
     return fetchItems<Track>(this.server, key, undefined, Track, this);
+  }
+}
+
+export class PhotoSection extends LibrarySection<Photoalbum> {
+  static override TYPE = 'photo';
+  static override ALLOWED_FILTERS = ['year', 'label', 'addedAt'];
+  static override ALLOWED_SORT = ['addedAt', 'titleSort', 'viewUpdatedAt'];
+  static override TAG = 'Directory';
+  METADATA_TYPE = 'photo';
+  override CONTENT_TYPE = 'photo';
+  override readonly SECTION_TYPE = Photoalbum;
+
+  /** Returns photo albums in this section. */
+  override async all(args: Partial<SearchArgs> | string = {}): Promise<Photoalbum[]> {
+    const searchArgs = typeof args === 'string' ? { sort: args } : args;
+    return this.search({ ...searchArgs, libtype: 'photoalbum' }, Photoalbum);
+  }
+
+  /** Photo libraries do not support collections. */
+  override async collections(): Promise<Array<Collections<Photoalbum>>> {
+    throw new Unsupported('Collections are not available for a Photo library.');
+  }
+
+  /** Search for a photo album. */
+  async searchAlbums(args: Partial<SearchArgs> = {}): Promise<Photoalbum[]> {
+    return this.search({ ...args, libtype: 'photoalbum' }, Photoalbum);
+  }
+
+  /** Search for a photo. */
+  async searchPhotos(args: Partial<SearchArgs> = {}): Promise<Photo[]> {
+    return this.search({ ...args, libtype: 'photo' }, Photo);
+  }
+
+  /** Returns recently added photo albums from this library section. */
+  async recentlyAddedAlbums(maxResults = 50): Promise<Photoalbum[]> {
+    return this.search(
+      { maxresults: maxResults, sort: 'addedAt:desc', libtype: 'photoalbum' },
+      Photoalbum,
+    );
+  }
+
+  /** Returns recently added photos from this library section. */
+  async recentlyAddedPhotos(maxResults = 50): Promise<Photo[]> {
+    return this.search({ maxresults: maxResults, sort: 'addedAt:desc', libtype: 'photo' }, Photo);
+  }
+
+  /** Returns recently added photo albums from this library section. */
+  override async recentlyAdded(maxResults = 50): Promise<Photoalbum[]> {
+    return this.recentlyAddedAlbums(maxResults);
   }
 }
 

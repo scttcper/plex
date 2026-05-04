@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -87,6 +88,11 @@ const yarg = yargs(hideBin(process.argv))
     type: 'boolean',
     desc: 'Create Audio section',
     default: true,
+  })
+  .option('create-photos', {
+    type: 'boolean',
+    desc: 'Create Photos section',
+    default: false,
   });
 
 const dockerCmd = ({
@@ -273,6 +279,12 @@ async function setupAudio(audioPath: string): Promise<number> {
   }
 
   return totalTracks;
+}
+
+async function setupPhotos(photoPath: string): Promise<number> {
+  await makeDirectory(photoPath);
+  await copyFile(join(__dirname, '..', 'test/data/cute_cat.jpg'), join(photoPath, 'Cute Cat.jpg'));
+  return 1;
 }
 
 async function main() {
@@ -496,6 +508,26 @@ async function main() {
       scanner: 'Plex Music',
       language: 'en-US',
       expectedMediaCount: numTracks,
+    });
+  }
+
+  if (argv['create-photos']) {
+    const photosPath = join(mediaPath, 'Photos');
+    const setupPhotosProgress = ora(`Setup photo files`).start();
+    const numPhotos = await setupPhotos(photosPath);
+    setupPhotosProgress.succeed();
+    sections.push({
+      name: 'Photos',
+      type: 'photo',
+      location: '/data/Photos',
+      agent: 'com.plexapp.agents.none',
+      scanner: 'Plex Photo Scanner',
+      language: 'en-US',
+      expectedMediaCount: numPhotos,
+      prefs: {
+        'prefs[enableAutoPhotoTags]': '0',
+        'prefs[enableBIFGeneration]': '0',
+      },
     });
   }
 
