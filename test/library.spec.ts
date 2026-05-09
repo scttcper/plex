@@ -119,6 +119,39 @@ it('should get library on deck items', async () => {
   expect(Array.isArray(onDeck)).toBe(true);
 });
 
+it('should get root library hubs', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const hubs = await library.hubs({ sectionID: section.key, limit: 2 });
+  expect(hubs.length).toBeGreaterThan(0);
+  expect(typeof hubs[0].title).toBe('string');
+  expect(typeof hubs[0].type).toBe('string');
+  expect(typeof hubs[0].more).toBe('boolean');
+  expect(typeof hubs[0].size).toBe('number');
+});
+
+it('should get root library recently added items', async () => {
+  const library = await plex.library();
+  const recentlyAdded = await library.recentlyAdded();
+  expect(recentlyAdded.length).toBeGreaterThan(0);
+  expect(typeof recentlyAdded[0].title).toBe('string');
+  expect(typeof recentlyAdded[0].type).toBe('string');
+});
+
+it('should search root library items by type', async () => {
+  const library = await plex.library();
+  const results = await library.search({ title: 'Bunny', libtype: 'movie' });
+  expect(results.length).toBe(1);
+  expect(results[0]).toBeInstanceOf(Movie);
+  expect(results[0].title).toBe('Big Buck Bunny');
+});
+
+it('should aggregate root library history', async () => {
+  const library = await plex.library();
+  const history = await library.history({ maxResults: 1 });
+  expect(Array.isArray(history)).toBe(true);
+});
+
 it('should get movie section on deck items', async () => {
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BadRequest,
+  Library,
   ManagedHub,
   Movie,
   MovieSection,
@@ -42,6 +43,19 @@ const movieSectionData = {
   scanner: 'Plex Movie',
   title: 'Movies',
   type: 'movie',
+};
+
+const libraryRootData = {
+  size: 1,
+  allowSync: true,
+  art: '',
+  content: '',
+  identifier: 'com.plexapp.plugins.library',
+  mediaTagPrefix: '/system/bundle/media/flags/',
+  mediaTagVersion: 1,
+  title1: 'Plex Library',
+  title2: '',
+  Directory: [],
 };
 
 const filterMeta = {
@@ -156,6 +170,16 @@ const playlistData = {
   title: 'Test Playlist',
   type: 'playlist',
   updatedAt: 1,
+};
+
+const libraryMovieData = {
+  addedAt: 1,
+  key: '/library/metadata/42',
+  ratingKey: '42',
+  summary: 'A root library movie.',
+  thumb: '/library/metadata/42/thumb',
+  title: 'Root Movie',
+  type: 'movie',
 };
 
 const hubMovieData = {
@@ -401,6 +425,52 @@ function createShowSection() {
   return { query, section };
 }
 
+function createLibrary() {
+  const history = vi.fn(async () => [{ ratingKey: 'history-item' }]);
+  const responses = new Map<string, unknown>([
+    ['/library/sections', { MediaContainer: { Directory: [movieSectionData, showSectionData] } }],
+    ['/library/onDeck?includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
+    ['/library/recentlyAdded?includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
+    [
+      '/library/all?includeGuids=1&year=1999&title=Bunny&type=1',
+      { MediaContainer: { Metadata: [libraryMovieData] } },
+    ],
+    [
+      '/hubs?includeGuids=1&limit=2&contentDirectoryID=1%2Cplaylists&identifier=home.continue%2Chome.ondeck',
+      {
+        MediaContainer: {
+          Hub: [
+            {
+              context: 'hub.home',
+              hubIdentifier: 'home.continue',
+              key: '/hubs/home/continue',
+              more: false,
+              size: 1,
+              style: 'shelf',
+              title: 'Continue Watching',
+              type: 'movie',
+              Metadata: [libraryMovieData],
+            },
+          ],
+        },
+      },
+    ],
+    ['/library/clean/bundles?async=1', { MediaContainer: {} }],
+    ['/library/optimize?async=1', { MediaContainer: {} }],
+    ['/library/sections/all/refresh', { MediaContainer: {} }],
+    ['/library/sections/all/refresh?force=1', { MediaContainer: {} }],
+    ['/library/sections/1/emptyTrash', { MediaContainer: {} }],
+    ['/library/sections/2/emptyTrash', { MediaContainer: {} }],
+    ['/library/sections/1/indexes', { MediaContainer: {} }],
+    ['/library/sections/2/indexes', { MediaContainer: {} }],
+  ]);
+  const query = vi.fn(({ path }: { path: string }) =>
+    Promise.resolve(responses.get(path) ?? { MediaContainer: { Metadata: [] } }),
+  );
+  const library = new Library({ history, query } as unknown as PlexServer, libraryRootData);
+  return { history, library, query };
+}
+
 function lastQueryPath(query: ReturnType<typeof vi.fn>): string {
   const [{ path }] = query.mock.calls.at(-1) as [{ path: string }];
   return path;
@@ -414,6 +484,102 @@ function lastQueryEntries(query: ReturnType<typeof vi.fn>): Array<[string, strin
   const [, search] = lastQueryPath(query).split('?', 2);
   return [...new URLSearchParams(search).entries()];
 }
+
+describe('Library root helpers', () => {
+  it('returns typed on deck and recently added items', async () => {
+    const { query, library } = createLibrary();
+
+    const onDeck = await library.onDeck();
+    const recentlyAdded = await library.recentlyAdded();
+
+    expect(onDeck[0]).toBeInstanceOf(Movie);
+    expect(onDeck[0].title).toBe('Root Movie');
+    expect(recentlyAdded[0]).toBeInstanceOf(Movie);
+    expect(recentlyAdded[0].title).toBe('Root Movie');
+    expect(query).toHaveBeenCalledWith({ path: '/library/onDeck?includeGuids=1' });
+    expect(query).toHaveBeenCalledWith({ path: '/library/recentlyAdded?includeGuids=1' });
+  });
+
+  it('searches across the root library with simple filters', async () => {
+    const { query, library } = createLibrary();
+
+    const items = await library.search({ title: 'Bunny', libtype: 'movie', year: 1999 });
+
+    expect(items[0]).toBeInstanceOf(Movie);
+    expect(items[0].title).toBe('Root Movie');
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['year', '1999'],
+      ['title', 'Bunny'],
+      ['type', '1'],
+    ]);
+  });
+
+  it('returns filtered root hubs', async () => {
+    const { query, library } = createLibrary();
+
+    const hubs = await library.hubs({
+      sectionID: [1, 'playlists'],
+      identifier: ['home.continue', 'home.ondeck'],
+      limit: 2,
+    });
+
+    expect(hubs[0].title).toBe('Continue Watching');
+    expect(hubs[0].hubIdentifier).toBe('home.continue');
+    expect(lastQueryEntries(query)).toEqual([
+      ['includeGuids', '1'],
+      ['limit', '2'],
+      ['contentDirectoryID', '1,playlists'],
+      ['identifier', 'home.continue,home.ondeck'],
+    ]);
+  });
+
+  it('runs root library maintenance helpers', async () => {
+    const { query, library } = createLibrary();
+
+    await library.cleanBundles();
+    await library.optimize();
+    await library.update();
+    await library.cancelUpdate();
+    await library.refresh();
+
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/clean/bundles?async=1',
+      method: 'put',
+    });
+    expect(query).toHaveBeenCalledWith({ path: '/library/optimize?async=1', method: 'put' });
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/all/refresh' });
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/all/refresh',
+      method: 'delete',
+    });
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/all/refresh?force=1' });
+  });
+
+  it('runs section-scoped root helpers across every section', async () => {
+    const { history, query, library } = createLibrary();
+
+    await library.emptyTrash();
+    await library.deleteMediaPreviews();
+    const items = await library.history({ maxResults: 2 });
+
+    expect(items).toEqual([{ ratingKey: 'history-item' }, { ratingKey: 'history-item' }]);
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/1/emptyTrash', method: 'put' });
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/2/emptyTrash', method: 'put' });
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/1/indexes', method: 'delete' });
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/2/indexes', method: 'delete' });
+    expect(history).toHaveBeenCalledWith({
+      accountId: 1,
+      librarySectionId: '1',
+      maxResults: 2,
+    });
+    expect(history).toHaveBeenCalledWith({
+      accountId: 1,
+      librarySectionId: '2',
+      maxResults: 2,
+    });
+  });
+});
 
 describe('LibrarySection edit helpers', () => {
   it('returns typed advanced settings for the section', async () => {

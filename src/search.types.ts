@@ -1,3 +1,5 @@
+import type { UltraBlurColorsData } from './audio.types.js';
+
 export interface MatchSearchResult {
   thumb: string;
   guid: string;
@@ -17,6 +19,7 @@ export interface SearchResultContainer {
   librarySectionID?: number | string;
   size: number;
   more: boolean;
+  promoted?: boolean | number | string;
   random?: boolean | number | string;
   style: string;
   Directory?: Directory[];
@@ -41,29 +44,37 @@ export interface Directory {
   thumb?: string;
 }
 
-interface SearchResult {
+export interface SearchResult {
+  allowSync?: boolean;
   librarySectionTitle: string;
   ratingKey: string;
   key: string;
   guid: string;
+  slug?: string;
   studio?: string;
   type: string;
   title: string;
-  contentRating: string;
-  rating: number;
+  contentRating?: string;
+  contentRatingAge?: number;
+  summary?: string;
+  rating?: number;
+  audienceRating?: number;
+  audienceRatingImage?: string;
   viewCount?: number;
   lastViewedAt?: number;
-  year: number;
+  year?: number;
   tagline?: string;
-  thumb: string;
-  art: string;
-  duration: number;
-  originallyAvailableAt: string;
-  addedAt: number;
-  updatedAt: number;
+  thumb?: string;
+  art?: string;
+  duration?: number;
+  originallyAvailableAt?: string;
+  addedAt?: number;
+  updatedAt?: number;
   chapterSource?: string;
   primaryExtraKey?: string;
   ratingImage?: string;
+  Image?: Array<{ alt?: string; type?: string; url?: string }>;
+  UltraBlurColors?: UltraBlurColorsData;
   Media?: Media[];
   Genre?: CollectionTagData[];
   Director?: CollectionTagData[];
@@ -86,8 +97,9 @@ interface SearchResult {
   grandparentThumb?: string;
   grandparentArt?: string;
   grandparentTheme?: string;
-  librarySectionID?: number;
+  librarySectionID?: number | string;
   librarySectionKey?: string;
+  librarySectionUUID?: string;
   reason?: string;
   reasonID?: number;
   reasonTitle?: string;
@@ -126,6 +138,9 @@ export interface Media {
   videoResolution?: string;
   container?: string;
   videoFrameRate?: string;
+  optimizedForStreaming?: boolean | number;
+  has64bitOffsets?: boolean;
+  hasVoiceActivity?: boolean;
   videoProfile: string;
   Part: Part[];
   audioProfile?: string;
@@ -138,6 +153,8 @@ export interface Part {
   file: string;
   size: number;
   container: string;
+  has64bitOffsets?: boolean;
+  optimizedForStreaming?: boolean;
   videoProfile: string;
   audioProfile?: string;
 }

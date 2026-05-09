@@ -11,11 +11,13 @@ import {
   fetchItems,
   type ItemFilterValue,
   OPERATORS,
+  type QueryParamValue,
 } from './baseFunctionality.js';
 import { BadRequest, NotFound, Unsupported } from './exceptions.js';
 import type {
   CommonData,
   CollectionData,
+  Directory as LibraryDirectory,
   FirstCharacterData,
   FilterChoiceData,
   FilteringFieldData,
@@ -62,20 +64,51 @@ import type { PlexServer } from './server.js';
 import type { HistoryOptions, HistoryResult } from './server.types.js';
 import { Setting, type SettingResponse, type SettingValue } from './settings.js';
 import type { MediaContainer } from './util.js';
-import { Episode, Movie, Season, Show } from './video.js';
+import { Clip, Episode, Movie, Season, Show } from './video.js';
 
 export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
+export type LibraryHubOptionValue = QueryParamValue | ReadonlyArray<string | number>;
+
+export interface LibraryHubsOptions {
+  /** IDs of the sections to limit results to, or "playlists". */
+  sectionID?: string | number | ReadonlyArray<string | number>;
+  /** Hub identifiers to limit results to, such as "home.continue". */
+  identifier?: string | readonly string[];
+  [param: string]: LibraryHubOptionValue | undefined;
+}
+
+export interface LibrarySearchOptions {
+  /** Exact or partial title query. */
+  title?: string;
+  /** Limit results to a Plex library type. */
+  libtype?: Libtype;
+  [param: string]: QueryParamValue;
+}
+
+export type LibraryHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
 
 export class Library {
   static key = '/library';
+  /** Number of root library entries returned by Plex. */
+  declare size: number;
+  /** Whether sync is allowed for the root library endpoint. */
+  declare allowSync: boolean;
+  /** Root library artwork path. */
+  declare art: string;
+  /** Root library content type. */
+  declare content: string;
   /** Unknown ('com.plexapp.plugins.library') */
   declare identifier: string;
   /** Unknown (/system/bundle/media/flags/) */
   declare mediaTagPrefix: string;
+  /** Version for media tag assets. */
+  declare mediaTagVersion: number;
   /** 'Plex Library' (not sure how useful this is) */
   declare title1: string;
   /** Second title (this is blank on my setup) */
   declare title2: string;
+  /** Root library directories returned by Plex. */
+  declare directories: LibraryDirectory[];
 
   constructor(
     private readonly server: PlexServer,
@@ -298,23 +331,44 @@ export class Library {
   }
 
   /**
+   * Returns hubs across all library sections.
+   */
+  async hubs({ sectionID, identifier, ...options }: LibraryHubsOptions = {}): Promise<Hub[]> {
+    const params: Record<string, QueryParamValue> = {};
+    for (const [key, value] of Object.entries(options)) {
+      params[key] = normalizeLibraryHubOption(value);
+    }
+
+    if (sectionID !== undefined) {
+      params.contentDirectoryID = normalizeLibraryHubOption(sectionID);
+    }
+
+    if (identifier !== undefined) {
+      params.identifier = normalizeLibraryHubOption(identifier);
+    }
+
+    const key = buildQueryKey('/hubs', params);
+    return fetchItems<Hub>(this.server, key, undefined, Hub, this);
+  }
+
+  /**
    * Returns a list of all on-deck items from all library sections.
    * On-deck items are media that is currently in progress.
    */
-  async onDeck(): Promise<any[]> {
+  async onDeck(): Promise<LibrarySearchItem[]> {
     const key = buildQueryKey('/library/onDeck');
-    return fetchItems(this.server, key);
+    return fetchLibrarySearchItems(this.server, key);
   }
 
   /**
    * Returns a list of all media from all library sections.
    * This may be a very large dataset to retrieve.
    */
-  async all() {
-    const results: any[] = [];
+  async all(sort = ''): Promise<SectionType[]> {
+    const results: SectionType[] = [];
     const sections = await this.sections();
     for (const section of sections) {
-      const items = await section.all();
+      const items = await section.all(sort);
       for (const item of items) {
         results.push(item);
       }
@@ -324,9 +378,47 @@ export class Library {
   }
 
   /**
+   * Returns recently added media from all library sections.
+   */
+  async recentlyAdded(): Promise<LibrarySearchItem[]> {
+    const key = buildQueryKey('/library/recentlyAdded');
+    return fetchLibrarySearchItems(this.server, key);
+  }
+
+  /**
+   * Search across all library sections. Section search is more powerful and validates filters.
+   */
+  async search<T extends Libtype>(
+    options: LibrarySearchOptions & { libtype: T },
+  ): Promise<Array<SearchClassForLibtype<T>>>;
+  async search(options?: LibrarySearchOptions): Promise<LibrarySearchItem[]>;
+  async search({ title, libtype, ...filters }: LibrarySearchOptions = {}): Promise<
+    LibrarySearchItem[]
+  > {
+    const params: Record<string, QueryParamValue> = { ...filters };
+    if (title !== undefined) {
+      params.title = title;
+    }
+
+    if (libtype !== undefined) {
+      params.type = searchType(libtype);
+    }
+
+    const key = buildQueryKey('/library/all', params);
+    return fetchLibrarySearchItems(this.server, key);
+  }
+
+  /**
+   * Clean old metadata bundles from the server.
+   */
+  async cleanBundles(): Promise<void> {
+    await this.server.query({ path: '/library/clean/bundles?async=1', method: 'put' });
+  }
+
+  /**
    * If a library has items in the Library Trash, use this option to empty the Trash.
    */
-  async emptyTrash() {
+  async emptyTrash(): Promise<void> {
     const sections = await this.sections();
     for (const section of sections) {
       await section.emptyTrash();
@@ -338,8 +430,52 @@ export class Library {
    * For example, if you have deleted or added an entire library or many items in a
    * library, you may like to optimize the database.
    */
-  async optimize() {
+  async optimize(): Promise<void> {
     await this.server.query({ path: '/library/optimize?async=1', method: 'put' });
+  }
+
+  /**
+   * Scan every library section for new media.
+   */
+  async update(): Promise<void> {
+    await this.server.query({ path: '/library/sections/all/refresh' });
+  }
+
+  /**
+   * Cancel an active full-library scan.
+   */
+  async cancelUpdate(): Promise<void> {
+    await this.server.query({ path: '/library/sections/all/refresh', method: 'delete' });
+  }
+
+  /**
+   * Force refresh metadata for every library section.
+   */
+  async refresh(): Promise<void> {
+    await this.server.query({ path: '/library/sections/all/refresh?force=1' });
+  }
+
+  /**
+   * Delete preview thumbnails for all library sections.
+   */
+  async deleteMediaPreviews(): Promise<void> {
+    const sections = await this.sections();
+    for (const section of sections) {
+      await section.deleteMediaPreviews();
+    }
+  }
+
+  /**
+   * Get watched history for all library sections for the owner.
+   */
+  async history(options: LibraryHistoryOptions = {}): Promise<HistoryResult[]> {
+    const history: HistoryResult[] = [];
+    const sections = await this.sections();
+    for (const section of sections) {
+      history.push(...(await section.history(options)));
+    }
+
+    return history;
   }
 
   /**
@@ -369,10 +505,16 @@ export class Library {
   // }
 
   protected _loadData(data: LibraryRootResponse): void {
+    this.size = data.size;
+    this.allowSync = data.allowSync;
+    this.art = data.art;
+    this.content = data.content;
     this.identifier = data.identifier;
     this.mediaTagPrefix = data.mediaTagPrefix;
+    this.mediaTagVersion = data.mediaTagVersion;
     this.title1 = data.title1;
     this.title2 = data.title2;
+    this.directories = data.Directory;
   }
 }
 
@@ -437,7 +579,7 @@ export type SectionAdvancedSettings = Record<string, SettingValue>;
 export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
 
 export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
-export type LibrarySearchItem = SectionType | Season | Episode | Photo | Collections;
+export type LibrarySearchItem = SectionType | Season | Episode | Clip | Photo | Collections;
 export type HubItem = LibrarySearchItem | Playlist;
 type RatingKeyItem = { ratingKey?: number | string };
 type SearchTagValue = { id: number | string; tag?: string } | { id?: number | string; tag: string };
@@ -490,17 +632,20 @@ export type SearchClassForLibtype<T extends Libtype> = T extends 'movie'
                 ? Photoalbum
                 : T extends 'photo'
                   ? Photo
-                  : SectionType;
+                  : T extends 'clip'
+                    ? Clip
+                    : SectionType;
 type SearchBuildResult = {
   key: string;
   localFilters: Record<string, ItemFilterValue>;
 };
 type SearchParamEntry = [string, string];
 type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
-type LibrarySearchMetadata = { type?: string };
+type LibrarySearchMetadata = NonNullable<SearchResultContainer['Metadata']>[number];
 type ManualFilteringField = Pick<FilteringFieldData, 'key' | 'title' | 'type'>;
 type ManualFilteringFilter = Pick<FilteringFilterData, 'filter' | 'filterType' | 'title'>;
 type ManualFilteringSort = Pick<FilteringSortData, 'defaultDirection' | 'key' | 'title'>;
+type LibrarySearchMetadataContainer = { Metadata?: LibrarySearchMetadata[] };
 const FILTER_VALUE_TYPES = [
   'audioLanguage',
   'boolean',
@@ -536,6 +681,20 @@ function isItemFilterValue(value: SearchArgValue): value is ItemFilterValue {
 
 function isFilterValueType(type: string): type is FilterValueType {
   return FILTER_VALUE_TYPES.includes(type as FilterValueType);
+}
+
+function isLibraryHubOptionArray(
+  value: LibraryHubOptionValue,
+): value is ReadonlyArray<string | number> {
+  return Array.isArray(value);
+}
+
+function normalizeLibraryHubOption(value: LibraryHubOptionValue): QueryParamValue {
+  if (isLibraryHubOptionArray(value)) {
+    return value.join(',');
+  }
+
+  return value;
 }
 
 function isAdvancedFilterGroupValue(
@@ -596,6 +755,10 @@ function classForLibtype(libtype?: string): Class<LibrarySearchItem> | undefined
       return Photo;
     }
 
+    case 'clip': {
+      return Clip;
+    }
+
     case 'collection': {
       return Collections;
     }
@@ -617,6 +780,17 @@ function createLibrarySearchItem(
   }
 
   return new Cls(server, data, undefined, parent) as LibrarySearchItem;
+}
+
+async function fetchLibrarySearchItems(
+  server: PlexServer,
+  key: string,
+  parent?: PlexObject,
+): Promise<LibrarySearchItem[]> {
+  const data = await server.query<MediaContainer<LibrarySearchMetadataContainer>>({ path: key });
+  return (data.MediaContainer.Metadata ?? []).map(item =>
+    createLibrarySearchItem(server, item, parent),
+  );
 }
 
 function createHubItem<T extends HubItem>(
@@ -1326,12 +1500,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async continueWatching(): Promise<LibrarySearchItem[]> {
     const key = this._buildQueryKey(`/hubs/sections/${this.key}/continueWatching/items`);
-    const data = await this.server.query<MediaContainer<{ Metadata?: LibrarySearchMetadata[] }>>({
-      path: key,
-    });
-    return (data.MediaContainer.Metadata ?? []).map(item =>
-      createLibrarySearchItem(this.server, item, this),
-    );
+    return fetchLibrarySearchItems(this.server, key, this);
   }
 
   /**
