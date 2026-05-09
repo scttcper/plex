@@ -15,37 +15,37 @@ export async function addMedia(): Promise<void> {
   const library = await server.library();
   console.log('friendlyName', server.friendlyName);
 
-  await library.add(
-    'TV Shows',
-    'show',
-    'tv.plex.agents.series',
-    'Plex TV Series',
-    '/data/shows',
-    'en-US',
-    {
-      'prefs[useLocalAssets]': '0',
-      'prefs[useExternalExtras]': '0',
-      'prefs[enableBIFGeneration]': '0',
-      'prefs[augmentWithProviderContent]': '0',
+  await library.add({
+    name: 'TV Shows',
+    type: 'show',
+    agent: 'tv.plex.agents.series',
+    scanner: 'Plex TV Series',
+    locations: '/data/shows',
+    language: 'en-US',
+    preferences: {
+      useLocalAssets: '0',
+      useExternalExtras: '0',
+      enableBIFGeneration: '0',
+      augmentWithProviderContent: '0',
     },
-  );
+  });
   await sleep(10_000);
-  await library.add(
-    'Movies',
-    'movie',
-    'tv.plex.agents.movie',
-    'Plex Movie',
-    '/data/movies',
-    'en-US',
-    {
-      'prefs[enableCinemaTrailers]': '0',
-      'prefs[useLocalAssets]': '0',
-      'prefs[useExternalExtras]': '0',
-      'prefs[enableBIFGeneration]': '0',
-      'prefs[augmentWithProviderContent]': '0',
-      'prefs[enableVoiceActivityGeneration]': '0',
+  await library.add({
+    name: 'Movies',
+    type: 'movie',
+    agent: 'tv.plex.agents.movie',
+    scanner: 'Plex Movie',
+    locations: '/data/movies',
+    language: 'en-US',
+    preferences: {
+      enableCinemaTrailers: '0',
+      useLocalAssets: '0',
+      useExternalExtras: '0',
+      enableBIFGeneration: '0',
+      augmentWithProviderContent: '0',
+      enableVoiceActivityGeneration: '0',
     },
-  );
+  });
 
   await sleep(25_000);
 }

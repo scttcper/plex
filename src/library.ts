@@ -75,6 +75,33 @@ import { Clip, Episode, Movie, Season, Show } from './video.js';
 
 export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
 export type LibraryHubOptionValue = QueryParamValue | ReadonlyArray<string | number>;
+export type LibrarySectionCreateType = 'artist' | 'movie' | 'photo' | 'show';
+export type LibrarySectionAgent = string;
+export type LibrarySectionScanner = string;
+export type SectionForCreateType<T extends LibrarySectionCreateType> = T extends 'movie'
+  ? MovieSection
+  : T extends 'show'
+    ? ShowSection
+    : T extends 'artist'
+      ? MusicSection
+      : PhotoSection;
+
+export interface LibraryAddOptions<T extends LibrarySectionCreateType = LibrarySectionCreateType> {
+  /** Library section title. */
+  name: string;
+  /** Plex library section type. */
+  type: T;
+  /** Metadata agent identifier, such as `tv.plex.agents.movie`. */
+  agent: LibrarySectionAgent;
+  /** Scanner name, such as `Plex Movie`. */
+  scanner: LibrarySectionScanner;
+  /** One or more server-visible folder paths to add to this section. */
+  locations: string | readonly string[];
+  /** Library language. Defaults to `en-US`, matching Plex/Python behavior. */
+  language?: string;
+  /** Advanced preference values. Keys are encoded as `prefs[<key>]`. */
+  preferences?: Record<string, SettingValue>;
+}
 
 export interface LibraryHubsOptions {
   /** IDs of the sections to limit results to, or "playlists". */
@@ -252,7 +279,22 @@ export class Library {
   }
 
   /**
-   * Simplified add for the most common options.
+   * Creates a library section and returns the newly created typed section.
+   *
+   * Pass server-visible paths in `locations`. Preference keys should be bare Plex
+   * setting ids; this method encodes them as `prefs[...]`.
+   *
+   * @example
+   * ```ts
+   * const section = await library.add({
+   *   name: 'Movies',
+   *   type: 'movie',
+   *   agent: 'tv.plex.agents.movie',
+   *   scanner: 'Plex Movie',
+   *   locations: ['/data/Movies', '/data/Archived Movies'],
+   *   preferences: { enableBIFGeneration: false },
+   * })
+   * ```
    *
    * Parameters:
    *     name (str): Name of the library
@@ -395,26 +437,37 @@ export class Library {
    *       40:South Africa, 41:Spain, 42:Sweden, 43:Switzerland, 44:Taiwan, 45:Trinidad,
    *       46:United Kingdom, 47:United States, 48:Uruguay, 49:Venezuela.
    */
-  async add(
-    name: string,
-    type: string,
-    agent: string,
-    scanner: string,
-    location: string,
-    language = 'en',
-    extra: Record<string, string> = {},
-  ) {
+  async add<T extends LibrarySectionCreateType>(
+    options: LibraryAddOptions<T>,
+  ): Promise<SectionForCreateType<T>>;
+  async add({
+    name,
+    type,
+    agent,
+    scanner,
+    locations,
+    language = 'en-US',
+    preferences = {},
+  }: LibraryAddOptions): Promise<Section> {
     const search = new URLSearchParams({
       name,
       type,
       agent,
       scanner,
-      location,
       language,
-      ...extra,
     });
+    const locationList = typeof locations === 'string' ? [locations] : locations;
+    for (const location of locationList) {
+      search.append('location', location);
+    }
+
+    for (const [key, value] of Object.entries(preferences)) {
+      search.append(`prefs[${key}]`, settingValueToQueryValue(value));
+    }
+
     const url = `/library/sections?${search.toString()}`;
-    return this.server.query({ path: url, method: 'post' });
+    await this.server.query({ path: url, method: 'post' });
+    return this.section(name);
   }
 
   /**
@@ -769,6 +822,15 @@ export interface LibrarySectionUpdateOptions {
   /** Full folder path to scan within this section. */
   path?: string;
 }
+export type LibrarySectionGetOptions = Omit<
+  Partial<SearchArgs>,
+  'libtype' | 'limit' | 'maxresults' | 'title'
+> & {
+  /** Return a specific Plex item type instead of the section default. */
+  libtype?: Libtype;
+  /** Exact item title to return. */
+  title: string;
+};
 export type LibrarySectionAllOptions = Omit<Partial<SearchArgs>, 'libtype' | 'maxresults'> & {
   /**
    * Return a specific library item type instead of the section default.
@@ -880,6 +942,14 @@ function parseOptionalNumber(value: unknown): number | undefined {
   }
 
   return Number(value);
+}
+
+function settingValueToQueryValue(value: SettingValue): string {
+  if (typeof value === 'boolean') {
+    return value ? '1' : '0';
+  }
+
+  return value.toString();
 }
 
 function isItemFilterValue(value: SearchArgValue): value is ItemFilterValue {
@@ -1387,13 +1457,47 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
-   * @param title Title of the item to return.
-   * @returns the media item with the specified title.
+   * Returns one item by exact title, optionally narrowed with normal search filters.
+   *
+   * Use filters to disambiguate duplicate titles. When `libtype` is provided,
+   * the returned item is typed to that Plex model.
+   *
+   * @example
+   * ```ts
+   * const movie = await movieSection.get({ title: 'Big Buck Bunny', year: 2008 })
+   * const episode = await showSection.get({ title: 'Minimum Viable Product', libtype: 'episode' })
+   * ```
    */
-  async get(title: string): Promise<SType> {
-    const key = this._buildQueryKey(`/library/sections/${this.key}/all`, { title });
-    const data = await fetchItem(this.server, key, { title__iexact: title });
-    return new this.SECTION_TYPE(this.server, data, key, this);
+  async get<T extends Libtype>(
+    options: LibrarySectionGetOptions & { libtype: T },
+  ): Promise<SearchClassForLibtype<T>>;
+  async get(options: LibrarySectionGetOptions): Promise<SType>;
+  async get(options: LibrarySectionGetOptions): Promise<SType | LibrarySearchItem> {
+    const { title, libtype, ...filters } = options;
+    const args: Partial<SearchArgs> = {
+      ...filters,
+      ...(libtype === undefined ? {} : { libtype }),
+      title,
+      title__iexact: title,
+    };
+
+    const items = libtype
+      ? await this.search(
+          args,
+          classForLibtype(libtype) ?? (this.SECTION_TYPE as unknown as Class<LibrarySearchItem>),
+        )
+      : await this.search(args, this.SECTION_TYPE);
+    const [item] = items;
+    if (!item) {
+      const filterNames = Object.entries(filters)
+        .filter(([, value]) => value !== undefined)
+        .map(([key]) => key);
+      const filterDescription =
+        filterNames.length > 0 ? ` and filters ${filterNames.join(', ')}` : '';
+      throw new NotFound(`Unable to find item with title "${title}"${filterDescription}.`);
+    }
+
+    return item;
   }
 
   /**

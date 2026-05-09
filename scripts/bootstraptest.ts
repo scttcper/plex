@@ -221,15 +221,15 @@ async function createSection(section: Section, server: PlexServer): Promise<void
       await pRetry(
         async () => {
           const library = await server.library();
-          await library.add(
-            section.name,
-            section.type,
-            section.agent,
-            section.scanner,
-            section.location,
-            section.language,
-            section.prefs,
-          );
+          await library.add({
+            name: section.name,
+            type: section.type as 'artist' | 'movie' | 'photo' | 'show',
+            agent: section.agent,
+            scanner: section.scanner,
+            locations: section.location,
+            language: section.language,
+            preferences: section.prefs,
+          });
         },
         {
           retries: 60,
@@ -468,8 +468,8 @@ async function main() {
       language: 'en-US',
       expectedMediaCount: numMovies,
       prefs: {
-        'prefs[enableBIFGeneration]': '0',
-        'prefs[enableCreditsMarkerGeneration]': '0',
+        enableBIFGeneration: '0',
+        enableCreditsMarkerGeneration: '0',
       },
     });
   }
@@ -489,8 +489,8 @@ async function main() {
       expectedMediaCount: numMovies,
       prefs: {
         // disable intro and credits markers to speed up tests
-        'prefs[enableIntroMarkerGeneration]': '0',
-        'prefs[enableCreditsMarkerGeneration]': '0',
+        enableIntroMarkerGeneration: '0',
+        enableCreditsMarkerGeneration: '0',
       },
     });
   }
@@ -525,8 +525,8 @@ async function main() {
       language: 'en-US',
       expectedMediaCount: numPhotos,
       prefs: {
-        'prefs[enableAutoPhotoTags]': '0',
-        'prefs[enableBIFGeneration]': '0',
+        enableAutoPhotoTags: '0',
+        enableBIFGeneration: '0',
       },
     });
   }

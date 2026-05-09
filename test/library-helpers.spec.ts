@@ -187,6 +187,22 @@ const libraryMovieData = {
   type: 'movie',
 };
 
+const exactMovieData = {
+  ...libraryMovieData,
+  key: '/library/metadata/11',
+  ratingKey: '11',
+  title: 'Big Buck Bunny',
+  year: 2008,
+};
+
+const partialMovieData = {
+  ...libraryMovieData,
+  key: '/library/metadata/12',
+  ratingKey: '12',
+  title: 'Big Buck Bunny Extras',
+  year: 2008,
+};
+
 const genreTagData = {
   id: 4,
   filter: 'genre=4',
@@ -438,6 +454,10 @@ function createMovieSection() {
       { MediaContainer: { Metadata: [libraryMovieData] } },
     ],
     [
+      '/library/sections/1/all?includeGuids=1&title=Big+Buck+Bunny&type=1&movie.year=2008',
+      { MediaContainer: { Metadata: [partialMovieData, exactMovieData] } },
+    ],
+    [
       '/playlists?uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F10&type=video&title=Test+Playlist&smart=0',
       { MediaContainer: { Metadata: [playlistData] } },
     ],
@@ -622,6 +642,28 @@ describe('Library root helpers', () => {
     expect(query).toHaveBeenCalledWith({ path: '/library/tags?type=1' });
   });
 
+  it('creates a typed library section with locations and preferences', async () => {
+    const { query, library } = createLibrary();
+
+    const section = await library.add({
+      name: 'Movies',
+      type: 'movie',
+      agent: 'tv.plex.agents.movie',
+      scanner: 'Plex Movie',
+      locations: ['/data/Movies', '/data/Extras'],
+      preferences: {
+        enableBIFGeneration: false,
+        enableCreditsMarkerGeneration: 0,
+      },
+    });
+
+    expect(section).toBeInstanceOf(MovieSection);
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections?name=Movies&type=movie&agent=tv.plex.agents.movie&scanner=Plex+Movie&language=en-US&location=%2Fdata%2FMovies&location=%2Fdata%2FExtras&prefs%5BenableBIFGeneration%5D=0&prefs%5BenableCreditsMarkerGeneration%5D=0',
+      method: 'post',
+    });
+  });
+
   it('runs root library maintenance helpers', async () => {
     const { query, library } = createLibrary();
 
@@ -694,6 +736,19 @@ describe('LibrarySection edit helpers', () => {
     expect(items[0].title).toBe('Root Movie');
     expect(query).toHaveBeenCalledWith({
       path: '/library/sections/1/all?includeGuids=1&sort=movie.titleSort&type=1&X-Plex-Container-Size=1',
+    });
+  });
+
+  it('gets one item with typed search filters', async () => {
+    const { query, section } = createMovieSection();
+
+    const item = await section.get({ title: 'Big Buck Bunny', year: 2008, libtype: 'movie' });
+
+    expect(item).toBeInstanceOf(Movie);
+    expect(item.title).toBe('Big Buck Bunny');
+    expect(item.ratingKey).toBe('11');
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1/all?includeGuids=1&title=Big+Buck+Bunny&type=1&movie.year=2008',
     });
   });
 

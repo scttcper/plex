@@ -1,4 +1,7 @@
-import { beforeAll, expect, it } from 'vitest';
+import { mkdir, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+
+import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import {
   Common,
@@ -9,7 +12,7 @@ import {
   FilterChoice,
   Genre,
   LibraryTimeline,
-  type MovieSection,
+  MovieSection,
   type PlexServer,
   type ShowSection,
   BadRequest,
@@ -17,9 +20,31 @@ import {
 
 import { createClient } from './test-client.js';
 
+const TEST_ADD_LIBRARY_NAME = '__plexapi_add_test__';
+const TEST_ADD_LIBRARY_HOST_PATH = join(process.cwd(), 'plex/media/LibraryAddTest');
+const TEST_ADD_LIBRARY_PLEX_PATH = '/data/LibraryAddTest';
+
 let plex: PlexServer;
+
+async function cleanupAddTestLibrary() {
+  const library = await plex.library();
+  const sections = await library.sections();
+  for (const section of sections) {
+    if (section.title === TEST_ADD_LIBRARY_NAME) {
+      await section.delete();
+    }
+  }
+}
+
 beforeAll(async () => {
   plex = await createClient();
+  await mkdir(TEST_ADD_LIBRARY_HOST_PATH, { recursive: true });
+  await cleanupAddTestLibrary();
+});
+
+afterAll(async () => {
+  await cleanupAddTestLibrary();
+  await rm(TEST_ADD_LIBRARY_HOST_PATH, { recursive: true, force: true });
 });
 
 it('should get all sections', async () => {
@@ -27,6 +52,26 @@ it('should get all sections', async () => {
   const sections = await library.sections();
   expect(sections.length).toBeGreaterThan(1);
   expect(sections.find(section => section.type === 'movie').type).toBe('movie');
+});
+
+it('should create and delete a temporary movie section', async () => {
+  const library = await plex.library();
+  const section = await library.add({
+    name: TEST_ADD_LIBRARY_NAME,
+    type: 'movie',
+    agent: 'tv.plex.agents.movie',
+    scanner: 'Plex Movie',
+    locations: TEST_ADD_LIBRARY_PLEX_PATH,
+    preferences: {
+      enableBIFGeneration: false,
+    },
+  });
+  expect(section).toBeInstanceOf(MovieSection);
+  expect(section.title).toBe(TEST_ADD_LIBRARY_NAME);
+  expect(section.type).toBe('movie');
+  expect(section.locations.map(location => location.path)).toEqual([TEST_ADD_LIBRARY_PLEX_PATH]);
+  await section.delete();
+  await expect(library.section(TEST_ADD_LIBRARY_NAME)).rejects.toThrow();
 });
 
 it('should search for all unwatched movies', async () => {
@@ -55,6 +100,15 @@ it('should search for movies matching a title', async () => {
   await buckBunny.reload();
   expect(results[0].title).toBe('Big Buck Bunny');
   expect(results[0].librarySectionID).toBeTruthy();
+});
+
+it('should get a movie with typed search filters', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const movie = await section.get({ title: 'Big Buck Bunny', year: 2008, libtype: 'movie' });
+  expect(movie).toBeInstanceOf(Movie);
+  expect(movie.title).toBe('Big Buck Bunny');
+  expect(movie.year).toBe(2008);
 });
 
 it('should search for tv show matching a title', async () => {
