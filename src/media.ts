@@ -19,10 +19,12 @@ import type {
  * items or navigating the metadata of media items in your library. Tags are
  * the construct used for things such as Country, Director, Genre, etc.
  */
-abstract class MediaTag extends PlexObject {
+export abstract class MediaTag extends PlexObject {
   static override TAG: string;
   /** Tag ID (This seems meaningless except to use it as a unique id). */
-  declare id?: string;
+  declare id?: number | string;
+  /** Filter expression used by Plex for this tag. */
+  declare filter?: string;
   /** unknown */
   declare role?: string;
   /**
@@ -30,6 +32,8 @@ abstract class MediaTag extends PlexObject {
    * The name of person for Directors and Roles (ex: Animation, Stephen Graham, etc).
    */
   declare tag: string;
+  /** Numeric Plex tag type. */
+  declare tagType?: number;
   abstract FILTER: string;
 
   // async items(): Promise<any[]> {
@@ -43,8 +47,10 @@ abstract class MediaTag extends PlexObject {
   protected _loadData(data: any): void {
     this.key = data.key;
     this.id = data.id;
+    this.filter = data.filter;
     this.role = data.role;
     this.tag = data.tag;
+    this.tagType = data.tagType;
   }
 }
 

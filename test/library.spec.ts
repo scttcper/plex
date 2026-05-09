@@ -1,11 +1,13 @@
 import { beforeAll, expect, it } from 'vitest';
 
 import {
+  Common,
   Movie,
   Season,
   Episode,
   FilteringSort,
   FilterChoice,
+  Genre,
   LibraryTimeline,
   type MovieSection,
   type PlexServer,
@@ -152,6 +154,15 @@ it('should aggregate root library history', async () => {
   expect(Array.isArray(history)).toBe(true);
 });
 
+it('should get global library tags', async () => {
+  const library = await plex.library();
+  const tags = await library.tags('genre');
+  expect(tags.length).toBeGreaterThan(0);
+  expect(tags[0]).toBeInstanceOf(Genre);
+  expect(typeof tags[0].tag).toBe('string');
+  expect(typeof tags[0].filter).toBe('string');
+});
+
 it('should get movie section on deck items', async () => {
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
@@ -167,6 +178,14 @@ it('should get movie section recently added items', async () => {
   expect(recentlyAdded.length).toBeGreaterThan(0);
   // Verify items are Movie instances
   expect(recentlyAdded[0]).toBeInstanceOf(Movie);
+});
+
+it('should list all movie section items with typed options', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const items = await section.all({ sort: 'titleSort', libtype: 'movie', maxResults: 2 });
+  expect(items.length).toBe(2);
+  expect(items[0]).toBeInstanceOf(Movie);
 });
 
 it('should get show section recently added items', async () => {
@@ -224,6 +243,33 @@ it('should get library section managed hubs and timeline', async () => {
   expect(hubs.length).toBeGreaterThan(0);
   expect(typeof hubs[0].identifier).toBe('string');
   expect(timeline).toBeInstanceOf(LibraryTimeline);
+});
+
+it('should get section continue watching items', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const items = await section.continueWatching();
+  expect(Array.isArray(items)).toBe(true);
+});
+
+it('should search section hubs', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const hubs = await section.hubSearch('Bunny', { mediatype: 'movie', limit: 2 });
+  expect(hubs.length).toBeGreaterThan(0);
+  expect(typeof hubs[0].title).toBe('string');
+  expect(hubs[0].type).toBe('movie');
+});
+
+it('should get common fields for movie items', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const bunny = await section.search({ title: 'Bunny' });
+  const elephants = await section.search({ title: 'Elephants' });
+  const common = await section.common([bunny[0], elephants[0]]);
+  expect(common).toBeInstanceOf(Common);
+  expect(common.commonType).toBe('movie');
+  expect(common.ratingKeys).toEqual([Number(bunny[0].ratingKey), Number(elephants[0].ratingKey)]);
 });
 
 it('should get movie section first character data', async () => {

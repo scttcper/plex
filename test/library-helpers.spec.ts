@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BadRequest,
+  Genre,
   Library,
   ManagedHub,
   Movie,
@@ -40,6 +41,10 @@ const movieSectionData = {
   key: '1',
   agent: 'com.plexapp.agents.imdb',
   composite: '/library/sections/1/composite',
+  Location: [
+    { id: 1, path: '/data/Movies' },
+    { id: 2, path: '/data/Extras' },
+  ],
   scanner: 'Plex Movie',
   title: 'Movies',
   type: 'movie',
@@ -180,6 +185,13 @@ const libraryMovieData = {
   thumb: '/library/metadata/42/thumb',
   title: 'Root Movie',
   type: 'movie',
+};
+
+const genreTagData = {
+  id: 4,
+  filter: 'genre=4',
+  tag: 'Animation',
+  tagType: 1,
 };
 
 const hubMovieData = {
@@ -422,6 +434,10 @@ function createMovieSection() {
       { MediaContainer: { Directory: [collectionData] } },
     ],
     [
+      '/library/sections/1/all?includeGuids=1&sort=movie.titleSort&type=1&X-Plex-Container-Size=1',
+      { MediaContainer: { Metadata: [libraryMovieData] } },
+    ],
+    [
       '/playlists?uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F10&type=video&title=Test+Playlist&smart=0',
       { MediaContainer: { Metadata: [playlistData] } },
     ],
@@ -489,6 +505,7 @@ function createLibrary() {
   const history = vi.fn(async () => [{ ratingKey: 'history-item' }]);
   const responses = new Map<string, unknown>([
     ['/library/sections', { MediaContainer: { Directory: [movieSectionData, showSectionData] } }],
+    ['/library/tags?type=1', { MediaContainer: { Directory: [genreTagData] } }],
     ['/library/onDeck?includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
     ['/library/recentlyAdded?includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
     [
@@ -594,6 +611,17 @@ describe('Library root helpers', () => {
     ]);
   });
 
+  it('returns typed global library tags', async () => {
+    const { query, library } = createLibrary();
+
+    const tags = await library.tags('genre');
+
+    expect(tags[0]).toBeInstanceOf(Genre);
+    expect(tags[0].tag).toBe('Animation');
+    expect(tags[0].filter).toBe('genre=4');
+    expect(query).toHaveBeenCalledWith({ path: '/library/tags?type=1' });
+  });
+
   it('runs root library maintenance helpers', async () => {
     const { query, library } = createLibrary();
 
@@ -655,6 +683,18 @@ describe('LibrarySection edit helpers', () => {
     expect(settings[0].hidden).toBe(false);
     expect(settings[0].enumValues).toEqual({ '0': 'Disabled', '1': 'Enabled' });
     expect(query).toHaveBeenCalledWith({ path: '/library/sections/1/prefs' });
+  });
+
+  it('lists all section items with typed options', async () => {
+    const { query, section } = createMovieSection();
+
+    const items = await section.all({ sort: 'titleSort', libtype: 'movie', maxResults: 1 });
+
+    expect(items[0]).toBeInstanceOf(Movie);
+    expect(items[0].title).toBe('Root Movie');
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1/all?includeGuids=1&sort=movie.titleSort&type=1&X-Plex-Container-Size=1',
+    });
   });
 
   it('returns typed continue watching items for the section hub', async () => {
@@ -765,6 +805,41 @@ describe('LibrarySection edit helpers', () => {
     expect(playlist.ratingKey).toBe('88');
   });
 
+  it('edits section agent, locations, and preferences with typed options', async () => {
+    const { query, section } = createMovieSection();
+
+    const editedSection = await section.edit({
+      agent: 'com.plexapp.agents.none',
+      locations: ['/data/Movies', '/data/Movies 2'],
+      preferences: {
+        scanner: 'Plex Movie Scanner',
+        includeInGlobal: true,
+      },
+    });
+
+    expect(editedSection).toBe(section);
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1?agent=com.plexapp.agents.none&scanner=Plex+Movie+Scanner&includeInGlobal=1&location=%2Fdata%2FMovies&location=%2Fdata%2FMovies+2',
+      method: 'put',
+    });
+  });
+
+  it('adds and removes locations through typed section edits', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.addLocations('/data/New Movies');
+    await section.removeLocations('/data/Extras');
+
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1?agent=com.plexapp.agents.imdb&location=%2Fdata%2FMovies&location=%2Fdata%2FExtras&location=%2Fdata%2FNew+Movies',
+      method: 'put',
+    });
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1?agent=com.plexapp.agents.imdb&location=%2Fdata%2FMovies',
+      method: 'put',
+    });
+  });
+
   it('edits advanced section settings with validated values', async () => {
     const { query, section } = createMovieSection();
 
@@ -772,7 +847,7 @@ describe('LibrarySection edit helpers', () => {
 
     expect(editedSection).toBe(section);
     expect(query).toHaveBeenCalledWith({
-      path: '/library/sections/1?prefs%5BincludeInGlobal%5D=1',
+      path: '/library/sections/1?agent=com.plexapp.agents.imdb&prefs%5BincludeInGlobal%5D=1',
       method: 'put',
     });
   });
@@ -816,7 +891,7 @@ describe('LibrarySection edit helpers', () => {
 
     expect(editedSection).toBe(section);
     expect(query).toHaveBeenCalledWith({
-      path: '/library/sections/1?prefs%5BincludeInGlobal%5D=0',
+      path: '/library/sections/1?agent=com.plexapp.agents.imdb&prefs%5BincludeInGlobal%5D=0',
       method: 'put',
     });
   });
@@ -824,7 +899,7 @@ describe('LibrarySection edit helpers', () => {
   it('accepts child items that belong to the section through their parent', async () => {
     const query = vi.fn().mockResolvedValue({
       MediaContainer: {
-        Common: [{ key: '/library/sections/2/common', mixedFields: '' }],
+        Metadata: [{ key: '/library/sections/2/common', mixedFields: '' }],
       },
     });
     const section = new ShowSection({ query } as unknown as PlexServer, showSectionData);

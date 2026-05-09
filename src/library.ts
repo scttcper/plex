@@ -29,6 +29,7 @@ import type {
   FolderData,
   LibraryFilterMetaData,
   LibraryRootResponse,
+  LibraryTagData,
   LibraryTimelineData,
   Location,
   ManagedHubData,
@@ -37,18 +38,24 @@ import type {
   SectionsResponse,
 } from './library.types.js';
 import {
+  Chapter,
   Collection,
   Country,
   Director,
   Field,
+  Format,
   Genre,
   Guid,
   Label,
+  Marker,
+  type MediaTag,
   Mood,
   Producer,
   Rating,
   Role,
+  Similar,
   Style,
+  Subformat,
   Tag,
   Writer,
 } from './media.js';
@@ -86,6 +93,86 @@ export interface LibrarySearchOptions {
 }
 
 export type LibraryHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
+
+export const LIBRARY_TAG_TYPES = {
+  tag: 0,
+  genre: 1,
+  collection: 2,
+  director: 4,
+  writer: 5,
+  role: 6,
+  producer: 7,
+  country: 8,
+  chapter: 9,
+  review: 10,
+  label: 11,
+  marker: 12,
+  mediaProcessingTarget: 42,
+  make: 200,
+  model: 201,
+  aperture: 202,
+  exposure: 203,
+  iso: 204,
+  lens: 205,
+  device: 206,
+  autotag: 207,
+  mood: 300,
+  style: 301,
+  format: 302,
+  subformat: 303,
+  similar: 305,
+  concert: 306,
+  banner: 311,
+  poster: 312,
+  art: 313,
+  guid: 314,
+  ratingImage: 316,
+  theme: 317,
+  studio: 318,
+  network: 319,
+  showOrdering: 322,
+  clearLogo: 323,
+  commonSenseMedia: 324,
+  squareArt: 325,
+  place: 400,
+  sharedWidth: 500,
+} as const;
+
+export type LibraryTagName = keyof typeof LIBRARY_TAG_TYPES;
+export type LibraryTagType = LibraryTagName | number | `${number}`;
+export type LibraryTagItemFor<T extends LibraryTagName> = T extends 'tag'
+  ? Tag
+  : T extends 'genre'
+    ? Genre
+    : T extends 'collection'
+      ? Collection
+      : T extends 'director'
+        ? Director
+        : T extends 'writer'
+          ? Writer
+          : T extends 'role'
+            ? Role
+            : T extends 'producer'
+              ? Producer
+              : T extends 'country'
+                ? Country
+                : T extends 'chapter'
+                  ? Chapter
+                  : T extends 'label'
+                    ? Label
+                    : T extends 'marker'
+                      ? Marker
+                      : T extends 'mood'
+                        ? Mood
+                        : T extends 'style'
+                          ? Style
+                          : T extends 'format'
+                            ? Format
+                            : T extends 'subformat'
+                              ? Subformat
+                              : T extends 'similar'
+                                ? Similar
+                                : LibraryMediaTag;
 
 export class Library {
   static key = '/library';
@@ -361,14 +448,28 @@ export class Library {
   }
 
   /**
-   * Returns a list of all media from all library sections.
-   * This may be a very large dataset to retrieve.
+   * Returns media from every library section.
+   *
+   * Use the options object for sorting, paging, and type-specific results. When
+   * `libtype` is provided, each section is asked for that Plex item type and the
+   * returned array is typed to the matching model.
+   *
+   * @example
+   * ```ts
+   * const everything = await library.all()
+   * const movies = await library.all({ libtype: 'movie', sort: 'titleSort', maxResults: 25 })
+   * ```
    */
-  async all(sort = ''): Promise<SectionType[]> {
-    const results: SectionType[] = [];
+  async all<T extends Libtype>(
+    options: LibrarySectionAllOptions & { libtype: T },
+  ): Promise<Array<SearchClassForLibtype<T>>>;
+  async all(): Promise<SectionType[]>;
+  async all(options: LibrarySectionAllOptions): Promise<LibrarySearchItem[]>;
+  async all(options: LibrarySectionAllOptions = {}): Promise<LibrarySearchItem[]> {
+    const results: LibrarySearchItem[] = [];
     const sections = await this.sections();
     for (const section of sections) {
-      const items = await section.all(sort);
+      const items = await section.all(options);
       for (const item of items) {
         results.push(item);
       }
@@ -479,6 +580,33 @@ export class Library {
   }
 
   /**
+   * Returns global library tags for the requested Plex tag type.
+   *
+   * Prefer named tag types like `'genre'`, `'director'`, or `'label'` so the
+   * result is typed to the corresponding tag class. Numeric Plex tag type ids are
+   * accepted for less common tags and return generic {@link LibraryMediaTag}
+   * objects.
+   *
+   * @example
+   * ```ts
+   * const genres = await library.tags('genre') // Genre[]
+   * const custom = await library.tags(400) // LibraryMediaTag[]
+   * ```
+   */
+  async tags<T extends LibraryTagName>(tag: T): Promise<Array<LibraryTagItemFor<T>>>;
+  async tags(tag: LibraryTagType): Promise<LibraryMediaTag[]>;
+  async tags(tag: LibraryTagType): Promise<LibraryMediaTag[]> {
+    const tagType = resolveLibraryTagType(tag);
+    const data = await this.server.query<MediaContainer<{ Directory?: LibraryTagData[] }>>({
+      path: `/library/tags?type=${tagType.toString()}`,
+    });
+    const Cls = classForLibraryTag(tag);
+    return (data.MediaContainer.Directory ?? []).map(
+      item => new Cls(this.server, item, undefined, this),
+    ) as LibraryMediaTag[];
+  }
+
+  /**
    * Validates a filter field and values are available as a custom filter for the library.
    * Returns the validated field and values as a URL encoded parameter string.
    */
@@ -519,6 +647,50 @@ export class Library {
 }
 
 export type Libtype = keyof typeof SEARCHTYPES;
+
+/**
+ * Generic library tag returned when Plex exposes a tag type that does not have a
+ * dedicated media tag class in this package.
+ *
+ * Prefer {@link Library.tags} with a named tag type such as `'genre'` or
+ * `'director'` when one is available. Numeric tag types use this fallback shape.
+ */
+export class LibraryMediaTag extends PlexObject {
+  static override TAG = 'Directory';
+  FILTER = 'tag';
+
+  declare filter?: string;
+  declare id?: number | string;
+  declare tag: string;
+  declare tagType?: number;
+
+  protected _loadData(data: LibraryTagData): void {
+    this.key = data.key ?? '';
+    this.id = data.id;
+    this.filter = data.filter;
+    this.tag = data.tag;
+    this.tagType = parseOptionalNumber(data.tagType);
+  }
+}
+
+const LIBRARY_TAG_CLASSES = {
+  tag: Tag,
+  genre: Genre,
+  collection: Collection,
+  director: Director,
+  writer: Writer,
+  role: Role,
+  producer: Producer,
+  country: Country,
+  chapter: Chapter,
+  label: Label,
+  marker: Marker,
+  mood: Mood,
+  style: Style,
+  format: Format,
+  subformat: Subformat,
+  similar: Similar,
+} satisfies Partial<Record<LibraryTagName, Class<MediaTag>>>;
 
 export interface SearchArgs {
   [key: string]: SearchArgValue;
@@ -577,10 +749,41 @@ type RequireAtLeastOne<T> = {
 export type ManagedHubVisibilityChanges = RequireAtLeastOne<ManagedHubVisibilityOptions>;
 export type SectionAdvancedSettings = Record<string, SettingValue>;
 export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
+/**
+ * Values accepted by {@link LibrarySection.edit}.
+ *
+ * Use this for section-level edits where Plex expects the full replacement list
+ * of locations. For simple path changes, prefer {@link LibrarySection.addLocations}
+ * and {@link LibrarySection.removeLocations}; they preserve the current paths for
+ * you.
+ */
+export interface LibrarySectionEditOptions {
+  /** Library agent identifier. Defaults to the section's current agent. */
+  agent?: string;
+  /** Full replacement list of folder paths for this library section. */
+  locations?: string | readonly string[];
+  /** Additional section edit parameters or Plex preference keys. Boolean values are sent as `1` or `0`. */
+  preferences?: Record<string, SettingValue>;
+}
 export interface LibrarySectionUpdateOptions {
   /** Full folder path to scan within this section. */
   path?: string;
 }
+export type LibrarySectionAllOptions = Omit<Partial<SearchArgs>, 'libtype' | 'maxresults'> & {
+  /**
+   * Return a specific library item type instead of the section default.
+   *
+   * Passing this narrows `section.all({ libtype })` to the matching model type.
+   */
+  libtype?: Libtype;
+  /**
+   * Maximum number of items to return.
+   *
+   * Plex may ignore the container size hint on some endpoints, so this method also
+   * applies the limit locally before returning.
+   */
+  maxResults?: number;
+};
 
 export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
 export type LibrarySearchItem = SectionType | Season | Episode | Clip | Photo | Collections;
@@ -719,6 +922,35 @@ function isAdvancedFilterGroupValue(
 function reverseSearchType(type: string | number | null): Libtype | undefined {
   const entry = Object.entries(SEARCHTYPES).find(([, value]) => value.toString() === `${type}`);
   return entry?.[0] as Libtype | undefined;
+}
+
+function isLibraryTagName(tag: LibraryTagType): tag is LibraryTagName {
+  return typeof tag === 'string' && Object.hasOwn(LIBRARY_TAG_TYPES, tag);
+}
+
+function resolveLibraryTagType(tag: LibraryTagType): number {
+  if (typeof tag === 'number') {
+    return tag;
+  }
+
+  if (isLibraryTagName(tag)) {
+    return LIBRARY_TAG_TYPES[tag];
+  }
+
+  const tagType = Number(tag);
+  if (Number.isInteger(tagType)) {
+    return tagType;
+  }
+
+  throw new NotFound(`Unknown library tag type: ${tag}`);
+}
+
+function classForLibraryTag(tag: LibraryTagType): Class<LibraryMediaTag | MediaTag> {
+  if (!isLibraryTagName(tag)) {
+    return LibraryMediaTag;
+  }
+
+  return LIBRARY_TAG_CLASSES[tag] ?? LibraryMediaTag;
 }
 
 function classForLibtype(libtype?: string): Class<LibrarySearchItem> | undefined {
@@ -1078,7 +1310,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const paths = typeof locations === 'string' ? [locations] : locations;
     const currentPaths = this.locations.map(loc => loc.path);
     const allPaths = [...currentPaths, ...paths];
-    return this._editLocations(allPaths);
+    return this.edit({ locations: allPaths });
   }
 
   /**
@@ -1097,13 +1329,44 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     if (remaining.length === 0) {
       throw new BadRequest('You are unable to remove all locations from a library.');
     }
-    return this._editLocations(remaining);
+    return this.edit({ locations: remaining });
   }
 
-  async all(sort = ''): Promise<SType[]> {
-    const key = this._buildQueryKey(`/library/sections/${this.key}/all`, sort ? { sort } : {});
-    const items = await fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
-    return items;
+  /**
+   * Returns all items from this library section.
+   *
+   * Use an options object for sorting, filters, paging, and type-specific results.
+   * When `libtype` is omitted, the section default model is returned. When `libtype`
+   * is provided, the returned array is typed to that Plex item type.
+   *
+   * @example
+   * ```ts
+   * const movies = await movieSection.all()
+   * const sorted = await movieSection.all({ sort: 'titleSort', maxResults: 25 })
+   * const episodes = await showSection.all({ libtype: 'episode', sort: 'episode.originallyAvailableAt' })
+   * ```
+   */
+  async all<T extends Libtype>(
+    options: LibrarySectionAllOptions & { libtype: T },
+  ): Promise<Array<SearchClassForLibtype<T>>>;
+  async all(): Promise<SType[]>;
+  async all(options: LibrarySectionAllOptions): Promise<LibrarySearchItem[]>;
+  async all(options: LibrarySectionAllOptions = {}): Promise<SType[] | LibrarySearchItem[]> {
+    const { maxResults, ...searchArgs } = options;
+    const args: Partial<SearchArgs> = { ...searchArgs };
+    if (maxResults !== undefined) {
+      args.maxresults = maxResults;
+    }
+
+    if (args.libtype) {
+      const cls =
+        classForLibtype(args.libtype) ?? (this.SECTION_TYPE as unknown as Class<LibrarySearchItem>);
+      const items = await this.search(args, cls);
+      return maxResults === undefined ? items : items.slice(0, maxResults);
+    }
+
+    const items = await this.search(args, this.SECTION_TYPE);
+    return maxResults === undefined ? items : items.slice(0, maxResults);
   }
 
   async agents(): Promise<Agent[]> {
@@ -1277,11 +1540,39 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
-   * Edit a library
-   * @param kwargs object of settings to edit
+   * Edit this library section's agent, locations, or raw Plex preferences.
+   *
+   * `locations` replaces the section's complete path list. To add or remove one
+   * path while preserving the rest, use {@link addLocations} or
+   * {@link removeLocations}.
+   *
+   * @example
+   * ```ts
+   * await movieSection.edit({
+   *   agent: 'com.plexapp.agents.imdb',
+   *   locations: ['/media/movies', '/media/archived-movies'],
+   *   preferences: { includeInGlobal: true },
+   * })
+   * ```
    */
-  async edit(kwargs: Record<string, string>): Promise<Section> {
-    const params = new URLSearchParams(kwargs);
+  async edit({
+    agent = this.agent,
+    locations,
+    preferences = {},
+  }: LibrarySectionEditOptions = {}): Promise<Section> {
+    const params = new URLSearchParams({ agent });
+    for (const [key, value] of Object.entries(preferences)) {
+      params.set(key, typeof value === 'boolean' ? (value ? '1' : '0') : value.toString());
+    }
+
+    if (typeof locations === 'string') {
+      params.append('location', locations);
+    } else {
+      for (const location of locations ?? []) {
+        params.append('location', location);
+      }
+    }
+
     const part = `/library/sections/${this.key}?${params.toString()}`;
     await this.server.query({ path: part, method: 'put' });
     const library = await this.server.library();
@@ -1312,7 +1603,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       params[`prefs[${setting.id}]`] = setting.toQueryValue();
     }
 
-    return this.edit(params);
+    return this.edit({ preferences: params });
   }
 
   /**
@@ -1325,7 +1616,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       params[`prefs[${setting.id}]`] = setting.toQueryValue();
     }
 
-    return this.edit(params);
+    return this.edit({ preferences: params });
   }
 
   /**
@@ -1669,8 +1960,15 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       type: searchType(validItems[0].type).toString(),
     });
     const key = `/library/sections/${this.key}/common?${params.toString()}`;
-    const data = await fetchItem(this.server, key, undefined, Common);
-    return new Common(this.server, data, key, this);
+    const data = await this.server.query<MediaContainer<{ Metadata?: CommonData[] }>>({
+      path: key,
+    });
+    const [common] = data.MediaContainer.Metadata ?? [];
+    if (!common) {
+      throw new NotFound('Unable to find common fields for the provided items.');
+    }
+
+    return new Common(this.server, common, key, this);
   }
 
   /**
@@ -1796,20 +2094,6 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const key = `/library/sections/${this.key}/all?${params.toString()}`;
     await this.server.query({ path: key, method: 'put' });
     return this;
-  }
-
-  private async _editLocations(paths: string[]): Promise<Section> {
-    const locationParams = paths.map(p => `location=${encodeURIComponent(p)}`).join('&');
-    const part = `/library/sections/${this.key}?agent=${this.agent}&${locationParams}`;
-    await this.server.query({ path: part, method: 'put' });
-    const library = await this.server.library();
-    const sections = await library.sections();
-    for (const section of sections) {
-      if (section.key === this.key) {
-        return section;
-      }
-    }
-    throw new Error("Couldn't update section");
   }
 
   protected _loadData(data: SectionsDirectory): void {
@@ -2479,10 +2763,36 @@ export class PhotoSection extends LibrarySection<Photoalbum> {
   override CONTENT_TYPE = 'photo';
   override readonly SECTION_TYPE = Photoalbum;
 
-  /** Returns photo albums in this section. */
-  override async all(args: Partial<SearchArgs> | string = {}): Promise<Photoalbum[]> {
-    const searchArgs = typeof args === 'string' ? { sort: args } : args;
-    return this.search({ ...searchArgs, libtype: 'photoalbum' }, Photoalbum);
+  /**
+   * Returns photo library items.
+   *
+   * Photo sections default to albums to match Plex's photo library behavior. Pass
+   * `libtype: 'photo'` to return individual photos instead.
+   *
+   * @example
+   * ```ts
+   * const albums = await photoSection.all()
+   * const photos = await photoSection.all({ libtype: 'photo', maxResults: 50 })
+   * ```
+   */
+  override async all<T extends Libtype>(
+    options: LibrarySectionAllOptions & { libtype: T },
+  ): Promise<Array<SearchClassForLibtype<T>>>;
+  override async all(): Promise<Photoalbum[]>;
+  override async all(options: LibrarySectionAllOptions): Promise<LibrarySearchItem[]>;
+  override async all(
+    options: LibrarySectionAllOptions = {},
+  ): Promise<Photoalbum[] | LibrarySearchItem[]> {
+    const { maxResults, libtype = 'photoalbum', ...args } = options;
+    const items = await this.search(
+      {
+        ...args,
+        libtype,
+        ...(maxResults === undefined ? {} : { maxresults: maxResults }),
+      },
+      classForLibtype(libtype) ?? Photoalbum,
+    );
+    return maxResults === undefined ? items : items.slice(0, maxResults);
   }
 
   /** Photo libraries do not support collections. */

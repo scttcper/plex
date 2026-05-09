@@ -134,6 +134,12 @@ describe('Shows', () => {
     expect(folders[0].title).toBeDefined();
   });
 
+  it('should get all nested show folders', async () => {
+    const folders = await showSection.folders();
+    const nested = await folders[0].allSubfolders();
+    expect(nested).toEqual([]);
+  });
+
   it('should search shows', async () => {
     const shows = await showSection.search({ title: 'Silicon Valley' });
     expect(shows[0].title).toContain('Silicon Valley');

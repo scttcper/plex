@@ -89,6 +89,14 @@ export interface FolderData {
   title: string;
 }
 
+export interface LibraryTagData {
+  key?: string;
+  id?: number | string;
+  filter?: string;
+  tag: string;
+  tagType?: number | string;
+}
+
 export interface FirstCharacterData {
   key: string;
   title: string;
