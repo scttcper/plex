@@ -167,38 +167,76 @@ export const LIBRARY_TAG_TYPES = {
 
 export type LibraryTagName = keyof typeof LIBRARY_TAG_TYPES;
 export type LibraryTagType = LibraryTagName | number | `${number}`;
+export interface LibraryTagItems {
+  /** Number of library items with this tag, when Plex provides it. */
+  count?: number;
+  /** Filter expression Plex uses for this tag. */
+  filter?: string;
+  /** Tag id. */
+  id?: number | string;
+  /** Library section id this tag belongs to, when scoped. */
+  librarySectionID?: number;
+  /** Library section key this tag belongs to, when scoped. */
+  librarySectionKey?: string;
+  /** Library section title this tag belongs to, when scoped. */
+  librarySectionTitle?: string;
+  /** Numeric Plex section type this tag belongs to, when scoped. */
+  librarySectionType?: number;
+  /** Search result reason, when the tag came from a search payload. */
+  reason?: string;
+  /** Search result reason id, when Plex provides it. */
+  reasonID?: number;
+  /** Search result reason title, when Plex provides it. */
+  reasonTitle?: string;
+  /** Search score, when the tag came from a search payload. */
+  score?: number;
+  /** Search result type. */
+  type?: string;
+  /** Tag title. */
+  tag: string;
+  /** Plex Discover rating key for person tags, when available. */
+  tagKey?: string;
+  /** Numeric Plex tag type. */
+  tagType?: number;
+  /** Numeric Plex tag value, when available. */
+  tagValue?: number;
+  /** Tag thumbnail, when available. */
+  thumb?: string;
+  /** Fetches the library items matching this tag. */
+  items(): Promise<LibrarySearchItem[]>;
+}
 export type LibraryTagItemFor<T extends LibraryTagName> = T extends 'tag'
-  ? Tag
+  ? Tag & LibraryTagItems
   : T extends 'genre'
-    ? Genre
+    ? Genre & LibraryTagItems
     : T extends 'collection'
-      ? Collection
+      ? Collection & LibraryTagItems
       : T extends 'director'
-        ? Director
+        ? Director & LibraryTagItems
         : T extends 'writer'
-          ? Writer
+          ? Writer & LibraryTagItems
           : T extends 'role'
-            ? Role
+            ? Role & LibraryTagItems
             : T extends 'producer'
-              ? Producer
+              ? Producer & LibraryTagItems
               : T extends 'country'
-                ? Country
+                ? Country & LibraryTagItems
                 : T extends 'chapter'
-                  ? Chapter
+                  ? Chapter & LibraryTagItems
                   : T extends 'label'
-                    ? Label
+                    ? Label & LibraryTagItems
                     : T extends 'marker'
-                      ? Marker
+                      ? Marker & LibraryTagItems
                       : T extends 'mood'
-                        ? Mood
+                        ? Mood & LibraryTagItems
                         : T extends 'style'
-                          ? Style
+                          ? Style & LibraryTagItems
                           : T extends 'format'
-                            ? Format
+                            ? Format & LibraryTagItems
                             : T extends 'subformat'
-                              ? Subformat
+                              ? Subformat & LibraryTagItems
                               : T extends 'similar'
-                                ? Similar
+                                ? Similar & LibraryTagItems
                                 : LibraryMediaTag;
 
 export class Library {
@@ -648,15 +686,15 @@ export class Library {
    */
   async tags<T extends LibraryTagName>(tag: T): Promise<Array<LibraryTagItemFor<T>>>;
   async tags(tag: LibraryTagType): Promise<LibraryMediaTag[]>;
-  async tags(tag: LibraryTagType): Promise<LibraryMediaTag[]> {
+  async tags(tag: LibraryTagType): Promise<Array<LibraryMediaTag | (MediaTag & LibraryTagItems)>> {
     const tagType = resolveLibraryTagType(tag);
     const data = await this.server.query<MediaContainer<{ Directory?: LibraryTagData[] }>>({
       path: `/library/tags?type=${tagType.toString()}`,
     });
     const Cls = classForLibraryTag(tag);
-    return (data.MediaContainer.Directory ?? []).map(
-      item => new Cls(this.server, item, undefined, this),
-    ) as LibraryMediaTag[];
+    return (data.MediaContainer.Directory ?? []).map(item =>
+      withLibraryTagItems(new Cls(this.server, item, undefined, this), item),
+    );
   }
 
   /**
@@ -708,21 +746,34 @@ export type Libtype = keyof typeof SEARCHTYPES;
  * Prefer {@link Library.tags} with a named tag type such as `'genre'` or
  * `'director'` when one is available. Numeric tag types use this fallback shape.
  */
-export class LibraryMediaTag extends PlexObject {
+export class LibraryMediaTag extends PlexObject implements LibraryTagItems {
   static override TAG = 'Directory';
   FILTER = 'tag';
 
+  declare count?: number;
   declare filter?: string;
   declare id?: number | string;
+  declare librarySectionID?: number;
+  declare librarySectionKey?: string;
+  declare librarySectionTitle?: string;
+  declare librarySectionType?: number;
+  declare reason?: string;
+  declare reasonID?: number;
+  declare reasonTitle?: string;
+  declare score?: number;
+  declare type?: string;
   declare tag: string;
+  declare tagKey?: string;
   declare tagType?: number;
+  declare tagValue?: number;
+  declare thumb?: string;
+
+  async items(): Promise<LibrarySearchItem[]> {
+    return libraryTagItems(this);
+  }
 
   protected _loadData(data: LibraryTagData): void {
-    this.key = data.key ?? '';
-    this.id = data.id;
-    this.filter = data.filter;
-    this.tag = data.tag;
-    this.tagType = parseOptionalNumber(data.tagType);
+    loadLibraryTagData(this, data);
   }
 }
 
@@ -950,6 +1001,46 @@ function settingValueToQueryValue(value: SettingValue): string {
   }
 
   return value.toString();
+}
+
+function loadLibraryTagData(tag: LibraryTagItems & PlexObject, data: LibraryTagData): void {
+  tag.key = data.key ?? '';
+  tag.count = parseOptionalNumber(data.count);
+  tag.id = data.id;
+  tag.filter = data.filter;
+  tag.librarySectionID = parseOptionalNumber(data.librarySectionID);
+  tag.librarySectionKey = data.librarySectionKey;
+  tag.librarySectionTitle = data.librarySectionTitle;
+  tag.librarySectionType = parseOptionalNumber(data.librarySectionType);
+  tag.reason = data.reason;
+  tag.reasonID = parseOptionalNumber(data.reasonID);
+  tag.reasonTitle = data.reasonTitle;
+  tag.score = parseOptionalNumber(data.score);
+  tag.type = data.type;
+  tag.tag = data.tag;
+  tag.tagKey = data.tagKey;
+  tag.tagType = parseOptionalNumber(data.tagType);
+  tag.tagValue = parseOptionalNumber(data.tagValue);
+  tag.thumb = data.thumb;
+}
+
+async function libraryTagItems(tag: LibraryTagItems & PlexObject): Promise<LibrarySearchItem[]> {
+  const key = tag.key || (tag.filter ? `/library/all?${tag.filter}` : undefined);
+  if (!key) {
+    throw new BadRequest(`Key is not defined for this tag: ${tag.tag}`);
+  }
+
+  return fetchLibrarySearchItems(tag.server, buildQueryKey(key), tag);
+}
+
+function withLibraryTagItems<T extends MediaTag | LibraryMediaTag>(
+  tag: T,
+  data: LibraryTagData,
+): T & LibraryTagItems {
+  const tagged = tag as T & LibraryTagItems;
+  loadLibraryTagData(tagged, data);
+  tagged.items = async () => libraryTagItems(tagged);
+  return tagged;
 }
 
 function isItemFilterValue(value: SearchArgValue): value is ItemFilterValue {

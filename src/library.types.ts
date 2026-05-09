@@ -91,10 +91,23 @@ export interface FolderData {
 
 export interface LibraryTagData {
   key?: string;
+  count?: number | string;
   id?: number | string;
   filter?: string;
+  librarySectionID?: number | string;
+  librarySectionKey?: string;
+  librarySectionTitle?: string;
+  librarySectionType?: number | string;
+  reason?: string;
+  reasonID?: number | string;
+  reasonTitle?: string;
+  score?: number | string;
+  type?: string;
   tag: string;
+  tagKey?: string;
   tagType?: number | string;
+  tagValue?: number | string;
+  thumb?: string;
 }
 
 export interface FirstCharacterData {

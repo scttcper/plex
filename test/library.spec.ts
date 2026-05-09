@@ -215,6 +215,9 @@ it('should get global library tags', async () => {
   expect(tags[0]).toBeInstanceOf(Genre);
   expect(typeof tags[0].tag).toBe('string');
   expect(typeof tags[0].filter).toBe('string');
+  const items = await tags[0].items();
+  expect(items.length).toBeGreaterThan(0);
+  expect(items[0]).toBeInstanceOf(Movie);
 });
 
 it('should get movie section on deck items', async () => {

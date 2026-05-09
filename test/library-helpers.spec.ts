@@ -204,8 +204,13 @@ const partialMovieData = {
 };
 
 const genreTagData = {
+  count: 1,
   id: 4,
   filter: 'genre=4',
+  librarySectionID: 1,
+  librarySectionKey: '/library/sections/1',
+  librarySectionTitle: 'Movies',
+  librarySectionType: 1,
   tag: 'Animation',
   tagType: 1,
 };
@@ -526,6 +531,7 @@ function createLibrary() {
   const responses = new Map<string, unknown>([
     ['/library/sections', { MediaContainer: { Directory: [movieSectionData, showSectionData] } }],
     ['/library/tags?type=1', { MediaContainer: { Directory: [genreTagData] } }],
+    ['/library/all?genre=4&includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
     ['/library/onDeck?includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
     ['/library/recentlyAdded?includeGuids=1', { MediaContainer: { Metadata: [libraryMovieData] } }],
     [
@@ -639,7 +645,23 @@ describe('Library root helpers', () => {
     expect(tags[0]).toBeInstanceOf(Genre);
     expect(tags[0].tag).toBe('Animation');
     expect(tags[0].filter).toBe('genre=4');
+    expect(tags[0].count).toBe(1);
+    expect(tags[0].librarySectionID).toBe(1);
+    expect(tags[0].librarySectionTitle).toBe('Movies');
     expect(query).toHaveBeenCalledWith({ path: '/library/tags?type=1' });
+  });
+
+  it('returns typed items for global library tags', async () => {
+    const { query, library } = createLibrary();
+
+    const [tag] = await library.tags('genre');
+    const items = await tag.items();
+
+    expect(items[0]).toBeInstanceOf(Movie);
+    expect(items[0].title).toBe('Root Movie');
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/all?genre=4&includeGuids=1',
+    });
   });
 
   it('creates a typed library section with locations and preferences', async () => {
