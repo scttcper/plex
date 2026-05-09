@@ -577,6 +577,10 @@ type RequireAtLeastOne<T> = {
 export type ManagedHubVisibilityChanges = RequireAtLeastOne<ManagedHubVisibilityOptions>;
 export type SectionAdvancedSettings = Record<string, SettingValue>;
 export type LibrarySectionHistoryOptions = Omit<HistoryOptions, 'librarySectionId'>;
+export interface LibrarySectionUpdateOptions {
+  /** Full folder path to scan within this section. */
+  path?: string;
+}
 
 export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
 export type LibrarySearchItem = SectionType | Season | Episode | Clip | Photo | Collections;
@@ -1233,9 +1237,11 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /**
    * Scan this section for new media.
    */
-  async update(): Promise<void> {
+  async update({ path }: LibrarySectionUpdateOptions = {}): Promise<void> {
     const key = `/library/sections/${this.key}/refresh`;
-    await this.server.query({ path: key });
+    await this.server.query({
+      path: path === undefined ? key : `${key}?${new URLSearchParams({ path }).toString()}`,
+    });
   }
 
   /**
@@ -2744,18 +2750,41 @@ export class Hub extends PlexObject {
  * Represents a Folder inside a library.
  */
 export class Folder extends PlexObject {
+  static override TAG = 'Directory';
+
   declare title: string;
 
   /**
    * Returns a list of available Folders for this folder.
    * Continue down subfolders until a mediaType is found.
    */
-  async subfolders() {
+  async subfolders(): Promise<Folder[]> {
     if (this.key.startsWith('/library/metadata')) {
       return fetchItems<Folder>(this.server, this.key);
     }
 
     return fetchItems<Folder>(this.server, this.key, undefined, Folder);
+  }
+
+  /**
+   * Returns all nested folders below this folder, excluding media item leaves.
+   */
+  async allSubfolders(): Promise<Folder[]> {
+    const folders: Folder[] = [];
+    const pending = await this.subfolders();
+    const seen = new Set<string>();
+
+    for (const folder of pending) {
+      if (folder.key.startsWith('/library/metadata') || seen.has(folder.key)) {
+        continue;
+      }
+
+      seen.add(folder.key);
+      folders.push(folder);
+      pending.push(...(await folder.subfolders()));
+    }
+
+    return folders;
   }
 
   protected _loadData(data: FolderData) {

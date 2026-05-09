@@ -344,6 +344,66 @@ function createMovieSection() {
       '/hubs/sections/1/more?includeGuids=1',
       { MediaContainer: { Metadata: [fetchedHubMovieData] } },
     ],
+    [
+      '/library/sections/1/folder',
+      {
+        MediaContainer: {
+          Directory: [
+            {
+              key: '/library/sections/1/folder/%2Fdata%2FMovies',
+              title: 'Movies',
+            },
+          ],
+        },
+      },
+    ],
+    [
+      '/library/sections/1/folder/%2Fdata%2FMovies',
+      {
+        MediaContainer: {
+          Directory: [
+            {
+              key: '/library/sections/1/folder/%2Fdata%2FMovies%2FAction',
+              title: 'Action',
+            },
+            {
+              key: '/library/metadata/10',
+              title: 'Big Buck Bunny',
+            },
+          ],
+        },
+      },
+    ],
+    [
+      '/library/sections/1/folder/%2Fdata%2FMovies%2FAction',
+      {
+        MediaContainer: {
+          Directory: [
+            {
+              key: '/library/sections/1/folder/%2Fdata%2FMovies%2FAction%2FAnimated',
+              title: 'Animated',
+            },
+            {
+              key: '/library/metadata/11',
+              title: 'Sintel',
+            },
+          ],
+        },
+      },
+    ],
+    [
+      '/library/sections/1/folder/%2Fdata%2FMovies%2FAction%2FAnimated',
+      {
+        MediaContainer: {
+          Directory: [
+            {
+              key: '/library/metadata/12',
+              title: 'Elephants Dream',
+            },
+          ],
+        },
+      },
+    ],
     ['/hubs/sections/1/manage', { MediaContainer: { Hub: [managedHubData] } }],
     [
       '/hubs/sections/1/manage/com.plexapp.plugins.library.onDeck?promotedToRecommended=1&promotedToOwnHome=1&promotedToSharedHome=1',
@@ -609,6 +669,19 @@ describe('LibrarySection edit helpers', () => {
     });
   });
 
+  it('returns all nested folders below a folder', async () => {
+    const { section } = createMovieSection();
+
+    const folders = await section.folders();
+    const nested = await folders[0].allSubfolders();
+
+    expect(nested.map(folder => folder.title)).toEqual(['Action', 'Animated']);
+    expect(nested.map(folder => folder.key)).toEqual([
+      '/library/sections/1/folder/%2Fdata%2FMovies%2FAction',
+      '/library/sections/1/folder/%2Fdata%2FMovies%2FAction%2FAnimated',
+    ]);
+  });
+
   it('searches hubs scoped to the section', async () => {
     const { query, section } = createMovieSection();
 
@@ -631,6 +704,18 @@ describe('LibrarySection edit helpers', () => {
       librarySectionId: '1',
       maxResults: 2,
       ratingKey: 10,
+    });
+  });
+
+  it('updates the section with an optional folder path', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.update();
+    await section.update({ path: '/data/Movies/Test Folder & More' });
+
+    expect(query).toHaveBeenCalledWith({ path: '/library/sections/1/refresh' });
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/sections/1/refresh?path=%2Fdata%2FMovies%2FTest+Folder+%26+More',
     });
   });
 
