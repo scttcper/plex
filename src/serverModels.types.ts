@@ -21,6 +21,20 @@ export interface ButlerTaskData {
   scheduleRandomized: boolean;
 }
 
+export interface ServerPathData {
+  home?: boolean | number | string;
+  key: string;
+  network?: boolean | number | string;
+  path: string;
+  title: string;
+}
+
+export interface ServerFileData {
+  key: string;
+  path: string;
+  title: string;
+}
+
 export interface SystemAccountData {
   id: number;
   key: string;

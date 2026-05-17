@@ -26,13 +26,30 @@ import type {
 import {
   Activity,
   ButlerTask,
+  ServerFile,
+  ServerPath,
+  type ServerBrowseItem,
   StatisticsBandwidth,
   StatisticsResources,
   SystemAccount,
   SystemDevice,
+  type ServerWalkEntry,
 } from './serverModels.js';
+import type { ServerFileData, ServerPathData } from './serverModels.types.js';
 import { type SettingResponse, Settings } from './settings.js';
 import type { MediaContainer } from './util.js';
+
+export interface ServerBrowseOptions {
+  /** Server-visible path or a ServerPath object returned by browse(). Omit to browse roots. */
+  path?: string | ServerPath;
+  /** Include files in addition to directories. Defaults to true. */
+  includeFiles?: boolean;
+}
+
+type BrowseResponse = {
+  Path?: ServerPathData[];
+  File?: ServerFileData[];
+};
 
 /**
  * This is the main entry point to interacting with a Plex server. It allows you to
@@ -250,6 +267,46 @@ export class PlexServer {
     url.search = new URLSearchParams(params).toString();
     const hubs = await fetchItems<Hub>(this, url.pathname + url.search, undefined, Hub, this);
     return hubs;
+  }
+
+  /**
+   * Browse server-visible filesystem paths through Plex.
+   */
+  async browse({ path, includeFiles = true }: ServerBrowseOptions = {}): Promise<
+    ServerBrowseItem[]
+  > {
+    const key = this._buildBrowseKey(path, includeFiles);
+    const data = await this.query<MediaContainer<BrowseResponse>>({ path: key });
+    return [
+      ...(data.MediaContainer.Path ?? []).map(item => new ServerPath(this, item, key)),
+      ...(data.MediaContainer.File ?? []).map(item => new ServerFile(this, item, key)),
+    ];
+  }
+
+  /**
+   * Walk a server-visible filesystem tree through Plex.
+   */
+  async *walk(path?: string | ServerPath): AsyncGenerator<ServerWalkEntry> {
+    const items = await this.browse({ path });
+    const paths = items.filter(item => item instanceof ServerPath);
+    const files = items.filter(item => item instanceof ServerFile);
+    const currentPath = path instanceof ServerPath ? path.path : (path ?? '');
+
+    yield { path: currentPath, paths, files };
+
+    for (const childPath of paths) {
+      yield* this.walk(childPath);
+    }
+  }
+
+  /**
+   * Returns true when Plex can browse the given server-visible path.
+   */
+  async isBrowsable(path: string | ServerPath): Promise<boolean> {
+    const targetPath = path instanceof ServerPath ? path.path : path;
+    const parentPath = this._browseParentPath(targetPath);
+    const paths = await this.browse({ path: parentPath, includeFiles: false });
+    return paths.some(item => item instanceof ServerPath && item.path === targetPath);
   }
 
   /**
@@ -633,6 +690,38 @@ export class PlexServer {
 
   _uriRoot(): string {
     return `server://${this.machineIdentifier}/com.plexapp.plugins.library`;
+  }
+
+  private _buildBrowseKey(path: string | ServerPath | undefined, includeFiles: boolean): string {
+    let key: string;
+    if (path instanceof ServerPath) {
+      key = path.key;
+    } else if (path !== undefined) {
+      key = `/services/browse/${Buffer.from(path).toString('base64')}`;
+    } else {
+      key = '/services/browse';
+    }
+
+    const [base, search = ''] = key.split('?', 2);
+    const params = new URLSearchParams(search);
+    params.set('includeFiles', includeFiles ? '1' : '0');
+    return `${base}?${params.toString()}`;
+  }
+
+  private _browseParentPath(path: string): string {
+    const trimmed = path.replace(/[\\/]+$/, '');
+    const separatorIndex = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+
+    if (separatorIndex === -1) {
+      return '';
+    }
+
+    if (separatorIndex === 0) {
+      return trimmed[0];
+    }
+
+    const parent = trimmed.slice(0, separatorIndex);
+    return /^[A-Za-z]:$/.test(parent) ? `${parent}\\` : parent;
   }
 
   private _headers(): Record<string, string> {

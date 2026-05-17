@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import type { PlexServer } from '../src/index.js';
+import { ServerFile, ServerPath, type PlexServer, type ServerWalkEntry } from '../src/index.js';
 
 import { createClient } from './test-client.js';
 
@@ -85,5 +85,33 @@ describe('Server Admin Methods', () => {
   it('should get continueWatching (may be empty)', async () => {
     const items = await plex.continueWatching();
     expect(Array.isArray(items)).toBe(true);
+  });
+
+  it('should browse server folders and files', async () => {
+    const folders = await plex.browse({ path: '/data', includeFiles: false });
+    expect(folders.map(folder => folder.path)).toContain('/data/Movies');
+    expect(folders.find(folder => folder.path === '/data/Movies')).toBeInstanceOf(ServerPath);
+
+    const files = await plex.browse({ path: '/data/Movies' });
+    expect(files.map(file => file.path)).toContain('/data/Movies/Big Buck Bunny (2008).mp4');
+    expect(
+      files.find(file => file.path === '/data/Movies/Big Buck Bunny (2008).mp4'),
+    ).toBeInstanceOf(ServerFile);
+  });
+
+  it('should check browsable server paths', async () => {
+    const browsable = await plex.isBrowsable('/data/Movies');
+    expect(browsable).toBe(true);
+  });
+
+  it('should walk server paths', async () => {
+    const entries: ServerWalkEntry[] = [];
+    for await (const entry of plex.walk('/data/Movies')) {
+      entries.push(entry);
+    }
+    expect(entries.map(entry => entry.path)).toEqual(['/data/Movies']);
+    expect(entries[0].files.map(file => file.path)).toContain(
+      '/data/Movies/Big Buck Bunny (2008).mp4',
+    );
   });
 });

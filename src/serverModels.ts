@@ -2,11 +2,24 @@ import { PlexObject } from './base/plexObject.js';
 import type {
   ActivityData,
   ButlerTaskData,
+  ServerFileData,
+  ServerPathData,
   StatisticsBandwidthData,
   StatisticsResourcesData,
   SystemAccountData,
   SystemDeviceData,
 } from './serverModels.types.js';
+
+export interface ServerWalkEntry {
+  /** Directory path being visited. */
+  path: string;
+  /** Child directories under `path`. */
+  paths: ServerPath[];
+  /** Child files under `path`. */
+  files: ServerFile[];
+}
+
+export type ServerBrowseItem = ServerPath | ServerFile;
 
 /**
  * Represents a currently running activity on the Plex server.
@@ -61,6 +74,56 @@ export class ButlerTask extends PlexObject {
     this.enabled = data.enabled;
     this.interval = data.interval;
     this.scheduleRandomized = data.scheduleRandomized;
+  }
+}
+
+/**
+ * Represents a directory returned by the Plex server file browser.
+ */
+export class ServerPath extends PlexObject {
+  static override TAG = 'Path';
+
+  declare home: boolean;
+  declare network: boolean;
+  declare path: string;
+  declare title: string;
+
+  /** Browse this directory. */
+  browse({ includeFiles = true }: { includeFiles?: boolean } = {}): Promise<ServerBrowseItem[]> {
+    return this.server.browse({ path: this, includeFiles });
+  }
+
+  /** Walk this directory recursively. */
+  walk(): AsyncGenerator<ServerWalkEntry> {
+    return this.server.walk(this);
+  }
+
+  protected _loadData(data: ServerPathData): void {
+    this.home = data.home === true || data.home === 1 || data.home === '1' || data.home === 'true';
+    this.key = data.key;
+    this.network =
+      data.network === true ||
+      data.network === 1 ||
+      data.network === '1' ||
+      data.network === 'true';
+    this.path = data.path;
+    this.title = data.title;
+  }
+}
+
+/**
+ * Represents a file returned by the Plex server file browser.
+ */
+export class ServerFile extends PlexObject {
+  static override TAG = 'File';
+
+  declare path: string;
+  declare title: string;
+
+  protected _loadData(data: ServerFileData): void {
+    this.key = data.key;
+    this.path = data.path;
+    this.title = data.title;
   }
 }
 
