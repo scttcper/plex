@@ -73,7 +73,7 @@ jobs:
         timeout-minutes: 8
         run: |
           for attempt in 1 2 3; do
-            if pnpm run bootstraptest -- --advertise-ip ${{ env.PLEXAPI_AUTH_SERVER_BASEURL }} --docker-tag ${{ env.PLEX_CONTAINER_TAG }} --server-wait-timeout-seconds 180 --server-connect-timeout-ms 5000 --create-photos; then
+            if pnpm run bootstraptest -- --advertise-ip ${{ env.PLEXAPI_AUTH_SERVER_BASEURL }} --docker-tag ${{ env.PLEX_CONTAINER_TAG }} --server-wait-timeout-seconds 180 --server-connect-timeout-ms 5000; then
               exit 0
             fi
 

@@ -2,14 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { copyFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { parseArgs } from 'node:util';
 
 import { execa } from 'execa';
 import { globby } from 'globby';
 import { makeDirectory } from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 
 import {
   AlertListener,
@@ -29,71 +28,29 @@ import {
 } from './create-media.js';
 
 const __dirname = new URL('.', import.meta.url).pathname;
+const cliArgs = process.argv.slice(2).filter(arg => arg !== '--');
 
-const yarg = yargs(hideBin(process.argv))
-  .option('token', { type: 'string', desc: 'plex account token', default: '' })
-  .option('username', { type: 'string', desc: 'plex account username', default: '' })
-  .option('password', { type: 'string', desc: 'plex account password', default: '' })
-  .option('destination', {
-    type: 'string',
-    desc: 'Local path where to store all the media',
-    default: 'plex',
-  })
-  .option('advertise-ip', {
-    type: 'string',
-    default: '127.0.0.1',
-    desc: 'IP address which should be advertised by new Plex instance',
-  })
-  .option('server-name', {
-    type: 'string',
-    default: `plex-test-docker-${randomUUID()}`,
-    desc: 'Name for the new server',
-  })
-  .option('docker-tag', {
-    type: 'string',
-    default: 'latest',
-    desc: 'Docker image tag to install',
-  })
-  .option('server-wait-timeout-seconds', {
-    type: 'number',
-    default: 180,
-    desc: 'Max time to wait for the server to appear in account',
-  })
-  .option('server-connect-timeout-ms', {
-    type: 'number',
-    default: 5000,
-    desc: 'Timeout for each attempt to connect to a discovered server',
-  })
-  .option('docker', {
-    type: 'boolean',
-    desc: 'Use docker',
-    default: true,
-  })
-  .option('accept-eula', {
-    type: 'boolean',
-    desc: 'Accept Plex`s EULA',
-    default: false,
-  })
-  .option('create-movies', {
-    type: 'boolean',
-    desc: 'Create Movies section',
-    default: true,
-  })
-  .option('create-shows', {
-    type: 'boolean',
-    desc: 'Create Shows section',
-    default: true,
-  })
-  .option('create-audio', {
-    type: 'boolean',
-    desc: 'Create Audio section',
-    default: true,
-  })
-  .option('create-photos', {
-    type: 'boolean',
-    desc: 'Create Photos section',
-    default: false,
-  });
+const { values: argv } = parseArgs({
+  args: cliArgs,
+  allowNegative: true,
+  options: {
+    token: { type: 'string', default: '' },
+    username: { type: 'string', default: '' },
+    password: { type: 'string', default: '' },
+    destination: { type: 'string', default: 'plex' },
+    'advertise-ip': { type: 'string', default: '127.0.0.1' },
+    'server-name': { type: 'string', default: `plex-test-docker-${randomUUID()}` },
+    'docker-tag': { type: 'string', default: 'latest' },
+    'server-wait-timeout-seconds': { type: 'string', default: '180' },
+    'server-connect-timeout-ms': { type: 'string', default: '5000' },
+    docker: { type: 'boolean', default: true },
+    'accept-eula': { type: 'boolean', default: false },
+    'create-movies': { type: 'boolean', default: true },
+    'create-shows': { type: 'boolean', default: true },
+    'create-audio': { type: 'boolean', default: true },
+    'create-photos': { type: 'boolean', default: false },
+  },
+});
 
 const dockerCmd = ({
   imageTag,
@@ -288,7 +245,6 @@ async function setupPhotos(photoPath: string): Promise<number> {
 }
 
 async function main() {
-  const argv = await Promise.resolve(yarg.argv);
   const advertisedAddress = argv['advertise-ip'];
   const advertisedUrl = new URL(
     advertisedAddress.startsWith('http://') || advertisedAddress.startsWith('https://')
@@ -361,8 +317,8 @@ async function main() {
 
   await account.connect();
 
-  const waitTimeoutMs = argv['server-wait-timeout-seconds'] * 1000;
-  const connectTimeoutMs = argv['server-connect-timeout-ms'];
+  const waitTimeoutMs = Number(argv['server-wait-timeout-seconds']) * 1000;
+  const connectTimeoutMs = Number(argv['server-connect-timeout-ms']);
   const startWaitTime = Date.now();
 
   const connectServer = async () => {

@@ -26,7 +26,7 @@
     "build": "tsc",
     "build:docs": "typedoc",
     "test": "vitest run",
-    "bootstraptest": "tsx scripts/bootstraptest.ts",
+    "bootstraptest": "tsx scripts/bootstraptest.ts --create-photos",
     "teardowntest": "tsx scripts/teardowntest.ts",
     "add-media": "tsx scripts/add-media.ts",
     "test-cleanup": "tsx scripts/test-cleanup.ts"
@@ -45,7 +45,6 @@
     "@types/node": "25.6.0",
     "@types/ws": "8.18.1",
     "@types/xml2js": "0.4.14",
-    "@types/yargs": "17.0.35",
     "execa": "9.6.1",
     "globby": "16.2.0",
     "make-dir": "5.1.0",
@@ -57,8 +56,7 @@
     "tsx": "4.21.0",
     "typedoc": "0.28.19",
     "typescript": "6.0.3",
-    "vitest": "4.1.5",
-    "yargs": "18.0.0"
+    "vitest": "4.1.5"
   },
   "release": {
     "branches": [
