@@ -7,9 +7,9 @@ import {
   type PlexServer,
   type Show,
   type ShowSection,
-} from '../src/index.js';
+} from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 describe('Shows', () => {
   let plex: PlexServer;

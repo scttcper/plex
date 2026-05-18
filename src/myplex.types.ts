@@ -67,10 +67,12 @@ export interface Service {
   secret?: string | null;
 }
 
-export enum Status {
-  Online = 'online',
-  Offline = 'offline',
-}
+export const Status = {
+  Online: 'online',
+  Offline: 'offline',
+} as const;
+
+export type Status = (typeof Status)[keyof typeof Status];
 
 export interface Subscription {
   active: boolean;
@@ -122,10 +124,12 @@ export interface Connection {
   IPv6: boolean;
 }
 
-export enum Protocol {
-  HTTP = 'http',
-  HTTPS = 'https',
-}
+export const Protocol = {
+  HTTP: 'http',
+  HTTPS: 'https',
+} as const;
+
+export type Protocol = (typeof Protocol)[keyof typeof Protocol];
 
 export interface Device {
   $: {

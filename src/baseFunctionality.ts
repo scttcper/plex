@@ -1,8 +1,8 @@
 import { URLSearchParams } from 'node:url';
 
-import type { PlexObject } from './base/plexObject.js';
-import type { PlexServer } from './server.js';
-import type { MediaContainer } from './util.js';
+import type { PlexObject } from './base/plexObject.ts';
+import type { PlexServer } from './server.ts';
+import type { MediaContainer } from './util.ts';
 
 export type QueryParamValue = string | number | boolean | null | undefined;
 export type ItemFilterValue = string | number | boolean;

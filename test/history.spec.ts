@@ -2,10 +2,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { MusicSection } from '../src/library.js';
-import type { PlexServer } from '../src/server.js';
+import { MusicSection } from '../src/library.ts';
+import type { PlexServer } from '../src/server.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 describe('History API Tests', () => {
   let plex: PlexServer;

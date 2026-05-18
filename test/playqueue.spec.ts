@@ -8,9 +8,9 @@ import {
   type PlexServer,
   Playlist,
   type ShowSection,
-} from '../src/index.js';
+} from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
 let movie: Movie;

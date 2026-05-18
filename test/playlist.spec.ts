@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, expect, it } from 'vitest';
 
-import { type Movie, type MovieSection, Playlist, type PlexServer } from '../src/index.js';
+import { type Movie, type MovieSection, Playlist, type PlexServer } from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
 let playlist: Playlist | undefined;

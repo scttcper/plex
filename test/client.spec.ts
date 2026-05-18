@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ClientTimeline, PlexClient } from '../src/client.js';
-import { PlexServer } from '../src/server.js';
+import { ClientTimeline, PlexClient } from '../src/client.ts';
+import { PlexServer } from '../src/server.ts';
 
 describe('PlexClient', () => {
   it('should initialize with default values', () => {

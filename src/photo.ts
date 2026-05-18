@@ -1,26 +1,26 @@
 import { URLSearchParams } from 'node:url';
 
-import { PartialPlexObject } from './base/partialPlexObject.js';
-import { Playable } from './base/playable.js';
-import { PlexObject } from './base/plexObject.js';
+import { PartialPlexObject } from './base/partialPlexObject.ts';
+import { Playable } from './base/playable.ts';
+import { PlexObject } from './base/plexObject.ts';
 import {
   fetchItem,
   findItems,
   type ItemFilterValue,
   type PlexItemConstructor,
   type PlexItemData,
-} from './baseFunctionality.js';
-import { NotFound } from './exceptions.js';
-import { Field, Image, Tag } from './media.js';
+} from './baseFunctionality.ts';
+import { NotFound } from './exceptions.ts';
+import { Field, Image, Tag } from './media.ts';
 import type {
   PhotoalbumData,
   PhotoData,
   PhotoMediaData,
   PhotoMetadataResponse,
   PhotoPartData,
-} from './photo.types.js';
-import type { MediaContainer } from './util.js';
-import { Clip } from './video.js';
+} from './photo.types.ts';
+import type { MediaContainer } from './util.ts';
+import { Clip } from './video.ts';
 
 function parseOptionalDate(value: number | string | undefined): Date | undefined {
   if (value === undefined || value === '') {

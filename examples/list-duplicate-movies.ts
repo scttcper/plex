@@ -3,7 +3,7 @@
  */
 import { filenameParse, type ParsedMovie } from '@ctrl/video-filename-parser';
 
-import { type MovieSection, MyPlexAccount } from '../src/index.js';
+import { type MovieSection, MyPlexAccount } from '../src/index.ts';
 
 /**
  * The name of the resource to use.

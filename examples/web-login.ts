@@ -1,4 +1,4 @@
-import { MyPlexAccount } from '../src/index.js';
+import { MyPlexAccount } from '../src/index.ts';
 
 async function listLibraries(account: MyPlexAccount) {
   const resource = await account.resource('zeus');

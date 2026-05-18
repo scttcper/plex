@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { Artist } from '../src/audio.js';
-import type { PlexServer } from '../src/server.js';
+import { Artist } from '../src/audio.ts';
+import type { PlexServer } from '../src/server.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 describe('Audio Class Tests', () => {
   let plex: PlexServer;

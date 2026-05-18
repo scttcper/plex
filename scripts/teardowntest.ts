@@ -1,4 +1,4 @@
-import { PlexServer, X_PLEX_IDENTIFIER } from '../src/index.js';
+import { PlexServer, X_PLEX_IDENTIFIER } from '../src/index.ts';
 
 async function main() {
   const token = process.env.PLEX_TOKEN || process.env.PLEXAPI_AUTH_SERVER_TOKEN;

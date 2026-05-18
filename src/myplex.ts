@@ -3,17 +3,17 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { ofetch } from 'ofetch';
 import { parseStringPromise } from 'xml2js';
 
-import { PlexObject } from './base/plexObject.js';
-import { BASE_HEADERS, TIMEOUT } from './config.js';
+import { PlexObject } from './base/plexObject.ts';
+import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import type {
   Connection,
   Device,
   ResourcesResponse,
   UserResponse,
   WebLogin,
-} from './myplex.types.js';
-import { PlexServer } from './server.js';
-import { encodeBase64, type MediaContainer } from './util.js';
+} from './myplex.types.ts';
+import { PlexServer } from './server.ts';
+import { encodeBase64, type MediaContainer } from './util.ts';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -460,6 +460,8 @@ async function connectInPreferredOrder(
 export class MyPlexResource {
   static key = 'https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1';
   TAG = 'Device';
+  readonly account: MyPlexAccount;
+  private readonly baseUrl: string | null;
   /** Descriptive name of this resource */
   declare name: string;
   /** True if this resource is one of your own (you logged into it) */
@@ -493,11 +495,9 @@ export class MyPlexResource {
   /** Unknown (possibly True if the resource has synced content?) */
   declare synced: boolean;
 
-  constructor(
-    public readonly account: MyPlexAccount,
-    data: ResourcesResponse,
-    private readonly baseUrl: string | null = null,
-  ) {
+  constructor(account: MyPlexAccount, data: ResourcesResponse, baseUrl: string | null = null) {
+    this.account = account;
+    this.baseUrl = baseUrl;
     this._loadData(data);
   }
 

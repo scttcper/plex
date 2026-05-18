@@ -1,4 +1,4 @@
-import type { Section } from './library.js';
+import type { Section } from './library.ts';
 
 export interface MediaContainer<T> {
   MediaContainer: T;

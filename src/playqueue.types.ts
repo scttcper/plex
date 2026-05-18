@@ -1,4 +1,4 @@
-import type { Playable } from './base/playable.js';
+import type { Playable } from './base/playable.ts';
 
 export interface PlayQueueResponse {
   /** PlayQueue identifier */

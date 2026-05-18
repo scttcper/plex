@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { createAccount } from '../test/test-client.js';
+import { createAccount } from '../test/test-client.ts';
 
 async function cleanup(): Promise<void> {
   const account = await createAccount();

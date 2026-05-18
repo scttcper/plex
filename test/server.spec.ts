@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PlexServer } from '../src/server.js';
+import { PlexServer } from '../src/server.ts';
 
 describe('PlexServer._buildWebURL', () => {
   const server = new PlexServer('http://localhost:32400', 'test-token');

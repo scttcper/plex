@@ -9,10 +9,10 @@ import type {
   SendCommandParams,
   SetParametersOptions,
   SetStreamsOptions,
-} from './client.types.js';
-import { BASE_HEADERS, TIMEOUT } from './config.js';
-import type { PlexServer } from './server.js';
-import type { MediaContainer } from './util.js';
+} from './client.types.ts';
+import { BASE_HEADERS, TIMEOUT } from './config.ts';
+import type { PlexServer } from './server.ts';
+import type { MediaContainer } from './util.ts';
 
 export interface PlexOptions {
   /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */
@@ -599,7 +599,7 @@ export class PlexClient {
     }
 
     const { offset = 0, params: extraParams = {} } = options;
-    const { PlayQueue } = await import('./playqueue.js');
+    const { PlayQueue } = await import('./playqueue.ts');
     const playQueue = await PlayQueue.create(this._server, media);
 
     const commandParams: SendCommandParams = {

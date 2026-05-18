@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildQueryKey } from '../src/baseFunctionality.js';
+import { buildQueryKey } from '../src/baseFunctionality.ts';
 
 describe('buildQueryKey', () => {
   it('adds includeGuids to plain keys', () => {

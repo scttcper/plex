@@ -1,10 +1,10 @@
 import { URLSearchParams } from 'node:url';
 
-import type { AlbumData, ArtistData, TrackData } from './audio.types.js';
-import { Playable } from './base/playable.js';
-import { PlexObject } from './base/plexObject.js';
-import { fetchItem, fetchItems } from './baseFunctionality.js';
-import { NotFound } from './exceptions.js';
+import type { AlbumData, ArtistData, TrackData } from './audio.types.ts';
+import { Playable } from './base/playable.ts';
+import { PlexObject } from './base/plexObject.ts';
+import { fetchItem, fetchItems } from './baseFunctionality.ts';
+import { NotFound } from './exceptions.ts';
 import {
   Chapter,
   Collection,
@@ -20,8 +20,8 @@ import {
   Similar,
   Style,
   Subformat,
-} from './media.js';
-import type { PlexServer } from './server.js';
+} from './media.ts';
+import type { PlexServer } from './server.ts';
 
 type MusicSectionLike = {
   sonicAdventure: (start: any, end: any) => Promise<any[]>;

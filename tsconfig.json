@@ -6,6 +6,9 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
     "noImplicitAny": false,
-    "erasableSyntaxOnly": false
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true
   }
 }

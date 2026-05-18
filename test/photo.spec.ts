@@ -7,9 +7,9 @@ import {
   PhotoSection,
   Unsupported,
   type PlexServer,
-} from '../src/index.js';
+} from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 const PHOTO_SECTION_TITLE = 'Photos';
 const PHOTO_FIXTURE_PATH = '/data/Photos/Cute Cat.jpg';

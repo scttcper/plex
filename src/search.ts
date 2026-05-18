@@ -1,8 +1,8 @@
 import type { ValueOf } from 'type-fest';
 
-import { PlexObject } from './base/plexObject.js';
-import type { AgentData, MatchSearchResult } from './search.types.js';
-import { rsplit } from './util.js';
+import { PlexObject } from './base/plexObject.ts';
+import type { AgentData, MatchSearchResult } from './search.types.ts';
+import { rsplit } from './util.ts';
 
 export class SearchResult extends PlexObject {
   static override TAG = 'SearchResult';

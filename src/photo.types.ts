@@ -1,4 +1,4 @@
-import type { MediaTagData } from './video.types.js';
+import type { MediaTagData } from './video.types.ts';
 
 export type PhotoItemType = 'photo';
 

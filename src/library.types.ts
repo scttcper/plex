@@ -1,10 +1,10 @@
-import type { CommonSenseMediaData, ImageData, UltraBlurColorsData } from './media.types.js';
+import type { CommonSenseMediaData, ImageData, UltraBlurColorsData } from './media.types.ts';
 import type {
   ChapterSource,
   MarkerData,
   MediaPartStreamData,
   MediaTagData,
-} from './video.types.js';
+} from './video.types.ts';
 
 export interface LibraryRootResponse {
   size: number;

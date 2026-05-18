@@ -1,7 +1,9 @@
+import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
-import type { PlexServer } from '../src/index.js';
-import { createClient } from '../test/test-client.js';
+import type { PlexServer } from '../src/index.ts';
+import { createClient } from '../test/test-client.ts';
 
 export async function addMedia(): Promise<void> {
   let server: PlexServer;
@@ -50,7 +52,9 @@ export async function addMedia(): Promise<void> {
   await sleep(25_000);
 }
 
-if (!module.parent) {
+const __filename = fileURLToPath(import.meta.url);
+const mainModulePath = path.resolve(process.argv[1]);
+if (__filename === mainModulePath) {
   addMedia()
     .then(() => process.exit(0))
     .catch(err => {

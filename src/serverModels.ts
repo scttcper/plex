@@ -1,4 +1,4 @@
-import { PlexObject } from './base/plexObject.js';
+import { PlexObject } from './base/plexObject.ts';
 import type {
   ActivityData,
   ButlerTaskData,
@@ -8,7 +8,7 @@ import type {
   StatisticsResourcesData,
   SystemAccountData,
   SystemDeviceData,
-} from './serverModels.types.js';
+} from './serverModels.types.ts';
 
 export interface ServerWalkEntry {
   /** Directory path being visited. */

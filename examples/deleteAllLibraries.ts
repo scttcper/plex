@@ -1,5 +1,5 @@
-import type { PlexServer } from '../src/index.js';
-import { createClient } from '../test/test-client.js';
+import type { PlexServer } from '../src/index.ts';
+import { createClient } from '../test/test-client.ts';
 
 async function main() {
   console.log('Connecting to Plex server...');

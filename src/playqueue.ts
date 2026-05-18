@@ -1,8 +1,8 @@
-import type { Playable } from './base/playable.js';
-import { PlexObject } from './base/plexObject.js';
-import { findItems } from './baseFunctionality.js';
-import { BadRequest } from './exceptions.js';
-import type { Playlist } from './playlist.js';
+import type { Playable } from './base/playable.ts';
+import { PlexObject } from './base/plexObject.ts';
+import { findItems } from './baseFunctionality.ts';
+import { BadRequest } from './exceptions.ts';
+import type { Playlist } from './playlist.ts';
 import type {
   AddPlayQueueItemOptions,
   CreatePlayQueueOptions,
@@ -10,8 +10,8 @@ import type {
   MovePlayQueueItemOptions,
   PlayQueueContainerResponse,
   PlayQueueResponse,
-} from './playqueue.types.js';
-import type { PlexServer } from './server.js';
+} from './playqueue.types.ts';
+import type { PlexServer } from './server.ts';
 
 type QueueItem = Playable & { playQueueItemID?: number };
 type PlaylistLike = Playlist & { playlistType: string; ratingKey: string; type?: string };

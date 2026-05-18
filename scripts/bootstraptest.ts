@@ -16,7 +16,7 @@ import {
   MyPlexAccount,
   type PlexServer,
   SEARCHTYPES,
-} from '../src/index.js';
+} from '../src/index.ts';
 
 import {
   prepareAudioDir,
@@ -25,7 +25,7 @@ import {
   requiredAudio,
   requiredMovies,
   requiredShows,
-} from './create-media.js';
+} from './create-media.ts';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 const cliArgs = process.argv.slice(2).filter(arg => arg !== '--');

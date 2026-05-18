@@ -2,18 +2,18 @@ import { URL, URLSearchParams } from 'node:url';
 
 import { ofetch } from 'ofetch';
 
-import { Playable } from './base/playable.js';
-import { fetchItem, fetchItems } from './baseFunctionality.js';
-import { PlexClient } from './client.js';
-import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.js';
-import { Hub, Library } from './library.js';
-import type { LibraryRootResponse } from './library.types.js';
-import { Optimized } from './media.js';
-import { MyPlexAccount } from './myplex.js';
-import type { Playlist } from './playlist.js';
-import { PlayQueue } from './playqueue.js';
-import type { CreatePlayQueueOptions } from './playqueue.types.js';
-import { Agent, SEARCHTYPES } from './search.js';
+import { Playable } from './base/playable.ts';
+import { fetchItem, fetchItems } from './baseFunctionality.ts';
+import { PlexClient } from './client.ts';
+import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
+import { Hub, Library } from './library.ts';
+import type { LibraryRootResponse } from './library.types.ts';
+import { Optimized } from './media.ts';
+import { MyPlexAccount } from './myplex.ts';
+import type { Playlist } from './playlist.ts';
+import { PlayQueue } from './playqueue.ts';
+import type { CreatePlayQueueOptions } from './playqueue.types.ts';
+import { Agent, SEARCHTYPES } from './search.ts';
 import type {
   BandwidthOptions,
   ConnectionInfo,
@@ -25,7 +25,7 @@ import type {
   SessionData,
   TranscodeSessionData,
   TranscodeImageOptions,
-} from './server.types.js';
+} from './server.types.ts';
 import {
   Activity,
   ButlerTask,
@@ -37,10 +37,10 @@ import {
   SystemAccount,
   SystemDevice,
   type ServerWalkEntry,
-} from './serverModels.js';
-import type { ButlerTaskData, ServerFileData, ServerPathData } from './serverModels.types.js';
-import { type SettingResponse, Settings } from './settings.js';
-import { encodeBase64, type MediaContainer } from './util.js';
+} from './serverModels.ts';
+import type { ButlerTaskData, ServerFileData, ServerPathData } from './serverModels.types.ts';
+import { type SettingResponse, Settings } from './settings.ts';
+import { encodeBase64, type MediaContainer } from './util.ts';
 
 export interface ServerBrowseOptions {
   /** Server-visible path or a ServerPath object returned by browse(). Omit to browse roots. */
@@ -62,6 +62,13 @@ type BrowseResponse = {
  * can also create an PlexServer instance from :class:`~plexapi.myplex.MyPlexAccount`.
  */
 export class PlexServer {
+  baseurl: string;
+  token: string;
+  /**
+   * Default request timeout in milliseconds.
+   * @default 30000
+   */
+  timeout: number;
   key = '/';
   /** True if server allows camera upload */
   declare allowCameraUpload: boolean;
@@ -186,15 +193,11 @@ export class PlexServer {
   _settings?: Settings;
   private _myPlexAccount?: MyPlexAccount;
 
-  constructor(
-    public baseurl: string,
-    public token: string,
-    /**
-     * Default request timeout in milliseconds.
-     * @default 30000
-     */
-    public timeout: number = TIMEOUT,
-  ) {}
+  constructor(baseurl: string, token: string, timeout: number = TIMEOUT) {
+    this.baseurl = baseurl;
+    this.token = token;
+    this.timeout = timeout;
+  }
 
   async agents(mediaType?: number | string) {
     let key = '/system/agents';

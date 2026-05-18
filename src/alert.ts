@@ -1,17 +1,19 @@
 import WebSocket from 'ws';
 
-import type { AlertTypes, NotificationContainer } from './alert.types.js';
-import type { PlexServer } from './server.js';
+import type { AlertTypes, NotificationContainer } from './alert.types.ts';
+import type { PlexServer } from './server.ts';
 
 export class AlertListener {
   key = '/:/websockets/notifications';
 
   declare _ws?: WebSocket;
+  private readonly server: PlexServer;
+  callback: (data: AlertTypes) => void;
 
-  constructor(
-    private readonly server: PlexServer,
-    public callback: (data: AlertTypes) => void,
-  ) {}
+  constructor(server: PlexServer, callback: (data: AlertTypes) => void) {
+    this.server = server;
+    this.callback = callback;
+  }
 
   async run(): Promise<void> {
     const url = this.server.url(this.key, { includeToken: true }).toString().replace('http', 'ws');

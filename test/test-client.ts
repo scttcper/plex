@@ -1,4 +1,4 @@
-import { MyPlexAccount, type PlexServer } from '../src/index.js';
+import { MyPlexAccount, type PlexServer } from '../src/index.ts';
 
 export const username = process.env.PLEX_USERNAME;
 export const password = process.env.PLEX_PASSWORD;

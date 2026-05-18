@@ -12,7 +12,7 @@ import {
   ShowSection,
   type EditableLibraryItem,
   type PlexServer,
-} from '../src/index.js';
+} from '../src/index.ts';
 
 const showSectionData = {
   uuid: 'show-section-uuid',

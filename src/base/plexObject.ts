@@ -1,7 +1,7 @@
 import { URLSearchParams } from 'node:url';
 
-import { buildQueryKey, type QueryParamValue } from '../baseFunctionality.js';
-import type { PlexServer } from '../server.js';
+import { buildQueryKey, type QueryParamValue } from '../baseFunctionality.ts';
+import type { PlexServer } from '../server.ts';
 
 /**
  * Base class for all? Plex objects
@@ -11,6 +11,7 @@ export abstract class PlexObject {
   static TAG: string | null = null;
   /** xml element type */
   static TYPE: string | null = null;
+  readonly server: PlexServer;
   /** plex relative url */
   declare key: string;
   /**
@@ -21,12 +22,8 @@ export abstract class PlexObject {
   protected initpath: string;
   protected _INCLUDES?: Record<string, string | number>;
 
-  constructor(
-    public readonly server: PlexServer,
-    data: any,
-    initpath?: string,
-    parent?: PlexObject,
-  ) {
+  constructor(server: PlexServer, data: any, initpath?: string, parent?: PlexObject) {
+    this.server = server;
     this.initpath = initpath ?? this.key;
     this.parent = parent ? new WeakRef(parent) : undefined;
     this._loadData(data);

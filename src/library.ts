@@ -2,9 +2,9 @@ import { URLSearchParams } from 'node:url';
 
 import type { Class } from 'type-fest';
 
-import { Album, Artist, Track } from './audio.js';
-import { PartialPlexObject } from './base/partialPlexObject.js';
-import { PlexObject } from './base/plexObject.js';
+import { Album, Artist, Track } from './audio.ts';
+import { PartialPlexObject } from './base/partialPlexObject.ts';
+import { PlexObject } from './base/plexObject.ts';
 import {
   buildQueryKey,
   fetchItem,
@@ -12,8 +12,8 @@ import {
   type ItemFilterValue,
   OPERATORS,
   type QueryParamValue,
-} from './baseFunctionality.js';
-import { BadRequest, NotFound, Unsupported } from './exceptions.js';
+} from './baseFunctionality.ts';
+import { BadRequest, NotFound, Unsupported } from './exceptions.ts';
 import type {
   CommonData,
   CollectionData,
@@ -36,7 +36,7 @@ import type {
   MediaProvidersResponse,
   SectionsDirectory,
   SectionsResponse,
-} from './library.types.js';
+} from './library.types.ts';
 import {
   Chapter,
   Collection,
@@ -58,20 +58,20 @@ import {
   Subformat,
   Tag,
   Writer,
-} from './media.js';
-import { Photo, Photoalbum } from './photo.js';
+} from './media.ts';
+import { Photo, Photoalbum } from './photo.ts';
 import {
   Playlist,
   type CreateRegularPlaylistOptions,
   type CreateSmartPlaylistOptions,
-} from './playlist.js';
-import { type Agent, searchType, SEARCHTYPES } from './search.js';
-import type { SearchResultContainer } from './search.types.js';
-import type { PlexServer } from './server.js';
-import type { HistoryOptions, HistoryResult } from './server.types.js';
-import { Setting, type SettingResponse, type SettingValue } from './settings.js';
-import type { MediaContainer } from './util.js';
-import { Clip, Episode, Movie, Season, Show } from './video.js';
+} from './playlist.ts';
+import { type Agent, searchType, SEARCHTYPES } from './search.ts';
+import type { SearchResultContainer } from './search.types.ts';
+import type { PlexServer } from './server.ts';
+import type { HistoryOptions, HistoryResult } from './server.types.ts';
+import { Setting, type SettingResponse, type SettingValue } from './settings.ts';
+import type { MediaContainer } from './util.ts';
+import { Clip, Episode, Movie, Season, Show } from './video.ts';
 
 export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
 export type LibraryHubOptionValue = QueryParamValue | ReadonlyArray<string | number>;
@@ -241,6 +241,7 @@ export type LibraryTagItemFor<T extends LibraryTagName> = T extends 'tag'
 
 export class Library {
   static key = '/library';
+  private readonly server: PlexServer;
   /** Number of root library entries returned by Plex. */
   declare size: number;
   /** Whether sync is allowed for the root library endpoint. */
@@ -262,10 +263,8 @@ export class Library {
   /** Root library directories returned by Plex. */
   declare directories: LibraryDirectory[];
 
-  constructor(
-    private readonly server: PlexServer,
-    data: LibraryRootResponse,
-  ) {
+  constructor(server: PlexServer, data: LibraryRootResponse) {
+    this.server = server;
     this._loadData(data);
   }
 

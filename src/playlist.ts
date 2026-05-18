@@ -1,18 +1,18 @@
 import { URLSearchParams } from 'node:url';
 
-import { Album, Artist, Track } from './audio.js';
-import { Playable } from './base/playable.js';
-import { fetchItems } from './baseFunctionality.js';
-import { BadRequest, NotFound } from './exceptions.js';
-import type { LibrarySection, SectionType } from './library.js';
+import { Album, Artist, Track } from './audio.ts';
+import { Playable } from './base/playable.ts';
+import { fetchItems } from './baseFunctionality.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
+import type { LibrarySection, SectionType } from './library.ts';
 import type {
   PlaylistContainerResponse,
   PlaylistItemData,
   PlaylistResponse,
-} from './playlist.types.js';
-import { searchType } from './search.js';
-import type { PlexServer } from './server.js';
-import { Episode, Movie } from './video.js';
+} from './playlist.types.ts';
+import { searchType } from './search.ts';
+import type { PlexServer } from './server.ts';
+import { Episode, Movie } from './video.ts';
 
 /**
  * Map media types to their respective class

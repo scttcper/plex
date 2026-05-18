@@ -17,9 +17,9 @@ import {
   type PlexServer,
   type ShowSection,
   BadRequest,
-} from '../src/index.js';
+} from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 const TEST_ADD_LIBRARY_NAME = '__plexapi_add_test__';
 const TEST_ADD_LIBRARY_HOST_PATH = join(process.cwd(), 'plex/media/LibraryAddTest');

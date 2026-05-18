@@ -7,9 +7,9 @@ import {
   Playlist,
   type PlexServer,
   type Track,
-} from '../src/index.js';
+} from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 describe('Audio Playlist Tests', () => {
   let plex: PlexServer;

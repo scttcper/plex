@@ -1,5 +1,5 @@
-import type { ImageData, UltraBlurColorsData } from './media.types.js';
-import type { MediaTagData } from './video.types.js';
+import type { ImageData, UltraBlurColorsData } from './media.types.ts';
+import type { MediaTagData } from './video.types.ts';
 
 export interface AlbumData {
   // Core identifiers and meta
@@ -94,13 +94,13 @@ export interface TrackData {
   guid?: string;
 
   // Tag arrays
-  Chapter?: Array<import('./video.types.js').ChapterData>;
+  Chapter?: Array<import('./video.types.ts').ChapterData>;
   Collection?: MediaTagData[];
   Genre?: MediaTagData[];
   Guid?: MediaTagData[];
   Image?: ImageData[];
   Label?: MediaTagData[];
-  Media?: Array<import('./video.types.js').MediaData>;
+  Media?: Array<import('./video.types.ts').MediaData>;
 }
 
 export interface ArtistData {

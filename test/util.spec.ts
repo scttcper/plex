@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { searchType } from '../src/search.js';
-import { lowerFirst, ltrim, rsplit, tagHelper } from '../src/util.js';
+import { searchType } from '../src/search.ts';
+import { lowerFirst, ltrim, rsplit, tagHelper } from '../src/util.ts';
 
 describe('searchType', () => {
   it('should return matched search types ', () => {

@@ -1,8 +1,8 @@
 import type { URL } from 'node:url';
 
-import { Playable } from './base/playable.js';
-import { fetchItem, fetchItems, findItems } from './baseFunctionality.js';
-import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.js';
+import { Playable } from './base/playable.ts';
+import { fetchItem, fetchItems, findItems } from './baseFunctionality.ts';
+import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.ts';
 import {
   Chapter,
   Collection,
@@ -20,9 +20,9 @@ import {
   Role,
   Similar,
   Writer,
-} from './media.js';
-import type { CommonSenseMediaData } from './media.types.js';
-import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.js';
+} from './media.ts';
+import type { CommonSenseMediaData } from './media.types.ts';
+import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.ts';
 
 type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
   CommonSenseMedia?: CommonSenseMediaData[];

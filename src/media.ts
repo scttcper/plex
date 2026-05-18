@@ -1,18 +1,18 @@
-import { PlexObject } from './base/plexObject.js';
+import { PlexObject } from './base/plexObject.ts';
 import type {
   AgeRatingData,
   CommonSenseMediaData,
   ParentalAdvisoryTopicData,
   TalkingPointData,
-} from './media.types.js';
-import type { MediaContainer } from './util.js';
+} from './media.types.ts';
+import type { MediaContainer } from './util.ts';
 import type {
   ChapterData,
   MarkerData,
   MediaData,
   MediaPartData,
   MediaPartStreamData,
-} from './video.types.js';
+} from './video.types.ts';
 
 /**
  * Base class for media tags used for filtering and searching your library

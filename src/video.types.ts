@@ -1,4 +1,4 @@
-import type { ImageData } from './media.types.js';
+import type { ImageData } from './media.types.ts';
 
 export interface FullShowResponse {
   size: number;
@@ -337,11 +337,13 @@ export interface Role {
   thumb?: string;
 }
 
-export enum ChapterSource {
-  Agent = 'agent',
-  Media = 'media',
-  Mixed = 'mixed',
-}
+export const ChapterSource = {
+  Agent: 'agent',
+  Media: 'media',
+  Mixed: 'mixed',
+} as const;
+
+export type ChapterSource = (typeof ChapterSource)[keyof typeof ChapterSource];
 
 export interface ShowAllLeaves {
   size: number;

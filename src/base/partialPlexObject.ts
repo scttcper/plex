@@ -1,12 +1,12 @@
 import { URLSearchParams } from 'node:url';
 
-import type { Section } from '../library.js';
-import { SearchResult, searchType } from '../search.js';
-import type { MatchSearchResult } from '../search.types.js';
-import type { HistoryOptions } from '../server.types.js';
-import { getAgentIdentifier, ltrim, type MediaContainer, tagHelper } from '../util.js';
+import type { Section } from '../library.ts';
+import { SearchResult, searchType } from '../search.ts';
+import type { MatchSearchResult } from '../search.types.ts';
+import type { HistoryOptions } from '../server.types.ts';
+import { getAgentIdentifier, ltrim, type MediaContainer, tagHelper } from '../util.ts';
 
-import { PlexObject } from './plexObject.js';
+import { PlexObject } from './plexObject.ts';
 
 export abstract class PartialPlexObject extends PlexObject {
   override _INCLUDES = {

@@ -1,4 +1,4 @@
-import { type MovieSection, MyPlexAccount } from '../src/index.js';
+import { type MovieSection, MyPlexAccount } from '../src/index.ts';
 
 async function listMovies() {
   const account = await new MyPlexAccount({

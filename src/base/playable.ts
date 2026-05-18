@@ -1,10 +1,10 @@
 import { URLSearchParams } from 'node:url';
 
-import type { AudioStream, Media, MediaPart, MediaPartStream, SubtitleStream } from '../media.js';
-import { PlayQueue, type PlayQueue as PlayQueueType } from '../playqueue.js';
-import type { CreatePlayQueueOptions } from '../playqueue.types.js';
+import type { AudioStream, Media, MediaPart, MediaPartStream, SubtitleStream } from '../media.ts';
+import { PlayQueue, type PlayQueue as PlayQueueType } from '../playqueue.ts';
+import type { CreatePlayQueueOptions } from '../playqueue.types.ts';
 
-import { PartialPlexObject } from './partialPlexObject.js';
+import { PartialPlexObject } from './partialPlexObject.ts';
 
 /**
  * This is a general place to store functions specific to media that is Playable.

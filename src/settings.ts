@@ -1,8 +1,8 @@
 import { URLSearchParams } from 'node:url';
 
-import { PlexObject } from './base/plexObject.js';
-import { BadRequest, NotFound } from './exceptions.js';
-import { lowerFirst } from './util.js';
+import { PlexObject } from './base/plexObject.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
+import { lowerFirst } from './util.ts';
 
 export type SettingType = 'bool' | 'double' | 'enum' | 'int' | 'text';
 export type SettingValue = boolean | number | string;

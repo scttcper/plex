@@ -1,27 +1,27 @@
-export * from './alert.js';
-export type { AlertTypes } from './alert.types.js';
-export * from './client.js';
+export * from './alert.ts';
+export type { AlertTypes } from './alert.types.ts';
+export * from './client.ts';
 export type {
   ClientTimelineData,
   SendCommandParams,
   SetParametersOptions,
   SetStreamsOptions,
   PlayMediaOptions,
-} from './client.types.js';
-export * from './exceptions.js';
-export * from './library.js';
-export * from './media.js';
-export * from './myplex.js';
-export * from './playlist.js';
-export * from './playqueue.js';
-export * from './photo.js';
-export type { PhotoalbumData, PhotoData, PhotoMediaData, PhotoPartData } from './photo.types.js';
-export * from './server.js';
-export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.js';
-export * from './serverModels.js';
-export { Setting, Settings } from './settings.js';
-export type { SettingEnumValues, SettingType, SettingValue } from './settings.js';
-export * from './video.js';
-export * from './audio.js';
-export { X_PLEX_IDENTIFIER } from './config.js';
-export { SearchResult, Agent, SEARCHTYPES } from './search.js';
+} from './client.types.ts';
+export * from './exceptions.ts';
+export * from './library.ts';
+export * from './media.ts';
+export * from './myplex.ts';
+export * from './playlist.ts';
+export * from './playqueue.ts';
+export * from './photo.ts';
+export type { PhotoalbumData, PhotoData, PhotoMediaData, PhotoPartData } from './photo.types.ts';
+export * from './server.ts';
+export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.ts';
+export * from './serverModels.ts';
+export { Setting, Settings } from './settings.ts';
+export type { SettingEnumValues, SettingType, SettingValue } from './settings.ts';
+export * from './video.ts';
+export * from './audio.ts';
+export { X_PLEX_IDENTIFIER } from './config.ts';
+export { SearchResult, Agent, SEARCHTYPES } from './search.ts';

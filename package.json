@@ -26,13 +26,13 @@
     "build": "tsc",
     "build:docs": "typedoc",
     "test": "vitest run",
-    "bootstraptest": "tsx scripts/bootstraptest.ts --create-photos",
-    "teardowntest": "tsx scripts/teardowntest.ts",
-    "add-media": "tsx scripts/add-media.ts",
-    "test-cleanup": "tsx scripts/test-cleanup.ts"
+    "bootstraptest": "node scripts/bootstraptest.ts --create-photos",
+    "teardowntest": "node scripts/teardowntest.ts",
+    "add-media": "node scripts/add-media.ts",
+    "test-cleanup": "node scripts/test-cleanup.ts"
   },
   "dependencies": {
-    "@ctrl/mac-address": "^3.1.0",
+    "@ctrl/mac-address": "^3.2.1",
     "ofetch": "^1.5.1",
     "type-fest": "^5.6.0",
     "ws": "^8.20.1",
@@ -53,7 +53,6 @@
     "oxlint": "1.65.0",
     "p-retry": "8.0.0",
     "prettier": "3.8.3",
-    "tsx": "4.22.1",
     "typedoc": "0.28.19",
     "typescript": "6.0.3",
     "vitest": "4.1.6"

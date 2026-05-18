@@ -1,8 +1,8 @@
 import { beforeAll, expect, it } from 'vitest';
 
-import { type Movie, type MovieSection, type PlexServer, MediaPart } from '../src/index.js';
+import { type Movie, type MovieSection, type PlexServer, MediaPart } from '../src/index.ts';
 
-import { createClient } from './test-client.js';
+import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
 let movie: Movie;
