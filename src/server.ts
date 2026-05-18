@@ -635,7 +635,7 @@ export class PlexServer {
 
   /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
-    const backgroundProcessing = await fetchItem(this, '/playlists?type=42');
+    const backgroundProcessing = await fetchItem<{ key: string }>(this, '/playlists?type=42');
     const items = await fetchItems<Optimized>(
       this,
       backgroundProcessing.key,

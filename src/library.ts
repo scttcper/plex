@@ -3073,7 +3073,12 @@ export class ManagedHub extends PlexObject {
 
   override async reload(): Promise<void> {
     const key = `/hubs/sections/${this.librarySectionID}/manage`;
-    const data = await fetchItem(this.server, key, { identifier: this.identifier }, ManagedHub);
+    const data = await fetchItem<ManagedHubData>(
+      this.server,
+      key,
+      { identifier: this.identifier },
+      ManagedHub,
+    );
     this._loadData(data);
   }
 
