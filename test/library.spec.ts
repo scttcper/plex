@@ -13,6 +13,7 @@ import {
   Genre,
   LibraryTimeline,
   MovieSection,
+  Setting,
   type PlexServer,
   type ShowSection,
   BadRequest,
@@ -281,6 +282,19 @@ it('should list sorts and filter choices', async () => {
   expect(sorts[0]).toBeInstanceOf(FilteringSort);
   expect(genres[0]).toBeInstanceOf(FilterChoice);
   expect(sortedItems[0]).toBeInstanceOf(Movie);
+});
+
+it('should get typed advanced settings for a section', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const settings = await section.settings();
+  const enableBIFGeneration = settings.find(setting => setting.id === 'enableBIFGeneration');
+  expect(enableBIFGeneration).toBeInstanceOf(Setting);
+  expect(enableBIFGeneration.id).toBe('enableBIFGeneration');
+  expect(typeof enableBIFGeneration.value).toBe('boolean');
+  expect(typeof enableBIFGeneration.default).toBe('boolean');
+  expect(typeof enableBIFGeneration.advanced).toBe('boolean');
+  expect(typeof enableBIFGeneration.hidden).toBe('boolean');
 });
 
 it('should get items for a filter choice', async () => {

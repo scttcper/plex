@@ -520,7 +520,7 @@ async function main() {
       name: 'Photos',
       type: 'photo',
       location: '/data/Photos',
-      agent: 'com.plexapp.agents.none',
+      agent: 'tv.plex.agents.none',
       scanner: 'Plex Photo Scanner',
       language: 'en-US',
       expectedMediaCount: numPhotos,

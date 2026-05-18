@@ -709,6 +709,8 @@ export class PlexServer {
   }
 
   private _browseParentPath(path: string): string {
+    // Plex returns server-visible paths, which may be Windows paths even when this
+    // client runs on macOS/Linux. Avoid node:path helpers here.
     const trimmed = path.replace(/[\\/]+$/, '');
     const separatorIndex = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
 

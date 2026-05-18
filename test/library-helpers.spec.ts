@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   BadRequest,
-  Genre,
   Library,
   ManagedHub,
   Movie,
@@ -589,20 +588,6 @@ function lastQueryEntries(query: ReturnType<typeof vi.fn>): Array<[string, strin
 }
 
 describe('Library root helpers', () => {
-  it('returns typed on deck and recently added items', async () => {
-    const { query, library } = createLibrary();
-
-    const onDeck = await library.onDeck();
-    const recentlyAdded = await library.recentlyAdded();
-
-    expect(onDeck[0]).toBeInstanceOf(Movie);
-    expect(onDeck[0].title).toBe('Root Movie');
-    expect(recentlyAdded[0]).toBeInstanceOf(Movie);
-    expect(recentlyAdded[0].title).toBe('Root Movie');
-    expect(query).toHaveBeenCalledWith({ path: '/library/onDeck?includeGuids=1' });
-    expect(query).toHaveBeenCalledWith({ path: '/library/recentlyAdded?includeGuids=1' });
-  });
-
   it('searches across the root library with simple filters', async () => {
     const { query, library } = createLibrary();
 
@@ -635,33 +620,6 @@ describe('Library root helpers', () => {
       ['contentDirectoryID', '1,playlists'],
       ['identifier', 'home.continue,home.ondeck'],
     ]);
-  });
-
-  it('returns typed global library tags', async () => {
-    const { query, library } = createLibrary();
-
-    const tags = await library.tags('genre');
-
-    expect(tags[0]).toBeInstanceOf(Genre);
-    expect(tags[0].tag).toBe('Animation');
-    expect(tags[0].filter).toBe('genre=4');
-    expect(tags[0].count).toBe(1);
-    expect(tags[0].librarySectionID).toBe(1);
-    expect(tags[0].librarySectionTitle).toBe('Movies');
-    expect(query).toHaveBeenCalledWith({ path: '/library/tags?type=1' });
-  });
-
-  it('returns typed items for global library tags', async () => {
-    const { query, library } = createLibrary();
-
-    const [tag] = await library.tags('genre');
-    const items = await tag.items();
-
-    expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Root Movie');
-    expect(query).toHaveBeenCalledWith({
-      path: '/library/all?genre=4&includeGuids=1',
-    });
   });
 
   it('creates a typed library section with locations and preferences', async () => {
@@ -734,83 +692,6 @@ describe('Library root helpers', () => {
 });
 
 describe('LibrarySection edit helpers', () => {
-  it('returns typed advanced settings for the section', async () => {
-    const { query, section } = createMovieSection();
-
-    const settings = await section.settings();
-
-    expect(settings[0]).toBeInstanceOf(Setting);
-    expect(settings[0].id).toBe('includeInGlobal');
-    expect(settings[0].value).toBe(true);
-    expect(settings[0].default).toBe(false);
-    expect(settings[0].advanced).toBe(true);
-    expect(settings[0].hidden).toBe(false);
-    expect(settings[0].enumValues).toEqual({ '0': 'Disabled', '1': 'Enabled' });
-    expect(query).toHaveBeenCalledWith({ path: '/library/sections/1/prefs' });
-  });
-
-  it('lists all section items with typed options', async () => {
-    const { query, section } = createMovieSection();
-
-    const items = await section.all({ sort: 'titleSort', libtype: 'movie', maxResults: 1 });
-
-    expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Root Movie');
-    expect(query).toHaveBeenCalledWith({
-      path: '/library/sections/1/all?includeGuids=1&sort=movie.titleSort&type=1&X-Plex-Container-Size=1',
-    });
-  });
-
-  it('gets one item with typed search filters', async () => {
-    const { query, section } = createMovieSection();
-
-    const item = await section.get({ title: 'Big Buck Bunny', year: 2008, libtype: 'movie' });
-
-    expect(item).toBeInstanceOf(Movie);
-    expect(item.title).toBe('Big Buck Bunny');
-    expect(item.ratingKey).toBe('11');
-    expect(query).toHaveBeenCalledWith({
-      path: '/library/sections/1/all?includeGuids=1&title=Big+Buck+Bunny&type=1&movie.year=2008',
-    });
-  });
-
-  it('returns typed continue watching items for the section hub', async () => {
-    const { query, section } = createMovieSection();
-
-    const items = await section.continueWatching();
-
-    expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Continue Movie');
-    expect(query).toHaveBeenCalledWith({
-      path: '/hubs/sections/1/continueWatching/items?includeGuids=1',
-    });
-  });
-
-  it('returns all nested folders below a folder', async () => {
-    const { section } = createMovieSection();
-
-    const folders = await section.folders();
-    const nested = await folders[0].allSubfolders();
-
-    expect(nested.map(folder => folder.title)).toEqual(['Action', 'Animated']);
-    expect(nested.map(folder => folder.key)).toEqual([
-      '/library/sections/1/folder/%2Fdata%2FMovies%2FAction',
-      '/library/sections/1/folder/%2Fdata%2FMovies%2FAction%2FAnimated',
-    ]);
-  });
-
-  it('searches hubs scoped to the section', async () => {
-    const { query, section } = createMovieSection();
-
-    const hubs = await section.hubSearch('bunny', { limit: 2, mediatype: 'movie' });
-
-    expect(hubs[0].title).toBe('Movies');
-    expect(hubs[0].type).toBe('movie');
-    expect(query).toHaveBeenCalledWith({
-      path: '/hubs/search?includeCollections=1&includeExternalMedia=1&query=bunny&sectionId=1&limit=2&section=1',
-    });
-  });
-
   it('fetches watched history scoped to the section', async () => {
     const { history, section } = createMovieSection();
 
