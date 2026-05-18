@@ -9,6 +9,7 @@ export interface ServerRootResponse {
   allowSharing: boolean;
   allowSync: boolean;
   allowTuners: boolean;
+  apiVersion?: string;
   backgroundProcessing: boolean;
   certificate: boolean;
   companionProxy: boolean;
@@ -28,13 +29,14 @@ export interface ServerRootResponse {
   myPlexSubscription: boolean;
   myPlexUsername: string;
   ownerFeatures: string;
-  photoAutoTag: boolean;
+  offlineTranscode?: number;
+  photoAutoTag?: boolean;
   platform: string;
   platformVersion: string;
   pluginHost: boolean;
   pushNotifications: boolean;
   readOnlyLibraries: boolean;
-  requestParametersInCookie: boolean;
+  requestParametersInCookie?: boolean;
   streamingBrainABRVersion: number;
   streamingBrainVersion: number;
   sync: boolean;
@@ -116,7 +118,7 @@ export interface PlaylistMetadata {
 
 export interface ConnectionInfo {
   size: number;
-  Server: ServerConnectionInfo[];
+  Server?: ServerConnectionInfo[];
 }
 
 export interface ServerConnectionInfo {

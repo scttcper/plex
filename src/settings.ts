@@ -15,8 +15,8 @@ export interface SettingResponse {
   type: SettingType;
   default: SettingValue;
   value: SettingValue;
-  hidden: boolean | number | string;
-  advanced: boolean | number | string;
+  hidden: boolean;
+  advanced: boolean;
   group: string;
   enumValues?: string;
 }

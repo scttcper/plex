@@ -75,6 +75,8 @@ export class PlexServer {
   declare allowSync: boolean;
   /** Unknown */
   declare allowTuners: boolean;
+  /** Plex server API version. */
+  declare apiVersion?: string;
   /** Unknown */
   declare livetv: number;
   /** Unknown */
@@ -111,6 +113,14 @@ export class PlexServer {
   declare myPlexSubscription: boolean;
   /** Email address if signed into myPlex (user@example.com) */
   declare myPlexUsername: string;
+  /** True if item clusters are enabled. */
+  declare itemClusters: boolean;
+  /** True if media providers are enabled. */
+  declare mediaProviders: boolean;
+  /** Plex server country code. */
+  declare countryCode: string;
+  /** Server offline transcode capability flag. */
+  declare offlineTranscode?: number;
   /**
    * List of features allowed by the server owner. This may be based
    * on your PlexPass subscription. Features include!: camera_upload, cloudsync,
@@ -122,7 +132,7 @@ export class PlexServer {
   /**
    * True if photo `auto-tagging <https!://support.plex.tv/hc/en-us/articles/234976627-Auto-Tagging-of-Photos>`_ is enabled.
    */
-  declare photoAutoTag: boolean;
+  declare photoAutoTag?: boolean;
   /** Platform the server is hosted on (ex!: Linux) */
   declare platform: string;
   /** Platform version (ex!: '6.1 (Build 7601)', '4.4.0-59-generic'). */
@@ -132,7 +142,7 @@ export class PlexServer {
   /** Unknown */
   declare readOnlyLibraries: boolean;
   /** Unknown */
-  declare requestParametersInCookie: boolean;
+  declare requestParametersInCookie?: boolean;
   /**
    * Current `Streaming Brain <https!://www.plex.tv/blog/mcstreamy-brain-take-world-two-easy-steps/>`_ version.
    */
@@ -591,7 +601,7 @@ export class PlexServer {
   // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
   async clients(): Promise<PlexClient[]> {
     const items: PlexClient[] = [];
-    const response = await this.query<MediaContainer<ConnectionInfo | undefined>>({
+    const response = await this.query<MediaContainer<ConnectionInfo>>({
       path: '/clients',
     });
 
@@ -753,21 +763,26 @@ export class PlexServer {
     this.allowSharing = data.allowSharing;
     this.allowSync = data.allowSync;
     this.allowTuners = data.allowTuners;
+    this.apiVersion = data.apiVersion;
     this.livetv = data.livetv;
     this.backgroundProcessing = data.backgroundProcessing;
     this.certificate = data.certificate;
     this.companionProxy = data.companionProxy;
+    this.countryCode = data.countryCode;
     this.diagnostics = data.diagnostics;
     this.eventStream = data.eventStream;
     this.friendlyName = data.friendlyName;
     this.hubSearch = data.hubSearch;
+    this.itemClusters = data.itemClusters;
     this.machineIdentifier = data.machineIdentifier;
+    this.mediaProviders = data.mediaProviders;
     this.multiuser = data.multiuser;
     this.myPlex = data.myPlex;
     this.myPlexMappingState = data.myPlexMappingState;
     this.myPlexSigninState = data.myPlexSigninState;
     this.myPlexSubscription = data.myPlexSubscription;
     this.myPlexUsername = data.myPlexUsername;
+    this.offlineTranscode = data.offlineTranscode;
     this.ownerFeatures = data.ownerFeatures.split(',');
     this.photoAutoTag = data.photoAutoTag;
     this.platform = data.platform;
