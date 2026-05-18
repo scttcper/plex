@@ -17,9 +17,9 @@ export class AlertListener {
     const url = this.server.url(this.key, { includeToken: true }).toString().replace('http', 'ws');
     this._ws = new WebSocket(url);
 
-    this._ws.on('message', (buffer: Buffer) => {
+    this._ws.on('message', message => {
       try {
-        const data: NotificationContainer<AlertTypes> = JSON.parse(buffer.toString());
+        const data: NotificationContainer<AlertTypes> = JSON.parse(message.toString());
         this.callback(data.NotificationContainer);
       } catch (err) {
         console.error(err);

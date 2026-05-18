@@ -17,10 +17,13 @@ import { Agent, SEARCHTYPES } from './search.js';
 import type {
   BandwidthOptions,
   ConnectionInfo,
+  ContinueWatchingItemData,
   HistoryMediaContainer,
   HistoryResult,
   ServerRootResponse,
   HistoryOptions,
+  SessionData,
+  TranscodeSessionData,
   TranscodeImageOptions,
 } from './server.types.js';
 import {
@@ -35,9 +38,9 @@ import {
   SystemDevice,
   type ServerWalkEntry,
 } from './serverModels.js';
-import type { ServerFileData, ServerPathData } from './serverModels.types.js';
+import type { ButlerTaskData, ServerFileData, ServerPathData } from './serverModels.types.js';
 import { type SettingResponse, Settings } from './settings.js';
-import type { MediaContainer } from './util.js';
+import { encodeBase64, type MediaContainer } from './util.js';
 
 export interface ServerBrowseOptions {
   /** Server-visible path or a ServerPath object returned by browse(). Omit to browse roots. */
@@ -333,7 +336,7 @@ export class PlexServer {
   }): Promise<T> {
     const requestHeaders = { ...this._headers(), ...headers };
     if (username && password) {
-      const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+      const credentials = encodeBase64(`${username}:${password}`);
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
@@ -420,16 +423,18 @@ export class PlexServer {
   }
 
   /** Returns a list of all active session (currently playing) media objects. */
-  async sessions(): Promise<any[]> {
+  async sessions(): Promise<SessionData[]> {
     const key = '/status/sessions';
-    const data = await this.query<MediaContainer<{ Metadata?: any[] }>>({ path: key });
+    const data = await this.query<MediaContainer<{ Metadata?: SessionData[] }>>({ path: key });
     return data.MediaContainer.Metadata ?? [];
   }
 
   /** Returns a list of all active transcode sessions. */
-  async transcodeSessions(): Promise<any[]> {
+  async transcodeSessions(): Promise<TranscodeSessionData[]> {
     const key = '/transcode/sessions';
-    const data = await this.query<MediaContainer<{ TranscodeSession?: any[] }>>({ path: key });
+    const data = await this.query<MediaContainer<{ TranscodeSession?: TranscodeSessionData[] }>>({
+      path: key,
+    });
     return data.MediaContainer.TranscodeSession ?? [];
   }
 
@@ -442,8 +447,10 @@ export class PlexServer {
   /** Returns a list of all scheduled butler (maintenance) tasks. */
   async butlerTasks(): Promise<ButlerTask[]> {
     const key = '/butler';
-    const data = await this.query<{ ButlerTasks: { ButlerTask: any[] } }>({ path: key });
-    return (data.ButlerTasks.ButlerTask ?? []).map((task: any) => new ButlerTask(this, task, key));
+    const data = await this.query<{ ButlerTasks: { ButlerTask?: ButlerTaskData[] } }>({
+      path: key,
+    });
+    return (data.ButlerTasks.ButlerTask ?? []).map(task => new ButlerTask(this, task, key));
   }
 
   /**
@@ -520,9 +527,11 @@ export class PlexServer {
   }
 
   /** Returns items from the Continue Watching hub. */
-  async continueWatching(): Promise<any[]> {
+  async continueWatching(): Promise<ContinueWatchingItemData[]> {
     const key = '/hubs/continueWatching/items';
-    const data = await this.query<MediaContainer<{ Metadata?: any[] }>>({ path: key });
+    const data = await this.query<MediaContainer<{ Metadata?: ContinueWatchingItemData[] }>>({
+      path: key,
+    });
     return data.MediaContainer.Metadata ?? [];
   }
 
@@ -545,7 +554,6 @@ export class PlexServer {
   //   // TODO: Add sort and type options? (this comment is in py-plex)
   //   // /playlists/all?type=15&sort=titleSort%3Aasc&playlistType=video&smart=0
   //   const data = this.query('/playlists');
-  //   console.log(JSON.stringify(data));
   // }
 
   /**
@@ -697,7 +705,7 @@ export class PlexServer {
     if (path instanceof ServerPath) {
       key = path.key;
     } else if (path !== undefined) {
-      key = `/services/browse/${Buffer.from(path).toString('base64')}`;
+      key = `/services/browse/${encodeBase64(path)}`;
     } else {
       key = '/services/browse';
     }

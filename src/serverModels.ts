@@ -60,8 +60,8 @@ export class ButlerTask extends PlexObject {
   static override TAG = 'ButlerTask';
 
   declare name: string;
-  declare title: string;
-  declare description: string;
+  declare title?: string;
+  declare description?: string;
   declare enabled: boolean;
   declare interval: number;
   declare scheduleRandomized: boolean;

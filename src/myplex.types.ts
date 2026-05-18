@@ -4,7 +4,10 @@ export interface UserResponse {
   username: string;
   title: string;
   email: string;
+  friendlyName?: string;
   locale: string | null;
+  confirmed?: boolean;
+  joinedAt?: number;
   emailOnlyAuth: boolean;
   hasPassword: boolean;
   protected: boolean;
@@ -17,6 +20,7 @@ export interface UserResponse {
   subscription?: Subscription;
   subscriptionDescription: null | string;
   restricted: boolean;
+  anonymous?: null;
   home: boolean;
   guest: boolean;
   homeSize: number;
@@ -31,17 +35,28 @@ export interface UserResponse {
   adsConsent: null;
   adsConsentSetAt: null;
   adsConsentReminderAt: null;
+  experimentalFeatures?: boolean;
+  twoFactorEnabled?: boolean;
+  backupCodesCreated?: boolean;
+  attributionPartner?: null | string;
   queueEmail: string;
   queueUid: Record<string, unknown>;
 }
 
 export interface Profile {
   autoSelectAudio: boolean;
+  defaultAudioAccessibility?: number;
   defaultAudioLanguage: string;
+  defaultAudioLanguages?: string[] | null;
   defaultSubtitleLanguage: string;
+  defaultSubtitleLanguages?: string[] | null;
   autoSelectSubtitle: number;
   defaultSubtitleAccessibility: number;
   defaultSubtitleForced: number;
+  watchedIndicator?: number;
+  mediaReviewsVisibility?: number;
+  mediaReviewsLanguages?: string[] | null;
+  mediaPostsVisibility?: boolean;
 }
 
 export interface Service {
@@ -49,7 +64,7 @@ export interface Service {
   endpoint: string;
   token?: string;
   status: Status;
-  secret?: string;
+  secret?: string | null;
 }
 
 export enum Status {
@@ -59,7 +74,7 @@ export enum Status {
 
 export interface Subscription {
   active: boolean;
-  subscribedAt: Date | null;
+  subscribedAt: string | null;
   status: string;
   paymentService: null | string;
   plan: null | string;
@@ -77,13 +92,14 @@ export interface ResourcesResponse {
   platformVersion: string;
   device: null | string;
   clientIdentifier: string;
-  createdAt: Date;
-  lastSeenAt: Date;
+  createdAt: string;
+  lastSeenAt: string;
   provides: string;
   ownerId: number | null;
   sourceTitle: null | string;
   publicAddress: string;
   accessToken: null | string;
+  searchEnabled?: boolean;
   owned: boolean;
   home: boolean;
   synced: boolean;

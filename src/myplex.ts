@@ -13,7 +13,7 @@ import type {
   WebLogin,
 } from './myplex.types.js';
 import { PlexServer } from './server.js';
-import type { MediaContainer } from './util.js';
+import { encodeBase64, type MediaContainer } from './util.js';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -297,13 +297,13 @@ export class MyPlexAccount {
   }: {
     url: string;
     method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
-    headers?: any;
+    headers?: Record<string, string>;
     username?: string;
     password?: string;
   }): Promise<T> {
     const requestHeaders = this._headers();
     if (username && password) {
-      const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+      const credentials = encodeBase64(`${username}:${password}`);
       requestHeaders.Authorization = `Basic ${credentials}`;
     }
 
@@ -347,7 +347,7 @@ export class MyPlexAccount {
   /**
    * @param token pass token from claimToken
    */
-  async claimServer(token: string): Promise<any> {
+  async claimServer(token: string): Promise<unknown> {
     const params = new URLSearchParams({
       token,
       ...BASE_HEADERS,
@@ -654,8 +654,8 @@ export class MyPlexDevice extends PlexObject {
     });
     this.screenResolution = data.$.screenResolution;
     this.screenDensity = data.$.screenDensity;
-    this.createdAt = new Date(Number.parseInt(data.$.createdAt, 10));
-    this.lastSeenAt = new Date(Number.parseInt(data.$.lastSeenAt, 10));
+    this.createdAt = new Date(Number.parseInt(data.$.createdAt, 10) * 1000);
+    this.lastSeenAt = new Date(Number.parseInt(data.$.lastSeenAt, 10) * 1000);
     this.connections = data.Connection?.map(connection => connection.$.uri);
   }
 }

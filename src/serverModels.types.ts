@@ -8,14 +8,14 @@ export interface ActivityData {
   progress: number;
   Context?: {
     key?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
 export interface ButlerTaskData {
   name: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   enabled: boolean;
   interval: number;
   scheduleRandomized: boolean;
