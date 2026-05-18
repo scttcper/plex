@@ -10,13 +10,7 @@ import { makeDirectory } from 'make-dir';
 import ora from 'ora';
 import pRetry from 'p-retry';
 
-import {
-  AlertListener,
-  type AlertTypes,
-  MyPlexAccount,
-  type PlexServer,
-  SEARCHTYPES,
-} from '../src/index.ts';
+import { AlertListener, MyPlexAccount, type PlexServer, SEARCHTYPES } from '../src/index.ts';
 
 import {
   prepareAudioDir,
@@ -106,9 +100,11 @@ const dockerCmd = ({
   `plexinc/pms-docker:${imageTag}`,
 ];
 
+type SectionType = 'artist' | 'movie' | 'photo' | 'show';
+
 type Section = {
   name: string;
-  type: string;
+  type: SectionType;
   location: string;
   agent: string;
   scanner: string;
@@ -129,9 +125,37 @@ type Options = {
 };
 
 async function createSection(section: Section, server: PlexServer): Promise<void> {
-  let processedMedia = 0;
-  let listener: AlertListener;
+  if (section.type === 'photo') {
+    await addSection(section, server);
+    await waitForPhotoScan(section, server);
+    return;
+  }
 
+  await waitForAlertScan(section, server);
+}
+
+async function addSection(section: Section, server: PlexServer): Promise<void> {
+  await pRetry(
+    async () => {
+      const library = await server.library();
+      await library.add({
+        name: section.name,
+        type: section.type,
+        agent: section.agent,
+        scanner: section.scanner,
+        locations: section.location,
+        language: section.language,
+        preferences: section.prefs,
+      });
+    },
+    {
+      retries: 60,
+      onFailedAttempt: async () => sleep(1000),
+    },
+  );
+}
+
+async function waitForAlertScan(section: Section, server: PlexServer): Promise<void> {
   let expectedMediaTypes: number[];
   switch (section.type) {
     case 'show': {
@@ -144,59 +168,89 @@ async function createSection(section: Section, server: PlexServer): Promise<void
     }
     default: {
       // Assume single type matches section type (e.g., movie)
-      expectedMediaTypes = [SEARCHTYPES[section.type as keyof typeof SEARCHTYPES]];
+      expectedMediaTypes = [SEARCHTYPES[section.type]];
       break;
     }
   }
 
-  // oxlint-disable-next-line no-async-promise-executor
-  return new Promise(async resolve => {
-    const alertCallback = (data: AlertTypes) => {
-      if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
-        const entry = data.TimelineEntry[0];
-        // Check if the entry type is one we expect for this section
-        if (expectedMediaTypes.includes(entry.type)) {
-          processedMedia += 1;
-          // console.log(`Finished ${processedMedia} ${section.name}`);
-        }
-      }
+  const scan = waitForScanCompletion({
+    expectedMediaCount: section.expectedMediaCount,
+    expectedMediaTypes,
+    server,
+  });
 
-      if (processedMedia >= section.expectedMediaCount) {
-        resolve();
-        listener.stop();
-      }
-    };
+  await scan.listener.run();
 
-    listener = new AlertListener(server, alertCallback);
-    await listener.run();
-
+  try {
     await sleep(4000);
+    await addSection(section, server);
+    await scan.promise;
+  } finally {
+    scan.listener.stop();
+  }
+}
 
-    try {
-      // Add the specified section to our Plex instance. This tends to be a bit
-      // flaky, so we retry a few times here.
-      await pRetry(
-        async () => {
-          const library = await server.library();
-          await library.add({
-            name: section.name,
-            type: section.type as 'artist' | 'movie' | 'photo' | 'show',
-            agent: section.agent,
-            scanner: section.scanner,
-            locations: section.location,
-            language: section.language,
-            preferences: section.prefs,
-          });
-        },
-        {
-          retries: 60,
-          onFailedAttempt: async () => sleep(1000),
-        },
-      );
-    } catch {
-      throw new Error('Unable to create section');
+async function waitForPhotoScan(section: Section, server: PlexServer): Promise<void> {
+  await pRetry(
+    async () => {
+      const library = await server.library();
+      const photoSection = await library.section(section.name);
+      const timeline = await photoSection.timeline();
+      if ((timeline.updateQueueSize ?? 0) > 0) {
+        throw new Error(`${section.name} has ${timeline.updateQueueSize} items left to scan`);
+      }
+
+      const response = await server.query<{
+        MediaContainer: { Metadata?: unknown[]; size?: number; totalSize?: number };
+      }>({
+        path: `/library/sections/${photoSection.key}/all?type=${SEARCHTYPES.photo}`,
+      });
+      const count =
+        response.MediaContainer.totalSize ??
+        response.MediaContainer.size ??
+        response.MediaContainer.Metadata?.length ??
+        0;
+
+      if (count < section.expectedMediaCount) {
+        throw new Error(`Waiting for ${section.name} to scan`);
+      }
+    },
+    {
+      retries: 60,
+      onFailedAttempt: async () => sleep(1000),
+    },
+  );
+}
+
+function waitForScanCompletion({
+  expectedMediaCount,
+  expectedMediaTypes,
+  server,
+}: {
+  expectedMediaCount: number;
+  expectedMediaTypes: number[];
+  server: PlexServer;
+}): { listener: AlertListener; promise: Promise<void> } {
+  let processedMedia = 0;
+  let resolveScan: () => void;
+  const promise = new Promise<void>(resolve => {
+    resolveScan = resolve;
+  });
+
+  const listener = new AlertListener(server, data => {
+    if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
+      const entry = data.TimelineEntry[0];
+      if (expectedMediaTypes.includes(entry.type)) {
+        processedMedia += 1;
+      }
+    }
+
+    if (processedMedia >= expectedMediaCount) {
+      resolveScan();
     }
   });
+
+  return { listener, promise };
 }
 
 async function setupMovies(moviePath: string): Promise<number> {
