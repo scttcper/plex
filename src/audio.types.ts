@@ -1,30 +1,31 @@
+import type { ImageData, UltraBlurColorsData } from './media.types.js';
 import type { MediaTagData } from './video.types.js';
-
-export interface UltraBlurColorsData {
-  topLeft?: string;
-  topRight?: string;
-  bottomRight?: string;
-  bottomLeft?: string;
-}
 
 export interface AlbumData {
   // Core identifiers and meta
   key: string;
   type: string;
   title: string;
+  ratingKey?: string;
+  guid?: string;
+  index?: number | string;
   summary?: string;
-  librarySectionID?: number;
+  thumb?: string;
+  art?: string;
+  librarySectionID?: number | string;
   addedAt?: number;
   updatedAt?: number;
+  lastViewedAt?: number;
+  viewCount?: number;
 
   // Album-specific numeric/text fields
   audienceRating?: number;
   leafCount?: number;
-  loudnessAnalysisVersion?: number;
+  loudnessAnalysisVersion?: number | string;
   originallyAvailableAt?: string; // YYYY-MM-DD
   parentGuid?: string;
   parentKey?: string;
-  parentRatingKey?: number;
+  parentRatingKey?: number | string;
   parentTheme?: string;
   parentThumb?: string;
   parentTitle?: string;
@@ -41,7 +42,8 @@ export interface AlbumData {
   Label?: MediaTagData[];
   Style?: MediaTagData[];
   Subformat?: MediaTagData[];
-  UltraBlurColors?: UltraBlurColorsData[];
+  UltraBlurColors?: UltraBlurColorsData;
+  Image?: ImageData[];
 }
 
 export interface TrackData {
@@ -57,14 +59,16 @@ export interface TrackData {
 
   // Relationships
   parentKey?: string;
-  parentRatingKey?: number;
+  parentRatingKey?: number | string;
   parentGuid?: string;
+  parentStudio?: string;
   parentThumb?: string;
   parentTitle?: string;
+  parentYear?: number | string;
   parentIndex?: number; // disc number
 
   grandparentKey?: string;
-  grandparentRatingKey?: number;
+  grandparentRatingKey?: number | string;
   grandparentGuid?: string;
   grandparentThumb?: string;
   grandparentTitle?: string;
@@ -77,15 +81,24 @@ export interface TrackData {
   duration?: number;
   originalTitle?: string;
   primaryExtraKey?: string;
+  ratingCount?: number | string;
   skipCount?: number;
   source?: string; // remote playlist items
+  lastViewedAt?: number;
+  viewCount?: number;
   viewOffset?: number;
+  thumb?: string;
+  art?: string;
+  summary?: string;
+  ratingKey?: string;
+  guid?: string;
 
   // Tag arrays
   Chapter?: Array<import('./video.types.js').ChapterData>;
   Collection?: MediaTagData[];
   Genre?: MediaTagData[];
   Guid?: MediaTagData[];
+  Image?: ImageData[];
   Label?: MediaTagData[];
   Media?: Array<import('./video.types.js').MediaData>;
 }
@@ -108,6 +121,8 @@ export interface ArtistData {
   art?: string;
   addedAt?: number;
   updatedAt?: number;
+  lastViewedAt?: number;
+  viewCount?: number;
 
   // Tag arrays
   Country?: MediaTagData[];
@@ -118,5 +133,5 @@ export interface ArtistData {
   Style?: MediaTagData[];
   Collection?: MediaTagData[];
   UltraBlurColors?: UltraBlurColorsData;
-  Image?: Array<{ alt?: string; type?: string; url?: string }>;
+  Image?: ImageData[];
 }

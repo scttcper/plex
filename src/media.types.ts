@@ -6,6 +6,19 @@ export interface SearchResultData {
   lifespanEnded: boolean;
 }
 
+export interface ImageData {
+  alt?: string;
+  type?: string;
+  url?: string;
+}
+
+export interface UltraBlurColorsData {
+  topLeft?: string;
+  topRight?: string;
+  bottomRight?: string;
+  bottomLeft?: string;
+}
+
 export interface CommonSenseMediaData {
   AgeRating?: AgeRatingData[];
   anyGood?: string;

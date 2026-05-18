@@ -263,7 +263,7 @@ export class Track extends Audio {
   declare grandparentArt?: string;
   declare grandparentGuid?: string;
   declare grandparentKey?: string;
-  declare grandparentRatingKey?: number;
+  declare grandparentRatingKey?: number | string;
   declare grandparentTheme?: string;
   declare grandparentThumb?: string;
   declare grandparentTitle?: string; // Artist Name
@@ -275,11 +275,14 @@ export class Track extends Audio {
   declare parentGuid?: string;
   declare parentIndex?: number; // Disc Number
   declare parentKey?: string;
-  declare parentRatingKey?: number;
+  declare parentRatingKey?: number | string;
+  declare parentStudio?: string;
   declare parentThumb?: string;
   declare parentTitle?: string; // Album Title
+  declare parentYear?: number | string;
   declare primaryExtraKey?: string;
   declare rating?: number; // Inherited ratingKey exists from PlexObject base
+  declare ratingCount?: number | string;
   declare skipCount?: number;
   declare sourceURI?: string; // Remote playlist item
   // viewCount inherited from Audio
@@ -447,10 +450,13 @@ export class Track extends Audio {
     this.parentIndex = data.parentIndex; // Disc Number
     this.parentKey = data.parentKey;
     this.parentRatingKey = data.parentRatingKey;
+    this.parentStudio = data.parentStudio;
     this.parentThumb = data.parentThumb;
     this.parentTitle = data.parentTitle;
+    this.parentYear = data.parentYear;
     this.primaryExtraKey = data.primaryExtraKey;
     this.rating = data.rating;
+    this.ratingCount = data.ratingCount;
     this.skipCount = data.skipCount;
     this.sourceURI = data.source; // remote playlist item
     this.viewOffset = data.viewOffset ?? 0;
@@ -700,7 +706,7 @@ export class Album extends Audio {
   // key inherited from Audio
   declare labels?: Label[];
   declare leafCount?: number;
-  declare loudnessAnalysisVersion?: number;
+  declare loudnessAnalysisVersion?: number | string;
   declare originallyAvailableAt?: Date;
   /**
    * Artist GUID
@@ -713,7 +719,7 @@ export class Album extends Audio {
   /**
    * Artist Rating Key
    */
-  declare parentRatingKey?: number;
+  declare parentRatingKey?: number | string;
   /**
    * Artist Theme
    */

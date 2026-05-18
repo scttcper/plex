@@ -1,4 +1,4 @@
-import type { UltraBlurColorsData } from './audio.types.js';
+import type { UltraBlurColorsData } from './media.types.js';
 
 export interface MatchSearchResult {
   thumb: string;

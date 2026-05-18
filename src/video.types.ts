@@ -1,3 +1,5 @@
+import type { ImageData } from './media.types.js';
+
 export interface FullShowResponse {
   size: number;
   allowSync: boolean;
@@ -369,28 +371,33 @@ export interface ShowAllLeaves {
 export interface EpisodeMetadata {
   key: string;
   index: number;
-  librarySectionID: number;
+  librarySectionID?: number;
   addedAt: number;
   art: string;
-  chapterSource: string;
-  contentRating: string;
+  chapterSource?: string;
+  contentRating?: string;
   duration: number;
+  audienceRating?: number;
+  audienceRatingImage?: string;
   grandparentArt: string;
+  grandparentGuid?: string;
   grandparentKey: string;
   grandparentRatingKey: string;
+  grandparentSlug?: string;
   grandparentTheme: string;
   grandparentThumb: string;
   grandparentTitle: string;
   guid: string;
-  originallyAvailableAt: Date;
+  originallyAvailableAt?: string;
+  parentGuid?: string;
   parentIndex: number;
   parentKey: string;
   parentRatingKey: string;
   parentThumb: string;
   parentTitle: string;
-  rating: number;
+  rating?: number;
   ratingKey: string;
-  studio: string;
+  studio?: string;
   summary: string;
   thumb: string;
   title: string;
@@ -402,43 +409,53 @@ export interface EpisodeMetadata {
   Media: MediaData[];
   Writer?: Array<{ tag: string }>;
   Director?: Array<{ tag: string }>;
+  Role?: Array<{ tag: string }>;
   Chapter?: ChapterData[];
   Collection?: MediaTagData[];
+  Image?: ImageData[];
   Marker?: MarkerData[];
+  UltraBlurColors?: {
+    topLeft?: string;
+    topRight?: string;
+    bottomRight?: string;
+    bottomLeft?: string;
+  };
 }
 
 export interface MediaData {
   id: number;
   duration: number;
   title?: string;
-  bitrate: number;
-  width: number;
-  height: number;
-  aspectRatio: number;
-  audioChannels: number;
-  audioCodec: string;
-  videoCodec: string;
-  videoResolution: string;
-  container: string;
-  videoFrameRate: string;
-  optimizedForStreaming: boolean;
-  audioProfile: string;
-  has64bitOffsets: boolean;
-  videoProfile: string;
+  bitrate?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
+  audioChannels?: number;
+  audioCodec?: string;
+  videoCodec?: string;
+  videoResolution?: string;
+  container?: string;
+  videoFrameRate?: string;
+  optimizedForStreaming?: boolean;
+  audioProfile?: string;
+  has64bitOffsets?: boolean;
+  hasVoiceActivity?: boolean;
+  videoProfile?: string;
   Part: MediaPartData[];
 }
 
 export interface MediaPartData {
   id: number;
   key: string;
-  audioProfile: string;
+  audioProfile?: string;
   container: string;
   duration: number;
   file: string;
-  has64bitOffsets: boolean;
-  optimizedForStreaming: boolean;
+  has64bitOffsets?: boolean;
+  hasThumbnail?: boolean;
+  optimizedForStreaming?: boolean;
   size: number;
-  videoProfile: string;
+  videoProfile?: string;
   exists?: boolean;
   Stream?: MediaPartStreamData[];
 }

@@ -1,5 +1,10 @@
-import type { CommonSenseMediaData } from './media.types.js';
-import type { ChapterSource, MarkerData, MediaTagData } from './video.types.js';
+import type { CommonSenseMediaData, ImageData, UltraBlurColorsData } from './media.types.js';
+import type {
+  ChapterSource,
+  MarkerData,
+  MediaPartStreamData,
+  MediaTagData,
+} from './video.types.js';
 
 export interface LibraryRootResponse {
   size: number;
@@ -265,33 +270,33 @@ export interface MovieData {
   originalTitle?: string;
   key: string;
   guid: string;
-  studio: string;
+  studio?: string;
   type: string;
   title: string;
   titleSort?: string;
   librarySectionID?: number;
-  contentRating: string;
-  summary: string;
-  rating: number;
+  contentRating?: string;
+  summary?: string;
+  rating?: number;
   viewCount?: number;
   viewOffset?: number;
   lastViewedAt?: number;
   year: number;
   tagline?: string;
-  thumb: string;
-  art: string;
-  duration: number;
-  originallyAvailableAt: string;
+  thumb?: string;
+  art?: string;
+  duration?: number;
+  originallyAvailableAt?: string;
   addedAt: number;
   updatedAt: number;
   chapterSource?: ChapterSource;
-  primaryExtraKey: string;
-  ratingImage: string;
-  Media: Media[];
-  Genre: MediaTag[];
-  Director: MediaTag[];
-  Writer: MediaTag[];
-  Country: MediaTag[];
+  primaryExtraKey?: string;
+  ratingImage?: string;
+  Media?: Media[];
+  Genre?: MediaTag[];
+  Director?: MediaTag[];
+  Writer?: MediaTag[];
+  Country?: MediaTag[];
   Collection?: MediaTagData[];
   CommonSenseMedia?: CommonSenseMediaData[];
   Role?: MediaTag[];
@@ -299,8 +304,10 @@ export interface MovieData {
   Producer?: MediaTagData[];
   Extras?: ExtrasData[];
   Guid?: Guid[];
+  Image?: ImageData[];
   Marker?: MarkerData[];
   Rating?: MediaRating[];
+  UltraBlurColors?: UltraBlurColorsData;
 }
 
 export interface MediaTag {
@@ -310,8 +317,21 @@ export interface MediaTag {
 export interface Media {
   id: number;
   duration: number;
-  bitrate: number;
-  videoProfile: string;
+  bitrate?: number;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
+  audioChannels?: number;
+  audioCodec?: string;
+  audioProfile?: string;
+  container?: string;
+  has64bitOffsets?: boolean;
+  hasVoiceActivity?: boolean;
+  optimizedForStreaming?: boolean;
+  videoCodec?: string;
+  videoFrameRate?: string;
+  videoProfile?: string;
+  videoResolution?: string;
   Part: Part[];
 }
 
@@ -326,7 +346,11 @@ export interface Part {
   file: string;
   size: number;
   container: string;
-  videoProfile: string;
+  audioProfile?: string;
+  has64bitOffsets?: boolean;
+  optimizedForStreaming?: boolean;
+  videoProfile?: string;
+  Stream?: MediaPartStreamData[];
 }
 
 export interface FullShowData {
@@ -345,31 +369,39 @@ export interface ShowData {
   ratingKey: string;
   key: string;
   guid: string;
-  studio: string;
+  studio?: string;
   type: string;
   title: string;
-  librarySectionTitle: string;
-  librarySectionID: number;
-  librarySectionKey: string;
-  contentRating: string;
-  summary: string;
+  librarySectionTitle?: string;
+  librarySectionID?: number;
+  librarySectionKey?: string;
+  contentRating?: string;
+  contentRatingAge?: number | string;
+  summary?: string;
   index: number;
-  rating: number;
+  rating?: number;
+  audienceRating?: number;
+  audienceRatingImage?: string;
   year: number;
   thumb: string;
   art: string;
-  banner: string;
+  banner?: string;
   theme: string;
-  duration: number;
-  originallyAvailableAt: string;
+  duration?: number;
+  originallyAvailableAt?: string;
   leafCount: number;
   viewedLeafCount: number;
   childCount: number;
   addedAt: number;
   updatedAt: number;
-  Genre: MediaTag[];
-  Role: MediaTag[];
+  Genre?: MediaTag[];
+  Role?: MediaTag[];
+  Country?: MediaTag[];
   CommonSenseMedia?: CommonSenseMediaData[];
+  Image?: ImageData[];
+  UltraBlurColors?: UltraBlurColorsData;
+  slug?: string;
+  tagline?: string;
 }
 
 export interface CollectionData {
