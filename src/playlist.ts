@@ -5,7 +5,11 @@ import { Playable } from './base/playable.js';
 import { fetchItems } from './baseFunctionality.js';
 import { BadRequest, NotFound } from './exceptions.js';
 import type { LibrarySection, SectionType } from './library.js';
-import type { PlaylistResponse } from './playlist.types.js';
+import type {
+  PlaylistContainerResponse,
+  PlaylistItemData,
+  PlaylistResponse,
+} from './playlist.types.js';
 import { searchType } from './search.js';
 import type { PlexServer } from './server.js';
 import { Episode, Movie } from './video.js';
@@ -13,22 +17,27 @@ import { Episode, Movie } from './video.js';
 /**
  * Map media types to their respective class
  */
-function contentClass(data: any) {
+function createPlaylistContent(
+  server: PlexServer,
+  data: PlaylistItemData,
+  key: string,
+  parent: Playlist,
+): PlaylistItem {
   switch (data.type) {
     case 'episode': {
-      return Episode;
+      return new Episode(server, data, key, parent) as PlaylistItem;
     }
     case 'movie': {
-      return Movie;
+      return new Movie(server, data, key, parent) as PlaylistItem;
     }
     case 'track': {
-      return Track;
+      return new Track(server, data, key, parent) as PlaylistItem;
     }
     case 'album': {
-      return Album;
+      return new Album(server, data, key, parent) as PlaylistItem;
     }
     case 'artist': {
-      return Artist;
+      return new Artist(server, data, key, parent) as PlaylistItem;
     }
     default: {
       throw new Error(`Media type '${data.type}' not implemented`);
@@ -65,6 +74,7 @@ export interface CreateSmartPlaylistOptions {
 
 export type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
 type PlaylistContent = Episode | Movie | Track | Album | Artist;
+type PlaylistItem = PlaylistContent & { playlistItemID?: number };
 
 export interface UpdatePlaylistOptions {
   /** New title for the playlist */
@@ -77,11 +87,11 @@ export class Playlist extends Playable {
   static override TAG = 'Playlist';
 
   static async create(server: PlexServer, title: string, options: CreatePlaylistOptions) {
-    if (options.smart) {
+    if (!('items' in options)) {
       return this._createSmart(server, title, options);
     }
 
-    return this._create(server, title, (options as any).items);
+    return this._create(server, title, options.items);
   }
 
   /**
@@ -163,11 +173,15 @@ export class Playlist extends Playable {
     });
 
     const key = `/playlists?${params.toString()}`;
-    const data = await server.query({ path: key, method: 'post' });
+    const data = await server.query<PlaylistContainerResponse>({ path: key, method: 'post' });
     return new Playlist(server, data.MediaContainer.Metadata[0], key);
   }
 
-  private static async _create(server: PlexServer, title: string, items: SectionType[]) {
+  private static async _create(
+    server: PlexServer,
+    title: string,
+    items: SectionType[],
+  ): Promise<Playlist> {
     if (!items || items.length === 0) {
       throw new BadRequest('Must include items to add when creating new playlist.');
     }
@@ -188,7 +202,7 @@ export class Playlist extends Playable {
       smart: '0',
     });
     const key = `/playlists?${params.toString()}`;
-    const data = await server.query({ path: key, method: 'post' });
+    const data = await server.query<PlaylistContainerResponse>({ path: key, method: 'post' });
     return new Playlist(server, data.MediaContainer.Metadata[0], key);
   }
 
@@ -206,7 +220,7 @@ export class Playlist extends Playable {
   declare duration?: number;
   declare durationInSeconds?: number;
   /** Cache of playlist items */
-  private _items: PlaylistContent[] | null = null;
+  private _items: PlaylistItem[] | null = null;
 
   async _edit(args: { title?: string; summary?: string }) {
     const searchparams = new URLSearchParams(args);
@@ -230,11 +244,8 @@ export class Playlist extends Playable {
   async items<T extends PlaylistContent>(): Promise<T[]> {
     if (this._items === null) {
       const key = this._buildQueryKey(`/playlists/${this.ratingKey}/items`);
-      const items = await fetchItems(this.server, key);
-      this._items = items.map(data => {
-        const Cls = contentClass(data);
-        return new Cls(this.server, data, key, this);
-      });
+      const items = await fetchItems<PlaylistItemData>(this.server, key);
+      this._items = items.map(data => createPlaylistContent(this.server, data, key, this));
     }
 
     return this._items as T[];
@@ -299,18 +310,21 @@ export class Playlist extends Playable {
     this.durationInSeconds = data.durationInSeconds;
   }
 
-  protected _loadFullData(data: any) {
+  protected _loadFullData(data: { Metadata: PlaylistResponse[] }) {
     this._loadData(data.Metadata[0]);
   }
 
-  private async _getPlaylistItemID(item: PlaylistContent) {
+  private async _getPlaylistItemID(item: PlaylistContent): Promise<number> {
     const items = await this.items();
     const playlistItem = items.find(i => i.ratingKey === item.ratingKey);
     if (!playlistItem) {
       throw new NotFound(`Item with title "${item.title}" not found in the playlist`);
     }
 
-    // playlistItemID is added dynamically by Plex API for playlist items
-    return (playlistItem as any).playlistItemID;
+    if (playlistItem.playlistItemID === undefined) {
+      throw new NotFound(`Item with title "${item.title}" is missing a playlist item id`);
+    }
+
+    return playlistItem.playlistItemID;
   }
 }

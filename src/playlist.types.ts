@@ -17,3 +17,14 @@ export interface PlaylistResponse {
   duration?: number;
   durationInSeconds?: number;
 }
+
+export interface PlaylistItemData {
+  type: string;
+  playlistItemID?: number;
+}
+
+export interface PlaylistContainerResponse {
+  MediaContainer: {
+    Metadata: PlaylistResponse[];
+  };
+}

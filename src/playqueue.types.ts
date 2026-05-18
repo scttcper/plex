@@ -27,6 +27,17 @@ export interface PlayQueueResponse {
   playQueueVersion: number;
   /** Total size of the PlayQueue (alias for playQueueTotalCount) */
   size: number;
+  /** Media items currently included in the PlayQueue window */
+  Metadata?: PlayQueueItemData[];
+}
+
+export interface PlayQueueItemData {
+  type: string;
+  playQueueItemID?: number;
+}
+
+export interface PlayQueueContainerResponse {
+  MediaContainer: PlayQueueResponse;
 }
 
 export interface CreatePlayQueueOptions {
