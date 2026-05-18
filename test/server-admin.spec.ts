@@ -1,6 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { ServerFile, ServerPath, type PlexServer, type ServerWalkEntry } from '../src/index.js';
+import {
+  Agent,
+  ServerFile,
+  ServerPath,
+  type PlexServer,
+  type ServerWalkEntry,
+} from '../src/index.js';
 
 import { createClient } from './test-client.js';
 
@@ -85,6 +91,17 @@ describe('Server Admin Methods', () => {
   it('should get continueWatching (may be empty)', async () => {
     const items = await plex.continueWatching();
     expect(Array.isArray(items)).toBe(true);
+  });
+
+  it('should get server agents', async () => {
+    const agents = await plex.agents();
+    const photoAgents = await plex.agents(13);
+
+    expect(agents.find(agent => agent.identifier === 'tv.plex.agents.movie')).toBeInstanceOf(Agent);
+    expect(photoAgents[0]).toBeInstanceOf(Agent);
+    expect(photoAgents.map(agent => agent.identifier)).toContain('tv.plex.agents.none');
+    expect(photoAgents[0].name).toBe('Plex Personal Media');
+    expect(typeof photoAgents[0].languageCode).toBe('string');
   });
 
   it('should browse server folders and files', async () => {

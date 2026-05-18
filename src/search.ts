@@ -1,7 +1,7 @@
 import type { ValueOf } from 'type-fest';
 
 import { PlexObject } from './base/plexObject.js';
-import type { MatchSearchResult } from './search.types.js';
+import type { AgentData, MatchSearchResult } from './search.types.js';
 import { rsplit } from './util.js';
 
 export class SearchResult extends PlexObject {
@@ -28,25 +28,27 @@ export class SearchResult extends PlexObject {
 export class Agent extends PlexObject {
   static override TAG = 'Agent';
 
-  declare hasAttribution: boolean;
+  declare hasAttribution?: boolean;
   declare hasPrefs: boolean;
   declare identifier: string;
-  declare primary: string;
+  declare primary?: boolean;
   declare shortIdentifier: string;
-  declare name: string;
+  declare name?: string;
+  declare id?: number;
+  declare mediaType?: number;
+  declare languageCode?: string;
   // languageCode: any[] = [];
 
-  protected _loadData(data: any) {
+  protected _loadData(data: AgentData) {
     this.hasAttribution = data.hasAttribution;
     this.hasPrefs = data.hasPrefs;
     this.identifier = data.identifier;
     this.primary = data.primary;
     this.shortIdentifier = rsplit(this.identifier, '.', 1)[1];
-    if (this.initpath.includes('mediaType')) {
-      this.name = data.name;
-      // this.languageCode = [];
-      // TODO: languageCode
-    }
+    this.name = data.name ?? data.MediaType?.name;
+    this.id = data.id;
+    this.mediaType = data.MediaType?.mediaType;
+    this.languageCode = data.Language?.code ?? data.MediaType?.Language?.code;
   }
 }
 

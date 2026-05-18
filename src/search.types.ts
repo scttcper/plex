@@ -9,6 +9,27 @@ export interface MatchSearchResult {
   lifespanEnded: boolean;
 }
 
+export interface AgentData {
+  hasAttribution?: boolean;
+  hasPrefs: boolean;
+  identifier: string;
+  primary?: boolean;
+  name?: string;
+  id?: number;
+  MediaType?: {
+    name: string;
+    mediaType: number;
+    Language?: {
+      code: string;
+      title?: string;
+    };
+  };
+  Language?: {
+    code: string;
+    title?: string;
+  };
+}
+
 export interface SearchResultContainer {
   title: string;
   type: string;
