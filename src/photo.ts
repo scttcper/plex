@@ -3,7 +3,13 @@ import { URLSearchParams } from 'node:url';
 import { PartialPlexObject } from './base/partialPlexObject.js';
 import { Playable } from './base/playable.js';
 import { PlexObject } from './base/plexObject.js';
-import { fetchItem, findItems, type ItemFilterValue } from './baseFunctionality.js';
+import {
+  fetchItem,
+  findItems,
+  type ItemFilterValue,
+  type PlexItemConstructor,
+  type PlexItemData,
+} from './baseFunctionality.js';
 import { NotFound } from './exceptions.js';
 import { Field, Image, Tag } from './media.js';
 import type {
@@ -52,14 +58,16 @@ async function fetchPhotoChildren<T>({
   options,
   parent,
 }: {
-  cls: new (...args: any[]) => T;
+  cls: PlexItemConstructor<T>;
   containerKeys: string[];
-  fallback: (item: Record<string, unknown>) => boolean;
+  fallback: (item: PlexItemData) => boolean;
   key: string;
   options?: Record<string, ItemFilterValue>;
   parent: PartialPlexObject;
 }): Promise<T[]> {
-  const response = await parent.server.query<MediaContainer<Record<string, any[]>>>({ path: key });
+  const response = await parent.server.query<MediaContainer<Record<string, PlexItemData[]>>>({
+    path: key,
+  });
   const container = response.MediaContainer;
   const typedItems = containerKeys.flatMap(containerKey => container[containerKey] ?? []);
   const fallbackItems = (container.Metadata ?? []).filter(fallback);
