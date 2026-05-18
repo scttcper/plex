@@ -35,28 +35,28 @@
     "@ctrl/mac-address": "^3.1.0",
     "ofetch": "^1.5.1",
     "type-fest": "^5.6.0",
-    "ws": "^8.20.0",
+    "ws": "^8.20.1",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@ctrl/oxlint-config": "1.5.0",
     "@ctrl/video-filename-parser": "5.4.1",
     "@sindresorhus/tsconfig": "8.1.0",
-    "@types/node": "25.6.0",
+    "@types/node": "25.8.0",
     "@types/ws": "8.18.1",
     "@types/xml2js": "0.4.14",
     "execa": "9.6.1",
     "globby": "16.2.0",
     "make-dir": "5.1.0",
     "ora": "9.4.0",
-    "oxfmt": "0.47.0",
-    "oxlint": "1.62.0",
+    "oxfmt": "0.50.0",
+    "oxlint": "1.65.0",
     "p-retry": "8.0.0",
     "prettier": "3.8.3",
-    "tsx": "4.21.0",
+    "tsx": "4.22.1",
     "typedoc": "0.28.19",
     "typescript": "6.0.3",
-    "vitest": "4.1.5"
+    "vitest": "4.1.6"
   },
   "release": {
     "branches": [
@@ -66,5 +66,5 @@
   "engines": {
     "node": ">20"
   },
-  "packageManager": "pnpm@10.33.2"
+  "packageManager": "pnpm@11.1.2"
 }
