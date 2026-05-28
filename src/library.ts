@@ -11,6 +11,7 @@ import {
   fetchItems,
   type ItemFilterValue,
   OPERATORS,
+  type PlexItemData,
   type QueryParamValue,
 } from './baseFunctionality.ts';
 import { BadRequest, NotFound, Unsupported } from './exceptions.ts';
@@ -33,6 +34,7 @@ import type {
   LibraryTimelineData,
   Location,
   ManagedHubData,
+  MediaProviderDirectoryData,
   MediaProvidersResponse,
   SectionsDirectory,
   SectionsResponse,
@@ -297,8 +299,8 @@ export class Library {
       | T
       | undefined;
     if (!section) {
-      const avilableSections = sections.map(s => s.title || 'Unknown').join(', ');
-      throw new Error(`Invalid library section: ${title}. Available: ${avilableSections}`);
+      const availableSections = sections.map(s => s.title || 'Unknown').join(', ');
+      throw new Error(`Invalid library section: ${title}. Available: ${availableSections}`);
     }
 
     return section;
@@ -556,16 +558,9 @@ export class Library {
   async all(): Promise<SectionType[]>;
   async all(options: LibrarySectionAllOptions): Promise<LibrarySearchItem[]>;
   async all(options: LibrarySectionAllOptions = {}): Promise<LibrarySearchItem[]> {
-    const results: LibrarySearchItem[] = [];
     const sections = await this.sections();
-    for (const section of sections) {
-      const items = await section.all(options);
-      for (const item of items) {
-        results.push(item);
-      }
-    }
-
-    return results;
+    const sectionItems = await Promise.all(sections.map(section => section.all(options)));
+    return sectionItems.flat();
   }
 
   /**
@@ -611,9 +606,7 @@ export class Library {
    */
   async emptyTrash(): Promise<void> {
     const sections = await this.sections();
-    for (const section of sections) {
-      await section.emptyTrash();
-    }
+    await Promise.all(sections.map(section => section.emptyTrash()));
   }
 
   /**
@@ -651,22 +644,16 @@ export class Library {
    */
   async deleteMediaPreviews(): Promise<void> {
     const sections = await this.sections();
-    for (const section of sections) {
-      await section.deleteMediaPreviews();
-    }
+    await Promise.all(sections.map(section => section.deleteMediaPreviews()));
   }
 
   /**
    * Get watched history for all library sections for the owner.
    */
   async history(options: LibraryHistoryOptions = {}): Promise<HistoryResult[]> {
-    const history: HistoryResult[] = [];
     const sections = await this.sections();
-    for (const section of sections) {
-      history.push(...(await section.history(options)));
-    }
-
-    return history;
+    const sectionHistory = await Promise.all(sections.map(section => section.history(options)));
+    return sectionHistory.flat();
   }
 
   /**
@@ -695,32 +682,6 @@ export class Library {
       withLibraryTagItems(new Cls(this.server, item, undefined, this), item),
     );
   }
-
-  /**
-   * Validates a filter field and values are available as a custom filter for the library.
-   * Returns the validated field and values as a URL encoded parameter string.
-   */
-  // _validateFilterField(field: string): string {
-  //   const match = /(?:([a-zA-Z]*)\.)?([a-zA-Z]+)([!<>=&]*)/.test(field);
-  //   if (!match) {
-  //     throw new Error('Invalid filter field: ' + field);
-  //   }
-  // }
-
-  /**
-   * Returns the validated and formatted search query API key
-   * (``/library/sections/<sectionKey>/all?<params>``).
-   */
-  // _buildSearchKey(kwargs: Record<string, string>) {
-  //   const args: Record<string, string> = {};
-  //   const filterArgs = [];
-  //   for (const [field, values] of Object.entries(kwargs)) {
-  //     if (!(field.split('__')[-1] in OPERATORS)) {
-  //       filterArgs.push(this._validateFilterField(field, values, libtype));
-  //       delete kwargs[field];
-  //     }
-  //   }
-  // }
 
   protected _loadData(data: LibraryRootResponse): void {
     this.size = data.size;
@@ -958,6 +919,41 @@ type SearchBuildResult = {
   key: string;
   localFilters: Record<string, ItemFilterValue>;
 };
+type SplitSearchFilters = {
+  localFilters: Record<string, ItemFilterValue>;
+  serverFilters: SearchParamEntry[];
+};
+type CollectionItemClass<T extends RatingKeyItem> = Class<T>;
+type ParsedFilterField = {
+  field: string;
+  libtype?: Libtype;
+  operator: string;
+};
+type ParsedSortField = {
+  direction: string;
+  field: string;
+  libtype?: Libtype;
+};
+type DurationStorage = {
+  duration: number | null;
+  storage: number | null;
+};
+
+const COLLECTION_MODE_VALUES = {
+  default: -1,
+  hide: 0,
+  hideItems: 1,
+  showItems: 2,
+} as const;
+
+const COLLECTION_SORT_VALUES = {
+  release: 0,
+  alpha: 1,
+  custom: 2,
+} as const;
+
+type CollectionMode = keyof typeof COLLECTION_MODE_VALUES;
+type CollectionSort = keyof typeof COLLECTION_SORT_VALUES;
 type SearchParamEntry = [string, string];
 type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
 type LibrarySearchMetadata = NonNullable<SearchResultContainer['Metadata']>[number];
@@ -965,6 +961,18 @@ type ManualFilteringField = Pick<FilteringFieldData, 'key' | 'title' | 'type'>;
 type ManualFilteringFilter = Pick<FilteringFilterData, 'filter' | 'filterType' | 'title'>;
 type ManualFilteringSort = Pick<FilteringSortData, 'defaultDirection' | 'key' | 'title'>;
 type LibrarySearchMetadataContainer = { Metadata?: LibrarySearchMetadata[] };
+const LIBTYPE_CLASSES = {
+  album: Album,
+  artist: Artist,
+  clip: Clip,
+  episode: Episode,
+  movie: Movie,
+  photo: Photo,
+  photoalbum: Photoalbum,
+  season: Season,
+  show: Show,
+  track: Track,
+} satisfies Partial<Record<Libtype, Class<LibrarySearchItem>>>;
 const FILTER_VALUE_TYPES = [
   'audioLanguage',
   'boolean',
@@ -977,6 +985,12 @@ const FILTER_VALUE_TYPES = [
   'tag',
 ] as const;
 type FilterValueType = (typeof FILTER_VALUE_TYPES)[number];
+const CHOICE_FILTER_VALUE_TYPES = new Set<FilterValueType>([
+  'audioLanguage',
+  'resolution',
+  'subtitleLanguage',
+  'tag',
+]);
 
 function parsePlexBoolean(value: unknown, fallback = false): boolean {
   if (value === undefined || value === null) {
@@ -1079,9 +1093,55 @@ function isAdvancedFilterGroupValue(
   );
 }
 
+function isSearchTagValue(value: SearchFilterPrimitive): value is SearchTagValue {
+  return typeof value === 'object' && value !== null && !(value instanceof Date);
+}
+
+function advancedFilterGroupOperator(field: string): 'and' | 'or' | undefined {
+  const normalizedField = field.toLowerCase();
+  return normalizedField === 'and' || normalizedField === 'or' ? normalizedField : undefined;
+}
+
+function resolveRequestedLibtype(parsed: string | undefined, fallback: Libtype): Libtype {
+  return (parsed as Libtype | undefined) ?? fallback;
+}
+
+function parseFilterField(field: string): ParsedFilterField {
+  const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+)([!<>=&]*)$/.exec(field);
+  if (!match) {
+    throw new BadRequest(`Invalid filter field "${field}".`);
+  }
+
+  const [, libtype, parsedField, operator] = match;
+  return { field: parsedField, libtype: libtype as Libtype | undefined, operator };
+}
+
+function parseSortField(sort: string): ParsedSortField {
+  const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+):?([a-zA-Z]*)$/.exec(sort.trim());
+  if (!match) {
+    throw new BadRequest(`Invalid sort "${sort}".`);
+  }
+
+  const [, libtype, field, direction] = match;
+  return { direction, field, libtype: libtype as Libtype | undefined };
+}
+
+function parseFilterChoiceField(field: string): Pick<ParsedFilterField, 'field' | 'libtype'> {
+  const parsed = parseFilterField(field);
+  if (parsed.operator) {
+    throw new BadRequest(`Invalid filter field: ${field}`);
+  }
+
+  return parsed;
+}
+
 function reverseSearchType(type: string | number | null): Libtype | undefined {
   const entry = Object.entries(SEARCHTYPES).find(([, value]) => value.toString() === `${type}`);
   return entry?.[0] as Libtype | undefined;
+}
+
+function isLibtype(value: string): value is Libtype {
+  return Object.hasOwn(SEARCHTYPES, value);
 }
 
 function isLibraryTagName(tag: LibraryTagType): tag is LibraryTagName {
@@ -1114,55 +1174,11 @@ function classForLibraryTag(tag: LibraryTagType): Class<LibraryMediaTag | MediaT
 }
 
 function classForLibtype(libtype?: string): Class<LibrarySearchItem> | undefined {
-  switch (libtype) {
-    case 'movie': {
-      return Movie;
-    }
-
-    case 'show': {
-      return Show;
-    }
-
-    case 'season': {
-      return Season;
-    }
-
-    case 'episode': {
-      return Episode;
-    }
-
-    case 'artist': {
-      return Artist;
-    }
-
-    case 'album': {
-      return Album;
-    }
-
-    case 'track': {
-      return Track;
-    }
-
-    case 'photoalbum': {
-      return Photoalbum;
-    }
-
-    case 'photo': {
-      return Photo;
-    }
-
-    case 'clip': {
-      return Clip;
-    }
-
-    case 'collection': {
-      return Collections;
-    }
-
-    default: {
-      return undefined;
-    }
+  if (libtype === 'collection') {
+    return Collections;
   }
+
+  return libtype && isLibtype(libtype) ? LIBTYPE_CLASSES[libtype] : undefined;
 }
 
 function createLibrarySearchItem(
@@ -1213,98 +1229,101 @@ function addUniqueByKey<T extends { key: string }>(items: T[], additions: T[]): 
   return [...items, ...additions.filter(item => !existingKeys.has(item.key))];
 }
 
+function findLibraryProviderDirectory(
+  container: MediaProvidersResponse,
+  sectionKey: string | number,
+): MediaProviderDirectoryData | undefined {
+  return (container.MediaProvider ?? [])
+    .filter(provider => provider.identifier === 'com.plexapp.plugins.library')
+    .flatMap(provider => provider.Feature ?? [])
+    .filter(feature => feature.type === 'content')
+    .flatMap(feature => feature.Directory ?? [])
+    .find(directory => String(directory.id) === String(sectionKey));
+}
+
 /**
  * Fields accepted by Plex search but not reliably advertised in filter metadata.
  * This mirrors Python PlexAPI's manual field list without constructing XML.
  */
+const MANUAL_FILTERING_FIELDS: Record<string, ManualFilteringField[]> = {
+  movie: [
+    { key: 'audienceRating', title: 'Audience Rating', type: 'integer' },
+    { key: 'rating', title: 'Critic Rating', type: 'integer' },
+    { key: 'viewOffset', title: 'View Offset', type: 'integer' },
+  ],
+  show: [
+    { key: 'show.audienceRating', title: 'Audience Rating', type: 'integer' },
+    { key: 'show.originallyAvailableAt', title: 'Show Release Date', type: 'date' },
+    { key: 'show.rating', title: 'Critic Rating', type: 'integer' },
+    { key: 'show.unviewedLeafCount', title: 'Episode Unplayed Count', type: 'integer' },
+  ],
+  season: [
+    { key: 'season.addedAt', title: 'Date Season Added', type: 'date' },
+    { key: 'season.unviewedLeafCount', title: 'Episode Unplayed Count', type: 'integer' },
+    { key: 'season.year', title: 'Season Year', type: 'integer' },
+    { key: 'season.label', title: 'Label', type: 'tag' },
+  ],
+  episode: [
+    { key: 'episode.audienceRating', title: 'Audience Rating', type: 'integer' },
+    { key: 'episode.duration', title: 'Duration', type: 'integer' },
+    { key: 'episode.rating', title: 'Critic Rating', type: 'integer' },
+    { key: 'episode.viewOffset', title: 'View Offset', type: 'integer' },
+    { key: 'episode.label', title: 'Label', type: 'tag' },
+  ],
+  artist: [{ key: 'artist.label', title: 'Label', type: 'tag' }],
+  track: [
+    { key: 'track.duration', title: 'Duration', type: 'integer' },
+    { key: 'track.viewOffset', title: 'View Offset', type: 'integer' },
+    { key: 'track.label', title: 'Label', type: 'tag' },
+    { key: 'track.ratingCount', title: 'Rating Count', type: 'integer' },
+  ],
+  collection: [
+    { key: 'collection.addedAt', title: 'Date Added', type: 'date' },
+    { key: 'collection.label', title: 'Label', type: 'tag' },
+  ],
+};
+
+const MANUAL_FILTERING_FILTERS: Record<string, ManualFilteringFilter[]> = {
+  artist: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+  collection: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+  episode: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+  season: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+  track: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
+};
+
+const MANUAL_FILTERING_SORTS: Record<string, ManualFilteringSort[]> = {
+  season: [{ defaultDirection: 'asc', key: 'titleSort', title: 'Title' }],
+  track: [{ defaultDirection: 'asc', key: 'absoluteIndex', title: 'Absolute Index' }],
+  photo: [{ defaultDirection: 'desc', key: 'viewUpdatedAt', title: 'View Updated At' }],
+  collection: [{ defaultDirection: 'asc', key: 'addedAt', title: 'Date Added' }],
+};
+
+function titleizeLibtype(libtype: string): string {
+  return `${libtype[0].toUpperCase()}${libtype.slice(1)}`;
+}
+
 function manualFilteringFields(libtype: string): ManualFilteringField[] {
   // Python sends movie manual fields without a `movie.` prefix; other libtypes
   // need the libtype prefix for Plex to accept them.
   const prefix = libtype === 'movie' ? '' : `${libtype}.`;
-  const fields: ManualFilteringField[] = [
+  return [
     { key: `${prefix}guid`, title: 'Guid', type: 'guid' },
     { key: `${prefix}id`, title: 'Rating Key', type: 'integer' },
     {
       key: `${prefix}index`,
-      title: `${libtype[0].toUpperCase()}${libtype.slice(1)} Number`,
+      title: `${titleizeLibtype(libtype)} Number`,
       type: 'integer',
     },
     {
       key: `${prefix}lastRatedAt`,
-      title: `${libtype[0].toUpperCase()}${libtype.slice(1)} Last Rated`,
+      title: `${titleizeLibtype(libtype)} Last Rated`,
       type: 'date',
     },
     { key: `${prefix}updatedAt`, title: 'Date Updated', type: 'date' },
     { key: 'group', title: 'SQL Group By Statement', type: 'string' },
     { key: 'having', title: 'SQL Having Clause', type: 'string' },
+    ...(MANUAL_FILTERING_FIELDS[libtype] ?? []),
   ];
-
-  switch (libtype) {
-    case 'movie': {
-      fields.push(
-        { key: 'audienceRating', title: 'Audience Rating', type: 'integer' },
-        { key: 'rating', title: 'Critic Rating', type: 'integer' },
-        { key: 'viewOffset', title: 'View Offset', type: 'integer' },
-      );
-      break;
-    }
-
-    case 'show': {
-      fields.push(
-        { key: 'show.audienceRating', title: 'Audience Rating', type: 'integer' },
-        { key: 'show.originallyAvailableAt', title: 'Show Release Date', type: 'date' },
-        { key: 'show.rating', title: 'Critic Rating', type: 'integer' },
-        { key: 'show.unviewedLeafCount', title: 'Episode Unplayed Count', type: 'integer' },
-      );
-      break;
-    }
-
-    case 'season': {
-      fields.push(
-        { key: 'season.addedAt', title: 'Date Season Added', type: 'date' },
-        { key: 'season.unviewedLeafCount', title: 'Episode Unplayed Count', type: 'integer' },
-        { key: 'season.year', title: 'Season Year', type: 'integer' },
-        { key: 'season.label', title: 'Label', type: 'tag' },
-      );
-      break;
-    }
-
-    case 'episode': {
-      fields.push(
-        { key: 'episode.audienceRating', title: 'Audience Rating', type: 'integer' },
-        { key: 'episode.duration', title: 'Duration', type: 'integer' },
-        { key: 'episode.rating', title: 'Critic Rating', type: 'integer' },
-        { key: 'episode.viewOffset', title: 'View Offset', type: 'integer' },
-        { key: 'episode.label', title: 'Label', type: 'tag' },
-      );
-      break;
-    }
-
-    case 'artist': {
-      fields.push({ key: 'artist.label', title: 'Label', type: 'tag' });
-      break;
-    }
-
-    case 'track': {
-      fields.push(
-        { key: 'track.duration', title: 'Duration', type: 'integer' },
-        { key: 'track.viewOffset', title: 'View Offset', type: 'integer' },
-        { key: 'track.label', title: 'Label', type: 'tag' },
-        { key: 'track.ratingCount', title: 'Rating Count', type: 'integer' },
-      );
-      break;
-    }
-
-    case 'collection': {
-      fields.push(
-        { key: 'collection.addedAt', title: 'Date Added', type: 'date' },
-        { key: 'collection.label', title: 'Label', type: 'tag' },
-      );
-      break;
-    }
-  }
-
-  return fields;
 }
 
 /**
@@ -1312,14 +1331,7 @@ function manualFilteringFields(libtype: string): ManualFilteringField[] {
  * leaves them out of the advertised filter menu metadata.
  */
 function manualFilteringFilters(libtype: string, sectionKey?: string): FilteringFilterData[] {
-  const filterTypes: Record<string, ManualFilteringFilter[]> = {
-    artist: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
-    collection: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
-    episode: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
-    season: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
-    track: [{ filter: 'label', filterType: 'string', title: 'Labels' }],
-  };
-  return (filterTypes[libtype] ?? []).map(filter => ({
+  return (MANUAL_FILTERING_FILTERS[libtype] ?? []).map(filter => ({
     ...filter,
     key: `/library/sections/${sectionKey ?? ''}/${filter.filter}?type=${searchType(libtype)}`,
     type: 'filter',
@@ -1336,34 +1348,13 @@ function manualFilteringSorts(libtype: string): FilteringSortData[] {
     {
       defaultDirection: 'asc',
       key: 'index',
-      title: `${libtype[0].toUpperCase()}${libtype.slice(1)} Number`,
+      title: `${titleizeLibtype(libtype)} Number`,
     },
     { defaultDirection: 'asc', key: 'summary', title: 'Summary' },
     { defaultDirection: 'asc', key: 'tagline', title: 'Tagline' },
     { defaultDirection: 'asc', key: 'updatedAt', title: 'Date Updated' },
+    ...(MANUAL_FILTERING_SORTS[libtype] ?? []),
   ];
-
-  switch (libtype) {
-    case 'season': {
-      sorts.push({ defaultDirection: 'asc', key: 'titleSort', title: 'Title' });
-      break;
-    }
-
-    case 'track': {
-      sorts.push({ defaultDirection: 'asc', key: 'absoluteIndex', title: 'Absolute Index' });
-      break;
-    }
-
-    case 'photo': {
-      sorts.push({ defaultDirection: 'desc', key: 'viewUpdatedAt', title: 'View Updated At' });
-      break;
-    }
-
-    case 'collection': {
-      sorts.push({ defaultDirection: 'asc', key: 'addedAt', title: 'Date Added' });
-      break;
-    }
-  }
 
   return sorts.map(sort => ({
     ...sort,
@@ -1415,7 +1406,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   declare _filterTypes?: FilteringType[];
   declare _fieldTypes?: FilteringFieldType[];
 
-  private _durationStorageCache?: { duration: number | null; storage: number | null };
+  private _durationStorageCache?: DurationStorage;
 
   /**
    * Returns the total number of items in the library.
@@ -1518,14 +1509,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       args.maxresults = maxResults;
     }
 
-    if (args.libtype) {
-      const cls =
-        classForLibtype(args.libtype) ?? (this.SECTION_TYPE as unknown as Class<LibrarySearchItem>);
-      const items = await this.search(args, cls);
-      return maxResults === undefined ? items : items.slice(0, maxResults);
-    }
-
-    const items = await this.search(args, this.SECTION_TYPE);
+    const items = await this.search(args, this._classForSearch(args.libtype));
     return maxResults === undefined ? items : items.slice(0, maxResults);
   }
 
@@ -1571,12 +1555,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       title__iexact: title,
     };
 
-    const items = libtype
-      ? await this.search(
-          args,
-          classForLibtype(libtype) ?? (this.SECTION_TYPE as unknown as Class<LibrarySearchItem>),
-        )
-      : await this.search(args, this.SECTION_TYPE);
+    const items = await this.search(args, this._classForSearch(libtype));
     const [item] = items;
     if (!item) {
       const filterNames = Object.entries(filters)
@@ -1666,10 +1645,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async search<C = SType>(args: Partial<SearchArgs> = {}, Cls?: Class<C>): Promise<C[]> {
     const { key, localFilters } = await this._buildSearchKey(args);
-    const ClsToUse =
-      Cls ??
-      (args.libtype ? (classForLibtype(args.libtype) as Class<C> | undefined) : undefined) ??
-      (this.SECTION_TYPE as unknown as Class<C>);
+    const ClsToUse = Cls ?? this._classForSearch(args.libtype);
     const data = await fetchItems(this.server, key, localFilters, ClsToUse, this);
     return data;
   }
@@ -1933,24 +1909,14 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   async collections(
     args: Record<string, number | string | boolean> = {},
   ): Promise<Array<Collections<SType>>> {
-    const collections = await this.search<Collections<SType>>(
-      { ...args, libtype: 'collection' },
-      Collections,
-    );
-    collections.forEach(collection => {
-      collection.VIDEO_TYPE = this.SECTION_TYPE;
-    });
-    return collections;
+    return this.search<Collections<SType>>({ ...args, libtype: 'collection' }, Collections);
   }
 
   /**
    * Create a regular collection in this library section.
    */
-  async createCollection<T extends RatingKeyItem>(
-    title: string,
-    items: T[],
-  ): Promise<Collections<T>> {
-    return Collections.create(this.server, title, this as unknown as LibrarySection<T>, items);
+  async createCollection(title: string, items: RatingKeyItem[]): Promise<Collections<SType>> {
+    return Collections.create(this.server, title, this, items);
   }
 
   /**
@@ -2096,19 +2062,14 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   ): Promise<FilterChoice[]> {
     let filterField = field;
     if (typeof filterField === 'string') {
-      const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+)$/.exec(filterField);
-      if (!match) {
-        throw new BadRequest(`Invalid filter field: ${filterField}`);
-      }
-
-      const [, parsedLibtype, parsedField] = match;
-      const requestedLibtype = (parsedLibtype as Libtype) || libtype || (this.type as Libtype);
+      const parsed = parseFilterChoiceField(filterField);
+      const requestedLibtype = resolveRequestedLibtype(parsed.libtype, libtype ?? this.type);
       const filters = await this.listFilters(requestedLibtype);
-      const foundFilter = filters.find(filter => filter.filter === parsedField);
+      const foundFilter = filters.find(filter => filter.filter === parsed.field);
       if (!foundFilter) {
         const availableFilters = filters.map(filter => filter.filter);
         throw new NotFound(
-          `Unknown filter field "${parsedField}" for libtype "${requestedLibtype}". Available filters: ${availableFilters.join(
+          `Unknown filter field "${parsed.field}" for libtype "${requestedLibtype}". Available filters: ${availableFilters.join(
             ', ',
           )}`,
         );
@@ -2202,37 +2163,20 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     return this._lockUnlockAllField(field, libtype, false);
   }
 
-  private async _fetchDurationStorage(): Promise<{
-    duration: number | null;
-    storage: number | null;
-  }> {
+  private async _fetchDurationStorage(): Promise<DurationStorage> {
     if (this._durationStorageCache) {
       return this._durationStorageCache;
     }
     const data = await this.server.query<MediaContainer<MediaProvidersResponse>>({
       path: '/media/providers?includeStorage=1',
     });
-    const providers = data.MediaContainer?.MediaProvider ?? [];
-    for (const provider of providers) {
-      if (provider.identifier !== 'com.plexapp.plugins.library') {
-        continue;
-      }
-      for (const feature of provider.Feature ?? []) {
-        if (feature.type !== 'content') {
-          continue;
+    const directory = findLibraryProviderDirectory(data.MediaContainer, this.key);
+    this._durationStorageCache = directory
+      ? {
+          duration: directory.durationTotal != null ? Number(directory.durationTotal) : null,
+          storage: directory.storageTotal != null ? Number(directory.storageTotal) : null,
         }
-        for (const dir of feature.Directory ?? []) {
-          if (String(dir.id) === String(this.key)) {
-            this._durationStorageCache = {
-              duration: dir.durationTotal != null ? Number(dir.durationTotal) : null,
-              storage: dir.storageTotal != null ? Number(dir.storageTotal) : null,
-            };
-            return this._durationStorageCache;
-          }
-        }
-      }
-    }
-    this._durationStorageCache = { duration: null, storage: null };
+      : { duration: null, storage: null };
     return this._durationStorageCache;
   }
 
@@ -2247,16 +2191,23 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const [firstItem] = itemList;
     const itemType = firstItem.type;
     for (const item of itemList) {
-      if (!this._itemBelongsToThisSection(item)) {
-        throw new BadRequest(`${item.title ?? item.ratingKey} is not from this library.`);
-      }
-
-      if (item.type !== itemType) {
-        throw new BadRequest(`Cannot mix items of different type: ${itemType} and ${item.type}`);
-      }
+      this._validateItemBelongsToSection(item);
+      this._validateItemType(item, itemType);
     }
 
     return itemList;
+  }
+
+  private _validateItemBelongsToSection(item: EditableLibraryItem): void {
+    if (!this._itemBelongsToThisSection(item)) {
+      throw new BadRequest(`${item.title ?? item.ratingKey} is not from this library.`);
+    }
+  }
+
+  private _validateItemType(item: EditableLibraryItem, expectedType?: string): void {
+    if (item.type !== expectedType) {
+      throw new BadRequest(`Cannot mix items of different type: ${expectedType} and ${item.type}`);
+    }
   }
 
   private _itemBelongsToThisSection(item: EditableLibraryItem): boolean {
@@ -2349,15 +2300,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     values: SearchFilterValue,
     libtype?: Libtype,
   ): Promise<SearchParamEntry[]> {
-    const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+)([!<>=&]*)$/.exec(field);
-    if (!match) {
-      throw new BadRequest(`Invalid filter field "${field}".`);
-    }
-
-    const [, parsedLibtype, parsedField, operatorMatch] = match;
-    const requestedLibtype = (parsedLibtype as Libtype) || libtype || (this.type as Libtype);
-    const filterField = await this._getFilterField(parsedField, requestedLibtype);
-    const operator = await this._validateFieldOperator(filterField, operatorMatch);
+    const parsed = parseFilterField(field);
+    const requestedLibtype = resolveRequestedLibtype(parsed.libtype, libtype ?? this.type);
+    const filterField = await this._getFilterField(parsed.field, requestedLibtype);
+    const operator = await this._validateFieldOperator(filterField, parsed.operator);
     const result = await this._validateFieldValue(filterField, values, requestedLibtype);
     if (operator === '&=') {
       return result.map(value => [filterField.key, value]);
@@ -2399,6 +2345,13 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   private _isStaticBooleanFilter(field: string): boolean {
     const staticFilters = (this.constructor as typeof LibrarySection).ALLOWED_FILTERS;
     return staticFilters.includes(field) && LibrarySection.BOOLEAN_FILTERS.includes(field);
+  }
+
+  private _classForSearch<C = SType>(libtype?: Libtype): Class<C> {
+    return (
+      (libtype ? (classForLibtype(libtype) as Class<C> | undefined) : undefined) ??
+      (this.SECTION_TYPE as unknown as Class<C>)
+    );
   }
 
   /**
@@ -2450,45 +2403,12 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
     for (const value of valueList) {
       try {
-        let result: number | string;
-        switch (fieldType.type) {
-          case 'boolean': {
-            result = value ? 1 : 0;
-            break;
-          }
-
-          case 'date': {
-            result = this._validateFieldValueDate(value);
-            break;
-          }
-
-          case 'integer': {
-            result = Number(value);
-            if (Number.isNaN(result)) {
-              throw new TypeError('Invalid integer');
-            }
-            break;
-          }
-
-          case 'string': {
-            result = String(value);
-            break;
-          }
-
-          case 'guid': {
-            result = String(value);
-            break;
-          }
-
-          case 'tag':
-          case 'subtitleLanguage':
-          case 'audioLanguage':
-          case 'resolution': {
-            result = await this._validateFieldValueTag(value, filterField, libtype);
-            break;
-          }
-        }
-
+        const result = await this._validateFieldValueByType(
+          fieldType.type,
+          value,
+          filterField,
+          libtype,
+        );
         results.push(result.toString());
       } catch (error) {
         if (error instanceof BadRequest || error instanceof NotFound) {
@@ -2502,6 +2422,36 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     }
 
     return results;
+  }
+
+  private async _validateFieldValueByType(
+    type: FilterValueType,
+    value: SearchFilterPrimitive,
+    filterField: SearchFilterField,
+    libtype?: Libtype,
+  ): Promise<number | string> {
+    if (CHOICE_FILTER_VALUE_TYPES.has(type)) {
+      return this._validateFieldValueTag(value, filterField, libtype);
+    }
+
+    if (type === 'boolean') {
+      return value ? 1 : 0;
+    }
+
+    if (type === 'date') {
+      return this._validateFieldValueDate(value);
+    }
+
+    if (type === 'integer') {
+      const result = Number(value);
+      if (Number.isNaN(result)) {
+        throw new TypeError('Invalid integer');
+      }
+
+      return result;
+    }
+
+    return String(value);
   }
 
   private _validateFieldValueDate(value: SearchFilterPrimitive): number | string {
@@ -2536,7 +2486,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     }
 
     let matchValue: string;
-    if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+    if (isSearchTagValue(value)) {
       matchValue = String(value.id ?? value.tag);
     } else {
       matchValue = String(value);
@@ -2578,18 +2528,15 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
         : `${requestedLibtype}.${sort.key}`;
     }
 
-    const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+):?([a-zA-Z]*)$/.exec(sort.trim());
-    if (!match) {
-      throw new BadRequest(`Invalid sort "${sort}".`);
-    }
-
-    const [, parsedLibtype, sortField, sortDir] = match;
-    const sortLibtype = (parsedLibtype as Libtype) || requestedLibtype;
-    const filterSort = (await this.listSorts(sortLibtype)).find(f => f.key === sortField);
+    const parsed = parseSortField(sort);
+    const sortLibtype = resolveRequestedLibtype(parsed.libtype, requestedLibtype);
+    const filterSort = (await this.listSorts(sortLibtype)).find(f => f.key === parsed.field);
     if (!filterSort) {
       const staticSorts = (this.constructor as typeof LibrarySection).ALLOWED_SORT;
-      if (staticSorts.includes(sortField)) {
-        return sortDir ? `${sortLibtype}.${sortField}:${sortDir}` : `${sortLibtype}.${sortField}`;
+      if (staticSorts.includes(parsed.field)) {
+        return parsed.direction
+          ? `${sortLibtype}.${parsed.field}:${parsed.direction}`
+          : `${sortLibtype}.${parsed.field}`;
       }
 
       const availableSorts = [
@@ -2597,21 +2544,21 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
         ...staticSorts,
       ];
       throw new NotFound(
-        `Unknown sort field "${sortField}" for "${sortLibtype}". Available sorts: ${availableSorts.join(
+        `Unknown sort field "${parsed.field}" for "${sortLibtype}". Available sorts: ${availableSorts.join(
           ', ',
         )}`,
       );
     }
 
     const availableDirections = ['', 'asc', 'desc', 'nullsLast'];
-    if (!availableDirections.includes(sortDir)) {
+    if (!availableDirections.includes(parsed.direction)) {
       throw new NotFound(
-        `Unknown sort direction "${sortDir}". Available directions: ${availableDirections.join(', ')}`,
+        `Unknown sort direction "${parsed.direction}". Available directions: ${availableDirections.join(', ')}`,
       );
     }
 
-    return sortDir
-      ? `${sortLibtype}.${filterSort.key}:${sortDir}`
+    return parsed.direction
+      ? `${sortLibtype}.${filterSort.key}:${parsed.direction}`
       : `${sortLibtype}.${filterSort.key}`;
   }
 
@@ -2626,36 +2573,127 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const validatedFilters: SearchParamEntry[] = [];
     const entries = Object.entries(filters);
     for (const [field, values] of entries) {
-      const normalizedField = field.toLowerCase();
-      if (normalizedField === 'and' || normalizedField === 'or') {
+      const groupOperator = advancedFilterGroupOperator(field);
+      if (groupOperator) {
         if (entries.length > 1) {
           throw new BadRequest('"and" and "or" filter groups cannot include sibling filters.');
         }
 
-        if (!isAdvancedFilterGroupValue(values)) {
-          throw new BadRequest('"and" and "or" filter groups must be arrays.');
-        }
-
-        if (values.length === 0) {
-          continue;
-        }
-
-        validatedFilters.push(['push', '1']);
-        for (const value of values) {
-          validatedFilters.push(...(await this._validateAdvancedSearch(value, libtype)));
-          validatedFilters.push([normalizedField, '1']);
-        }
-
-        validatedFilters.pop();
-        validatedFilters.push(['pop', '1']);
-      } else {
         validatedFilters.push(
-          ...(await this._validateFilterField(field, values as SearchFilterValue, libtype)),
+          ...(await this._validateAdvancedSearchGroup(groupOperator, values, libtype)),
         );
+        continue;
       }
+
+      validatedFilters.push(
+        ...(await this._validateFilterField(field, values as SearchFilterValue, libtype)),
+      );
     }
 
     return validatedFilters;
+  }
+
+  private async _validateAdvancedSearchGroup(
+    operator: 'and' | 'or',
+    values: AdvancedSearchFilters[] | SearchFilterValue,
+    libtype?: Libtype,
+  ): Promise<SearchParamEntry[]> {
+    if (!isAdvancedFilterGroupValue(values)) {
+      throw new BadRequest('"and" and "or" filter groups must be arrays.');
+    }
+
+    if (values.length === 0) {
+      return [];
+    }
+
+    const validatedFilters: SearchParamEntry[] = [['push', '1']];
+    for (const value of values) {
+      validatedFilters.push(...(await this._validateAdvancedSearch(value, libtype)));
+      validatedFilters.push([operator, '1']);
+    }
+
+    validatedFilters.pop();
+    validatedFilters.push(['pop', '1']);
+    return validatedFilters;
+  }
+
+  private async _splitSearchFilters(
+    customFilters: Record<string, SearchArgValue>,
+    libtype?: Libtype,
+  ): Promise<SplitSearchFilters> {
+    const localFilters: Record<string, ItemFilterValue> = {};
+    const serverFilters: SearchParamEntry[] = [];
+
+    for (const [field, values] of Object.entries(customFilters)) {
+      if (values === undefined) {
+        continue;
+      }
+
+      if (Object.hasOwn(OPERATORS, field.split('__').at(-1))) {
+        if (!isItemFilterValue(values)) {
+          throw new BadRequest(`Invalid local filter value for "${field}".`);
+        }
+
+        localFilters[field] = values;
+        continue;
+      }
+
+      serverFilters.push(
+        ...(await this._validateFilterField(field, values as SearchFilterValue, libtype)),
+      );
+    }
+
+    return { localFilters, serverFilters };
+  }
+
+  private async _buildTitleSearchParams(
+    title: SearchArgs['title'] | undefined,
+    libtype?: Libtype,
+  ): Promise<SearchParamEntry[]> {
+    if (title === undefined || !Array.isArray(title)) {
+      return [];
+    }
+
+    return this._validateFilterField('title', title, libtype);
+  }
+
+  private _applySearchOptions(
+    params: URLSearchParams,
+    {
+      containerSize,
+      containerStart,
+      libtype,
+      limit,
+      maxresults,
+      title,
+    }: {
+      containerSize?: number;
+      containerStart?: number;
+      libtype?: Libtype;
+      limit?: number;
+      maxresults?: number;
+      title?: string | string[];
+    },
+  ): void {
+    if (typeof title === 'string') {
+      params.set('title', title);
+    }
+
+    if (libtype !== undefined) {
+      params.set('type', searchType(libtype).toString());
+    }
+
+    if (limit !== undefined) {
+      params.set('limit', limit.toString());
+    }
+
+    if (containerStart !== undefined) {
+      params.set('X-Plex-Container-Start', containerStart.toString());
+    }
+
+    if (containerSize !== undefined || maxresults !== undefined) {
+      params.set('X-Plex-Container-Size', (containerSize ?? maxresults).toString());
+    }
   }
 
   private async _buildSearchKey(args: Partial<SearchArgs> = {}): Promise<SearchBuildResult> {
@@ -2675,33 +2713,8 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       includeGuids: includeGuids ? '1' : '0',
     });
 
-    const filterArgs: SearchParamEntry[] = [];
-    const localFilters: Record<string, ItemFilterValue> = {};
-    for (const [field, values] of Object.entries(customFilters)) {
-      if (values === undefined) {
-        continue;
-      }
-
-      if (Object.hasOwn(OPERATORS, field.split('__').at(-1))) {
-        if (!isItemFilterValue(values)) {
-          throw new BadRequest(`Invalid local filter value for "${field}".`);
-        }
-
-        localFilters[field] = values;
-      } else {
-        filterArgs.push(
-          ...(await this._validateFilterField(field, values as SearchFilterValue, libtype)),
-        );
-      }
-    }
-
-    if (title !== undefined) {
-      if (Array.isArray(title)) {
-        filterArgs.push(...(await this._validateFilterField('title', title, libtype)));
-      } else {
-        params.set('title', title);
-      }
-    }
+    const { localFilters, serverFilters } = await this._splitSearchFilters(customFilters, libtype);
+    const filterArgs = [...serverFilters, ...(await this._buildTitleSearchParams(title, libtype))];
 
     if (filters !== undefined) {
       filterArgs.push(...(await this._validateAdvancedSearch(filters, libtype)));
@@ -2711,21 +2724,14 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       params.set('sort', await this._validateSortFields(sort, libtype));
     }
 
-    if (libtype !== undefined) {
-      params.set('type', searchType(libtype).toString());
-    }
-
-    if (limit !== undefined) {
-      params.set('limit', limit.toString());
-    }
-
-    if (containerStart !== undefined) {
-      params.set('X-Plex-Container-Start', containerStart.toString());
-    }
-
-    if (containerSize !== undefined || maxresults !== undefined) {
-      params.set('X-Plex-Container-Size', (containerSize ?? maxresults).toString());
-    }
+    this._applySearchOptions(params, {
+      containerSize,
+      containerStart,
+      libtype,
+      limit,
+      maxresults,
+      title,
+    });
 
     for (const [key, value] of filterArgs) {
       params.append(key, value);
@@ -3330,8 +3336,18 @@ export class Collections<
   declare minYear: string;
   declare art?: string;
 
-  // TODO: can this be set in the constructor?
-  declare VIDEO_TYPE: Class<CollectionVideoType>;
+  private readonly itemClass?: CollectionItemClass<CollectionVideoType>;
+
+  constructor(
+    server: PlexServer,
+    data: CollectionData,
+    initpath?: string,
+    parent?: PlexObject,
+    itemClass?: CollectionItemClass<CollectionVideoType>,
+  ) {
+    super(server, data, initpath, parent);
+    this.itemClass = itemClass ?? collectionItemClassFromParent(parent);
+  }
 
   // Alias for childCount
   get size() {
@@ -3341,12 +3357,16 @@ export class Collections<
   /**
    * Returns a list of all items in the collection.
    */
-  async items() {
+  async items(): Promise<CollectionVideoType[]> {
+    if (!this.itemClass) {
+      throw new Error('Cannot fetch collection items without a collection item class.');
+    }
+
     const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
     const data = await this.server.query<MediaContainer<{ Metadata?: unknown[] }>>({ path: key });
     return (
       data.MediaContainer.Metadata?.map(
-        d => new this.VIDEO_TYPE(this.server, d, undefined, this),
+        d => new this.itemClass(this.server, d as PlexItemData, undefined, this),
       ) ?? []
     );
   }
@@ -3356,11 +3376,10 @@ export class Collections<
    * @param items Items to add to the collection.
    */
   async addItems(items: CollectionVideoType[]): Promise<void> {
-    if (this.smart) {
-      throw new Unsupported('Cannot add items to a smart collection.');
-    }
-
-    const ratingKeys = items.map(item => item.ratingKey).join(',');
+    this._assertRegularCollection('add items to');
+    const ratingKeys = collectionRatingKeys(items, `add item to collection "${this.title}"`).join(
+      ',',
+    );
     const uri = `${this.server._uriRoot()}/library/metadata/${ratingKeys}`;
     const params = new URLSearchParams({ uri });
     const key = `/library/collections/${this.ratingKey}/items?${params.toString()}`;
@@ -3373,15 +3392,14 @@ export class Collections<
    * @param items Items to remove from the collection.
    */
   async removeItems(items: CollectionVideoType[]): Promise<void> {
-    if (this.smart) {
-      throw new Unsupported('Cannot remove items from a smart collection.');
-    }
-
-    for (const item of items) {
-      const ratingKey = item.ratingKey;
-      const key = `/library/collections/${this.ratingKey}/items/${ratingKey}`;
-      await this.server.query({ path: key, method: 'delete' });
-    }
+    this._assertRegularCollection('remove items from');
+    const ratingKeys = collectionRatingKeys(items, `remove item from collection "${this.title}"`);
+    await Promise.all(
+      ratingKeys.map(async ratingKey => {
+        const key = `/library/collections/${this.ratingKey}/items/${ratingKey}`;
+        await this.server.query({ path: key, method: 'delete' });
+      }),
+    );
 
     await this.reload();
   }
@@ -3392,14 +3410,15 @@ export class Collections<
    * @param after Item to place it after. If not provided, moves to the beginning.
    */
   async moveItem(item: CollectionVideoType, after?: CollectionVideoType): Promise<void> {
-    if (this.smart) {
-      throw new Unsupported('Cannot move items in a smart collection.');
-    }
+    this._assertRegularCollection('move items in');
 
-    const ratingKey = item.ratingKey;
+    const [ratingKey] = collectionRatingKeys([item], `move item in collection "${this.title}"`);
     let key = `/library/collections/${this.ratingKey}/items/${ratingKey}/move`;
     if (after) {
-      const afterKey = after.ratingKey;
+      const [afterKey] = collectionRatingKeys(
+        [after],
+        `move item after another item in collection "${this.title}"`,
+      );
       key += `?after=${afterKey}`;
     }
 
@@ -3411,43 +3430,26 @@ export class Collections<
    * Update the collection display mode.
    * @param mode Display mode: 'default' (-1), 'hide' (0), 'hideItems' (1), 'showItems' (2).
    */
-  async modeUpdate(mode: 'default' | 'hide' | 'hideItems' | 'showItems'): Promise<void> {
-    const modeMap: Record<string, number> = {
-      default: -1,
-      hide: 0,
-      hideItems: 1,
-      showItems: 2,
-    };
-    const modeValue = modeMap[mode];
+  async modeUpdate(mode: CollectionMode): Promise<void> {
+    const modeValue = COLLECTION_MODE_VALUES[mode];
     if (modeValue === undefined) {
       throw new BadRequest(`Invalid collection mode: ${mode}`);
     }
 
-    const params = new URLSearchParams({ collectionMode: modeValue.toString() });
-    const key = `/library/metadata/${this.ratingKey}/prefs?${params.toString()}`;
-    await this.server.query({ path: key, method: 'put' });
-    await this.reload();
+    await this._updatePreference('collectionMode', modeValue);
   }
 
   /**
    * Update the collection sort order.
    * @param sort Sort order: 'release' (0), 'alpha' (1), 'custom' (2).
    */
-  async sortUpdate(sort: 'release' | 'alpha' | 'custom'): Promise<void> {
-    const sortMap: Record<string, number> = {
-      release: 0,
-      alpha: 1,
-      custom: 2,
-    };
-    const sortValue = sortMap[sort];
+  async sortUpdate(sort: CollectionSort): Promise<void> {
+    const sortValue = COLLECTION_SORT_VALUES[sort];
     if (sortValue === undefined) {
       throw new BadRequest(`Invalid collection sort: ${sort}`);
     }
 
-    const params = new URLSearchParams({ collectionSort: sortValue.toString() });
-    const key = `/library/metadata/${this.ratingKey}/prefs?${params.toString()}`;
-    await this.server.query({ path: key, method: 'put' });
-    await this.reload();
+    await this._updatePreference('collectionSort', sortValue);
   }
 
   /**
@@ -3461,20 +3463,14 @@ export class Collections<
     server: PlexServer,
     title: string,
     section: LibrarySection<T>,
-    items: T[],
+    items: RatingKeyItem[],
   ): Promise<Collections<T>> {
     if (items.length === 0) {
       throw new BadRequest('At least one item is required to create a collection.');
     }
 
-    const ratingKeys = items.map(item => {
-      if (!item.ratingKey) {
-        throw new BadRequest(`Cannot add item without a ratingKey to collection "${title}".`);
-      }
-
-      return item.ratingKey;
-    });
-    const uri = `${server._uriRoot()}/library/metadata/${ratingKeys}`;
+    const ratingKeys = collectionRatingKeys(items, `add item to collection "${title}"`);
+    const uri = `${server._uriRoot()}/library/metadata/${ratingKeys.join(',')}`;
     const sectionType = searchType(section.type);
     const params = new URLSearchParams({
       title,
@@ -3492,9 +3488,20 @@ export class Collections<
       throw new Error('Failed to create collection');
     }
 
-    const collection = new Collections<T>(server, metadata, key, section);
-    collection.VIDEO_TYPE = section.SECTION_TYPE as unknown as Class<T>;
-    return collection;
+    return new Collections<T>(server, metadata, key, section, section.SECTION_TYPE);
+  }
+
+  private _assertRegularCollection(action: string): void {
+    if (this.smart) {
+      throw new Unsupported(`Cannot ${action} a smart collection.`);
+    }
+  }
+
+  private async _updatePreference(key: string, value: number): Promise<void> {
+    const params = new URLSearchParams({ [key]: value.toString() });
+    const path = `/library/metadata/${this.ratingKey}/prefs?${params.toString()}`;
+    await this.server.query({ path, method: 'put' });
+    await this.reload();
   }
 
   protected _loadFullData(data: CollectionData) {
@@ -3529,6 +3536,31 @@ export class Collections<
     this.minYear = data.minYear;
     this.art = data.art;
   }
+}
+
+function collectionItemClassFromParent<T extends RatingKeyItem>(
+  parent?: PlexObject,
+): CollectionItemClass<T> | undefined {
+  return parent instanceof LibrarySection
+    ? (parent.SECTION_TYPE as CollectionItemClass<T>)
+    : undefined;
+}
+
+function collectionRatingKeys<T extends RatingKeyItem>(
+  items: T[],
+  action: string,
+): Array<string | number> {
+  if (items.length === 0) {
+    throw new BadRequest('At least one item is required.');
+  }
+
+  return items.map(item => {
+    if (!item.ratingKey) {
+      throw new BadRequest(`Cannot ${action} without a ratingKey.`);
+    }
+
+    return item.ratingKey;
+  });
 }
 
 export class Common extends PlexObject {
