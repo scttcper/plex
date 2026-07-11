@@ -1,6 +1,7 @@
 import { PlexObject } from './base/plexObject.ts';
 import type {
   AgeRatingData,
+  ArtworkResourceData,
   CommonSenseMediaData,
   ParentalAdvisoryTopicData,
   TalkingPointData,
@@ -648,11 +649,11 @@ export class ParentalAdvisoryTopic extends PlexObject {
 /**
  * Base class for all Art, Poster, and Theme objects.
  */
-abstract class BaseResource extends PlexObject {
+export abstract class BaseResource extends PlexObject {
   /**
    * The source of the resource. 'local' for local files (e.g. theme.mp3),
    */
-  declare provider: string;
+  declare provider?: string;
 
   /**
    * Unique key identifying the resource.
@@ -669,11 +670,11 @@ abstract class BaseResource extends PlexObject {
    */
   declare thumb: string;
 
-  async select() {
-    const key = this.key.slice(0, -1);
+  async select(): Promise<void> {
+    const key = this.initpath.slice(0, -1);
     const params = new URLSearchParams();
     params.append('url', this.ratingKey);
-    return this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
+    await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
   }
 
   resourceFilepath(): string {
@@ -694,11 +695,11 @@ abstract class BaseResource extends PlexObject {
     return this.ratingKey;
   }
 
-  protected _loadData(data: any) {
+  protected _loadData(data: ArtworkResourceData): void {
     this.key = data.key;
     this.provider = data.provider;
     this.ratingKey = data.ratingKey;
-    this.selected = data.selected;
+    this.selected = parsePlexBoolean(data.selected);
     this.thumb = data.thumb;
   }
 }
@@ -707,28 +708,28 @@ abstract class BaseResource extends PlexObject {
  * Represents a single Art object.
  */
 export class Art extends BaseResource {
-  static override TAG = 'Art';
+  static override TAG = 'Metadata';
 }
 
 /**
  * Represents a single Logo object.
  */
 export class Logo extends BaseResource {
-  static override TAG = 'Photo';
+  static override TAG = 'Metadata';
 }
 
 /**
  * Represents a single Poster object.
  */
 export class Poster extends BaseResource {
-  static override TAG = 'Photo';
+  static override TAG = 'Metadata';
 }
 
 /**
  * Represents a single Square Art object.
  */
 export class SquareArt extends BaseResource {
-  static override TAG = 'Photo';
+  static override TAG = 'Metadata';
 }
 
 /**

@@ -1,5 +1,6 @@
 import { URLSearchParams } from 'node:url';
 
+import { ArtworkManager } from '../artwork.ts';
 import type { Section } from '../library.ts';
 import { SearchResult, searchType } from '../search.ts';
 import type { MatchSearchResult } from '../search.types.ts';
@@ -36,6 +37,11 @@ export abstract class PartialPlexObject extends PlexObject {
   declare type?: string;
   declare year?: number;
   declare librarySectionID?: number;
+
+  /** Typed poster, background, logo, and square-art management. */
+  get artwork(): ArtworkManager {
+    return new ArtworkManager(this);
+  }
 
   protected override _detailsKey = this._buildDetailsKey();
 

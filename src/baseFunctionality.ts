@@ -123,7 +123,7 @@ export async function fetchItems<T = PlexItemData>(
   const response = await server.query<MediaContainer<PlexItemContainer>>({ path: ekey });
   const { MediaContainer } = response;
   const elems = MediaContainer[Cls?.TAG] ?? MediaContainer.Metadata ?? [];
-  return findItems(elems, options, Cls, server, parent);
+  return findItems(elems, options, Cls, server, parent, ekey);
 }
 
 /**
@@ -137,6 +137,7 @@ export function findItems<T>(
   Cls: PlexItemConstructor<T>,
   server: PlexServer,
   parent?: PlexItemParent,
+  initpath?: string,
 ): T[];
 export function findItems<T = PlexItemData>(
   data: readonly T[] | undefined,
@@ -148,6 +149,7 @@ export function findItems<T = PlexItemData>(
   Cls?: PlexItemConstructor<T>,
   server?: PlexServer,
   parent?: PlexItemParent,
+  initpath?: string,
 ): T[] {
   // if (Cls?.TAG && !('tag' in options)) {
   //   options.etag = Cls.TAG;
@@ -163,7 +165,7 @@ export function findItems<T = PlexItemData>(
       if (Cls === undefined) {
         items.push(elem as T);
       } else if (server !== undefined) {
-        items.push(new Cls(server, elem as PlexItemData, undefined, parent as PlexObject));
+        items.push(new Cls(server, elem as PlexItemData, initpath, parent as PlexObject));
       }
     }
   }

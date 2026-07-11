@@ -1,3 +1,5 @@
+import type { PlexBoolean } from './util.ts';
+
 export interface SearchResultData {
   guid: string;
   name: string;
@@ -10,6 +12,14 @@ export interface ImageData {
   alt?: string;
   type?: string;
   url?: string;
+}
+
+export interface ArtworkResourceData {
+  key: string;
+  provider?: string;
+  ratingKey: string;
+  selected: PlexBoolean;
+  thumb: string;
 }
 
 export interface UltraBlurColorsData {

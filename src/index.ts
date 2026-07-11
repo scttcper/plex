@@ -1,5 +1,6 @@
 export * from './alert.ts';
 export type { AlertTypes } from './alert.types.ts';
+export * from './artwork.ts';
 export * from './client.ts';
 export type {
   ClientTimelineData,
