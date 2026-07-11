@@ -24,7 +24,7 @@
     "lint:fix": "oxlint . --fix && oxfmt",
     "prepare": "pnpm run build",
     "build": "tsc",
-    "build:docs": "typedoc",
+    "build:docs": "pnpm --filter @ctrl/plex-typedoc exec typedoc --options ../../typedoc.json --tsconfig ../../tsconfig.json",
     "test": "vitest run",
     "bootstraptest": "node scripts/bootstraptest.ts --create-photos",
     "teardowntest": "node scripts/teardowntest.ts",
@@ -51,7 +51,6 @@
     "p-retry": "8.0.0",
     "tinyexec": "1.2.4",
     "tinyglobby": "0.2.17",
-    "typedoc": "0.28.20",
     "typescript": "7.0.2",
     "vitest": "4.1.10"
   },

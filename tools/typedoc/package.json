@@ -1,0 +1,8 @@
+{
+  "name": "@ctrl/plex-typedoc",
+  "private": true,
+  "devDependencies": {
+    "typedoc": "0.28.20",
+    "typescript": "npm:@typescript/typescript6@6.0.2"
+  }
+}
