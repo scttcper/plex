@@ -1,14 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { copyFile } from 'node:fs/promises';
+import { copyFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 
-import { execa } from 'execa';
-import { globby } from 'globby';
-import { makeDirectory } from 'make-dir';
-import ora from 'ora';
+import { createSpinner } from 'nanospinner';
 import pRetry from 'p-retry';
+import { NonZeroExitError, x } from 'tinyexec';
+import { glob } from 'tinyglobby';
 
 import { AlertListener, MyPlexAccount, type PlexServer, SEARCHTYPES } from '../src/index.ts';
 
@@ -254,8 +253,8 @@ function waitForScanCompletion({
 }
 
 async function setupMovies(moviePath: string): Promise<number> {
-  await makeDirectory(moviePath);
-  const files = await globby(`${moviePath}/*.mkv`);
+  await mkdir(moviePath, { recursive: true });
+  const files = await glob(`${moviePath}/*.mkv`);
   const totalMovies = Object.keys(requiredMovies).length;
   if (files.length === totalMovies) {
     return totalMovies;
@@ -266,8 +265,8 @@ async function setupMovies(moviePath: string): Promise<number> {
 }
 
 async function setupShows(showPath: string): Promise<number> {
-  await makeDirectory(showPath);
-  const files = await globby(`${showPath}/*.mkv`);
+  await mkdir(showPath, { recursive: true });
+  const files = await glob(`${showPath}/*.mkv`);
   const totalEpisodes = Object.values(requiredShows).flat(2).length;
 
   if (files.length === totalEpisodes) {
@@ -279,7 +278,7 @@ async function setupShows(showPath: string): Promise<number> {
 }
 
 async function setupAudio(audioPath: string): Promise<number> {
-  await makeDirectory(audioPath);
+  await mkdir(audioPath, { recursive: true });
   await prepareAudioDir(audioPath);
 
   let totalTracks = 0;
@@ -293,7 +292,7 @@ async function setupAudio(audioPath: string): Promise<number> {
 }
 
 async function setupPhotos(photoPath: string): Promise<number> {
-  await makeDirectory(photoPath);
+  await mkdir(photoPath, { recursive: true });
   await copyFile(join(__dirname, '..', 'test/data/cute_cat.jpg'), join(photoPath, 'Cute Cat.jpg'));
   return 1;
 }
@@ -332,7 +331,7 @@ async function main() {
   }
   const destination = join(__dirname, '..', argv.destination);
   const mediaPath = join(destination, 'media');
-  await makeDirectory(mediaPath);
+  await mkdir(mediaPath, { recursive: true });
   console.log({ mediaPath });
 
   const opts: Options = {
@@ -348,13 +347,13 @@ async function main() {
 
   if (argv.docker) {
     try {
-      await execa('which', ['docker']);
+      await x('which', ['docker'], { throwOnError: true });
     } catch {
       throw new Error('Docker is required to be available');
     }
 
     try {
-      await execa('docker', ['pull', `plexinc/pms-docker:${opts.imageTag}`]);
+      await x('docker', ['pull', `plexinc/pms-docker:${opts.imageTag}`], { throwOnError: true });
     } catch {
       throw new Error('Got an error when executing docker pull!');
     }
@@ -362,9 +361,12 @@ async function main() {
     const cmd = dockerCmd(opts);
 
     try {
-      await execa('docker', cmd);
-    } catch (err: any) {
-      console.error(err.stderr);
+      await x('docker', cmd, { throwOnError: true });
+    } catch (error) {
+      if (error instanceof NonZeroExitError) {
+        console.error(error.output?.stderr);
+      }
+
       throw new Error('docker command failed');
     }
   }
@@ -397,7 +399,9 @@ async function main() {
     }
   };
 
-  const waitServer = ora(`Waiting for server "${opts.hostname}" to appear in your account`).start();
+  const waitServer = createSpinner(
+    `Waiting for server "${opts.hostname}" to appear in your account`,
+  ).start();
 
   let plexServer: PlexServer;
   try {
@@ -431,9 +435,9 @@ async function main() {
     );
   }
 
-  waitServer.succeed();
+  waitServer.success();
 
-  const settingsProg = ora('Setting server test settings').start();
+  const settingsProg = createSpinner('Setting server test settings').start();
   const settings = await plexServer.settings();
   if (argv['accept-eula']) {
     settings.get('acceptedEULA').set(true);
@@ -460,15 +464,15 @@ async function main() {
   }
 
   await settings.save();
-  settingsProg.succeed();
+  settingsProg.success();
 
   const sections: Section[] = [];
 
   if (argv['create-movies']) {
     const moviesPath = join(mediaPath, 'Movies');
-    const setupMoviesProgress = ora(`Setup movie files`).start();
+    const setupMoviesProgress = createSpinner('Setup movie files').start();
     const numMovies = await setupMovies(moviesPath);
-    setupMoviesProgress.succeed();
+    setupMoviesProgress.success();
     sections.push({
       name: 'Movies',
       type: 'movie',
@@ -486,9 +490,9 @@ async function main() {
 
   if (argv['create-shows']) {
     const showsPath = join(mediaPath, 'TV-Shows');
-    const setupMoviesProgress = ora(`Setup show files`).start();
+    const setupMoviesProgress = createSpinner('Setup show files').start();
     const numMovies = await setupShows(showsPath);
-    setupMoviesProgress.succeed();
+    setupMoviesProgress.success();
     sections.push({
       name: 'TV Shows',
       type: 'show',
@@ -507,9 +511,9 @@ async function main() {
 
   if (argv['create-audio']) {
     const audioPath = join(mediaPath, 'Music');
-    const setupAudioProgress = ora(`Setup audio files`).start();
+    const setupAudioProgress = createSpinner('Setup audio files').start();
     const numTracks = await setupAudio(audioPath);
-    setupAudioProgress.succeed();
+    setupAudioProgress.success();
     sections.push({
       name: 'Music',
       type: 'artist',
@@ -523,9 +527,9 @@ async function main() {
 
   if (argv['create-photos']) {
     const photosPath = join(mediaPath, 'Photos');
-    const setupPhotosProgress = ora(`Setup photo files`).start();
+    const setupPhotosProgress = createSpinner('Setup photo files').start();
     const numPhotos = await setupPhotos(photosPath);
-    setupPhotosProgress.succeed();
+    setupPhotosProgress.success();
     sections.push({
       name: 'Photos',
       type: 'photo',
@@ -542,9 +546,9 @@ async function main() {
   }
 
   for (const section of sections) {
-    const sectionProgress = ora(`Setup section ${section.name}`).start();
+    const sectionProgress = createSpinner(`Setup section ${section.name}`).start();
     await createSection(section, plexServer);
-    sectionProgress.succeed();
+    sectionProgress.success();
   }
 }
 
