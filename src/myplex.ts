@@ -386,7 +386,7 @@ export class MyPlexAccount {
     const sectionIds = await this._sectionIds(machineIdentifier, options.sections ?? []);
     const createUrl = `${this.HOMEUSERS}?${new URLSearchParams({ title }).toString()}`;
     const createdUser = await this.query<unknown>({ url: createUrl, method: 'post' });
-    const userId = responseAttribute(createdUser, 'id');
+    const userId = homeResponseAttribute(createdUser, 'id');
     if (!userId) {
       throw new BadRequest('Plex did not return an id for the created home user.');
     }
@@ -428,7 +428,7 @@ export class MyPlexAccount {
     const query = params.toString();
     const url = `${this.HOMEUSERS}/${requiredId(user, 'user')}/switch${query ? `?${query}` : ''}`;
     const data = await this.query<unknown>({ url, method: 'post' });
-    const token = responseAttribute(data, 'authenticationToken');
+    const token = homeResponseAttribute(data, 'authenticationToken');
     if (!token) {
       throw new BadRequest('Plex did not return an authentication token for the home user.');
     }
@@ -1089,40 +1089,32 @@ function inviteUsername(user: MyPlexUser | string): string {
   return username;
 }
 
-function responseAttribute(value: unknown, name: string): string | undefined {
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const match = responseAttribute(item, name);
-      if (match !== undefined) {
-        return match;
-      }
-    }
-    return undefined;
-  }
-  if (typeof value !== 'object' || value === null) {
-    return undefined;
-  }
-
-  const record = value as Record<string, unknown>;
-  const directAttribute = record[name];
-  if (typeof directAttribute === 'string') {
-    return directAttribute;
-  }
-  const attributes = record.$;
-  if (typeof attributes === 'object' && attributes !== null) {
-    const attribute = (attributes as Record<string, unknown>)[name];
-    if (typeof attribute === 'string') {
-      return attribute;
-    }
+function homeResponseAttribute(
+  value: unknown,
+  name: 'authenticationToken' | 'id',
+): string | undefined {
+  const response = objectRecord(value);
+  const mediaContainer = objectRecord(response?.MediaContainer);
+  const containerUsers = Array.isArray(mediaContainer?.User) ? mediaContainer.User : [];
+  const user =
+    objectRecord(response?.User) ??
+    objectRecord(response?.user) ??
+    objectRecord(containerUsers[0]) ??
+    response;
+  const directValue = user?.[name];
+  if (typeof directValue === 'string') {
+    return directValue;
   }
 
-  for (const child of Object.values(record)) {
-    const match = responseAttribute(child, name);
-    if (match !== undefined) {
-      return match;
-    }
-  }
-  return undefined;
+  const attributes = objectRecord(user?.$);
+  const attributeValue = attributes?.[name];
+  return typeof attributeValue === 'string' ? attributeValue : undefined;
+}
+
+function objectRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 /**

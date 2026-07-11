@@ -406,7 +406,7 @@ describe('MyPlexAccount users and invites', () => {
     });
     const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
     account.query = vi.fn(() =>
-      Promise.resolve({ user: { $: { authenticationToken: 'home-token' } } }),
+      Promise.resolve({ user: { authenticationToken: 'home-token' } }),
     ) as never;
     const connect = vi
       .spyOn(MyPlexAccount.prototype, 'connect')
