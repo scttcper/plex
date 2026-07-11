@@ -8,6 +8,15 @@ export interface MetadataContainer<T extends { Metadata: unknown }> {
   MediaContainer: T;
 }
 
+/** Parse the boolean shapes returned by Plex JSON APIs. */
+export function parsePlexBoolean(value: unknown, fallback = false): boolean {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+
 export function rsplit(str: string, sep: string, maxsplit: number): string[] {
   const split = str.split(sep);
   if (maxsplit) {

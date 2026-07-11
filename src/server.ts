@@ -6,11 +6,12 @@ import { Playable } from './base/playable.ts';
 import { fetchItem, fetchItems } from './baseFunctionality.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
+import { NotFound } from './exceptions.ts';
 import { Hub, Library } from './library.ts';
 import type { LibraryRootResponse } from './library.types.ts';
 import { Optimized } from './media.ts';
 import { MyPlexAccount } from './myplex.ts';
-import type { Playlist } from './playlist.ts';
+import { Playlist, type CreatePlaylistOptions, type PlaylistContentType } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
 import type { CreatePlayQueueOptions } from './playqueue.types.ts';
 import { Agent, SEARCHTYPES } from './search.ts';
@@ -26,6 +27,7 @@ import type {
   TranscodeSessionData,
   TranscodeImageOptions,
 } from './server.types.ts';
+import { registerPlexServer } from './serverFactory.ts';
 import {
   Activity,
   ButlerTask,
@@ -47,6 +49,19 @@ export interface ServerBrowseOptions {
   path?: string | ServerPath;
   /** Include files in addition to directories. Defaults to true. */
   includeFiles?: boolean;
+}
+
+export interface ServerPlaylistsOptions {
+  /** Limit results to audio, video, or photo playlists. */
+  playlistType?: PlaylistContentType;
+  /** Limit results to a library section. */
+  sectionId?: number | string;
+  /** Partial title search performed by Plex. */
+  title?: string;
+  /** One or more Plex playlist sort expressions. */
+  sort?: string | readonly string[];
+  /** Optional local result filters such as `title__iexact`. */
+  filters?: Record<string, boolean | number | string>;
 }
 
 type BrowseResponse = {
@@ -559,15 +574,42 @@ export class PlexServer {
     return this._settings;
   }
 
-  // TODO: not sure if this works
-  // /**
-  //  * Returns a list of all playlist objects saved on the server.
-  //  */
-  // async playlists(): Promise<any> {
-  //   // TODO: Add sort and type options? (this comment is in py-plex)
-  //   // /playlists/all?type=15&sort=titleSort%3Aasc&playlistType=video&smart=0
-  //   const data = this.query('/playlists');
-  // }
+  /** Returns playlists saved on this server. */
+  async playlists(options: ServerPlaylistsOptions = {}): Promise<Playlist[]> {
+    const { filters, playlistType, sectionId, sort, title } = options;
+    const params = new URLSearchParams();
+    if (playlistType !== undefined) {
+      params.set('playlistType', playlistType);
+    }
+    if (sectionId !== undefined) {
+      params.set('sectionID', sectionId.toString());
+    }
+    if (title !== undefined) {
+      params.set('title', title);
+    }
+    if (sort !== undefined) {
+      params.set('sort', typeof sort === 'string' ? sort : sort.join(','));
+    }
+
+    const search = params.toString();
+    const key = `/playlists${search ? `?${search}` : ''}`;
+    return fetchItems(this, key, filters, Playlist, this);
+  }
+
+  /** Returns a playlist by exact title. */
+  async playlist(title: string): Promise<Playlist> {
+    const [playlist] = await this.playlists({ title, filters: { title__iexact: title } });
+    if (!playlist) {
+      throw new NotFound(`Unable to find playlist with title "${title}".`);
+    }
+
+    return playlist;
+  }
+
+  /** Creates a regular or smart playlist. */
+  async createPlaylist(title: string, options: CreatePlaylistOptions): Promise<Playlist> {
+    return Playlist.create(this, title, options);
+  }
 
   /**
    * Creates and returns a new PlayQueue.
@@ -831,3 +873,5 @@ export class PlexServer {
     return ports;
   }
 }
+
+registerPlexServer(PlexServer);

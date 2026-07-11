@@ -210,7 +210,6 @@ abstract class Video extends Playable {
     this.updatedAt = (data as MovieData).lastViewedAt ? new Date(data.updatedAt * 1000) : undefined;
     this.viewCount = (data as MovieData).viewCount ?? 0;
     this.titleSort = (data as MovieData).titleSort ?? this.title;
-    this.viewCount = (data as MovieData).viewCount;
     this.playlistItemID = videoData.playlistItemID;
     this.editionTitle = videoData.editionTitle;
     // todo: update one of them with this property
@@ -459,6 +458,26 @@ export class Show extends Video {
     return episodes.map(episode => new Episode(this.server, episode, key, this));
   }
 
+  /** Return episodes with at least one view. */
+  async watched(): Promise<Episode[]> {
+    return (await this.episodes()).filter(episode => episode.viewCount > 0);
+  }
+
+  /** Return episodes that have not been viewed. */
+  async unwatched(): Promise<Episode[]> {
+    return (await this.episodes()).filter(episode => episode.viewCount === 0);
+  }
+
+  /** Return the episode Plex currently considers on deck for this show. */
+  async onDeck(): Promise<Episode | undefined> {
+    const key = this._buildQueryKey(this.key, { includeOnDeck: true });
+    const data = await this.server.query<{ MediaContainer: { Metadata?: ShowData[] } }>({
+      path: key,
+    });
+    const episode = data.MediaContainer.Metadata?.[0]?.OnDeck?.Metadata;
+    return episode ? new Episode(this.server, episode, key, this) : undefined;
+  }
+
   protected override _loadData(data: ShowData): void {
     super._loadData(data);
     this.key = (data.key ?? '').replace('/children', '');
@@ -532,6 +551,33 @@ export class Season extends Video {
     const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
     const episodes = await fetchItems<EpisodeMetadata>(this.server, key, query);
     return episodes.map(episode => new Episode(this.server, episode, key, this));
+  }
+
+  /** Return episodes with at least one view. */
+  async watched(): Promise<Episode[]> {
+    return (await this.episodes()).filter(episode => episode.viewCount > 0);
+  }
+
+  /** Return episodes that have not been viewed. */
+  async unwatched(): Promise<Episode[]> {
+    return (await this.episodes()).filter(episode => episode.viewCount === 0);
+  }
+
+  /** Return the parent show. */
+  async show(): Promise<Show> {
+    const key = this._buildQueryKey(this.parentKey);
+    const data = await fetchItem<ShowData>(this.server, key);
+    return new Show(this.server, data, key, this);
+  }
+
+  /** Return the episode Plex currently considers on deck for this season. */
+  async onDeck(): Promise<Episode | undefined> {
+    const key = this._buildQueryKey(this.key, { includeOnDeck: true });
+    const data = await this.server.query<{ MediaContainer: { Metadata?: ShowData[] } }>({
+      path: key,
+    });
+    const episode = data.MediaContainer.Metadata?.[0]?.OnDeck?.Metadata;
+    return episode ? new Episode(this.server, episode, key, this) : undefined;
   }
 
   protected override _loadData(data: ShowData): void {

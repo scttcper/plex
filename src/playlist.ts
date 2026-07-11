@@ -3,8 +3,16 @@ import { URLSearchParams } from 'node:url';
 import { Album, Artist, Track } from './audio.ts';
 import { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';
-import { BadRequest, NotFound } from './exceptions.ts';
-import type { LibrarySection, Libtype, SearchClassForLibtype } from './library.ts';
+import { BadRequest, NotFound, Unsupported } from './exceptions.ts';
+import type {
+  AdvancedSearchFilters,
+  LibrarySection,
+  Libtype,
+  SearchArgs,
+  SearchClassForLibtype,
+  SearchFilterValue,
+  Section,
+} from './library.ts';
 import { Photo, Photoalbum } from './photo.ts';
 import type {
   PlaylistContainerResponse,
@@ -13,6 +21,7 @@ import type {
 } from './playlist.types.ts';
 import { searchType } from './search.ts';
 import type { PlexServer } from './server.ts';
+import { parsePlexBoolean } from './util.ts';
 import { Episode, Movie, Season, Show } from './video.ts';
 
 /**
@@ -78,15 +87,19 @@ export interface CreateSmartPlaylistOptions {
    * See {@link Section.search}  for more info.
    */
   sort?: string;
+  /** Smart playlists only, override the section's default media type. */
+  libtype?: PlaylistItemLibtype;
   /**
    * Smart playlists only, a dictionary of advanced filters.
    * See {@link Section.search}  for more info.
    */
-  filters?: Record<string, boolean | number | string>;
+  filters?: AdvancedSearchFilters;
+  /** Additional validated library search options. */
+  search?: SmartPlaylistSearchOptions;
 }
 
 export type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
-type PlaylistContent =
+export type PlaylistContent =
   | Album
   | Artist
   | Episode
@@ -99,6 +112,27 @@ type PlaylistContent =
 type PlaylistItem = PlaylistContent & { playlistItemID?: number };
 
 export type PlaylistItemLibtype = Exclude<Libtype, 'clip' | 'collection'>;
+export type PlaylistContentType = 'audio' | 'photo' | 'video';
+export type PlaylistMetadataType = 'movie' | 'photo' | 'track';
+export interface SmartPlaylistSearchOptions {
+  /** Advanced nested `and`/`or` filters. */
+  filters?: AdvancedSearchFilters;
+  /** Include Plex GUID metadata in the persisted search. */
+  includeGuids?: boolean;
+  /** Media type searched by the smart playlist. */
+  libtype?: PlaylistItemLibtype;
+  /** Maximum number of matching items. */
+  limit?: number;
+  /** One or more validated Plex sort fields. */
+  sort?: SearchArgs['sort'];
+  /** Simple field filters such as `{ year: 2026, genre: 'Comedy' }`. */
+  where?: Record<string, SearchFilterValue>;
+}
+
+function smartPlaylistSearchArgs(options: SmartPlaylistSearchOptions): Partial<SearchArgs> {
+  const { where = {}, ...search } = options;
+  return { ...where, ...search };
+}
 
 export interface PlaylistItemsOptions<T extends PlaylistItemLibtype = PlaylistItemLibtype> {
   /** Return playlist contents grouped as a specific Plex library type. */
@@ -110,6 +144,11 @@ export interface UpdatePlaylistOptions {
   title?: string;
   /** New summary/description for the playlist */
   summary?: string;
+}
+
+export interface MovePlaylistItemOptions {
+  /** Place the item after this playlist item. Omit to move it to the beginning. */
+  after?: PlaylistContent;
 }
 
 export class Playlist extends Playable {
@@ -165,31 +204,19 @@ export class Playlist extends Playable {
     title: string,
     options: CreateSmartPlaylistOptions,
   ): Promise<Playlist> {
-    const { section, limit, sort, filters } = options;
+    const { section, limit, sort, filters, libtype, search = {} } = options;
     if (!section) {
       throw new BadRequest('A section is required to create a smart playlist.');
     }
 
-    // Build the content URI for the smart playlist filter
-    const sectionType = searchType(section.type);
-    const filterParams = new URLSearchParams();
-    filterParams.set('type', sectionType.toString());
-
-    if (sort) {
-      filterParams.set('sort', sort);
-    }
-
-    if (limit !== undefined) {
-      filterParams.set('limit', limit.toString());
-    }
-
-    if (filters) {
-      for (const [key, value] of Object.entries(filters)) {
-        filterParams.set(key, String(value));
-      }
-    }
-
-    const uri = `${server._uriRoot()}/library/sections/${section.key}/all?${filterParams.toString()}`;
+    const searchKey = await section.buildSearchKey({
+      ...smartPlaylistSearchArgs(search),
+      filters: search.filters ?? filters,
+      libtype: search.libtype ?? libtype ?? section.METADATA_TYPE,
+      limit: search.limit ?? limit,
+      sort: search.sort ?? sort,
+    });
+    const uri = `${server._uriRoot()}${searchKey}`;
 
     // Determine playlist type from section content type
     const playlistType = section.CONTENT_TYPE ?? 'video';
@@ -203,7 +230,10 @@ export class Playlist extends Playable {
 
     const key = `/playlists?${params.toString()}`;
     const data = await server.query<PlaylistContainerResponse>({ path: key, method: 'post' });
-    return new Playlist(server, data.MediaContainer.Metadata[0], key);
+    const playlist = new Playlist(server, data.MediaContainer.Metadata[0], key);
+    // Plex's create response omits the persisted content URI needed by smart helpers.
+    await playlist.reload();
+    return playlist;
   }
 
   private static async _create(
@@ -245,6 +275,11 @@ export class Playlist extends Playable {
   declare playlistType: string;
   declare smart: boolean;
   declare summary: string;
+  declare content?: string;
+  declare icon?: string;
+  declare librarySectionKey?: string;
+  declare librarySectionTitle?: string;
+  declare radio: boolean;
   declare allowSync?: boolean;
   declare duration?: number;
   declare durationInSeconds?: number;
@@ -252,6 +287,52 @@ export class Playlist extends Playable {
   declare centroid?: Artist;
   /** Cache of playlist items */
   private _items: PlaylistItem[] | null = null;
+
+  get isVideo(): boolean {
+    return this.playlistType === 'video';
+  }
+
+  get isAudio(): boolean {
+    return this.playlistType === 'audio';
+  }
+
+  get isPhoto(): boolean {
+    return this.playlistType === 'photo';
+  }
+
+  get metadataType(): PlaylistMetadataType {
+    if (this.isVideo) {
+      return 'movie';
+    }
+    if (this.isAudio) {
+      return 'track';
+    }
+    if (this.isPhoto) {
+      return 'photo';
+    }
+
+    throw new Unsupported(`Unexpected playlist type: ${this.playlistType}`);
+  }
+
+  /** Return the library section associated with a smart playlist. */
+  override async section(): Promise<Section> {
+    if (!this.smart) {
+      throw new BadRequest('Regular playlists are not associated with a library.');
+    }
+
+    const content = decodeURIComponent(this.content ?? '');
+    const sectionMatch = /\/library\/sections\/(\d+)\/all/.exec(content);
+    if (sectionMatch) {
+      return (await this.server.library()).sectionByID(sectionMatch[1]);
+    }
+
+    const [item] = await this.items();
+    if (item) {
+      return item.section();
+    }
+
+    throw new Unsupported('Unable to determine the smart playlist library section.');
+  }
 
   async _edit(args: { title?: string; summary?: string }) {
     const searchparams = new URLSearchParams(args);
@@ -298,7 +379,7 @@ export class Playlist extends Playable {
   }
 
   /** Add items to a playlist. */
-  async addItems(items: PlaylistContent[]) {
+  async addItems(items: PlaylistContent[]): Promise<this> {
     if (this.smart) {
       throw new BadRequest('Cannot add items to a smart playlist.');
     }
@@ -315,10 +396,12 @@ export class Playlist extends Playable {
 
     const key = `${this.key}/items?${params.toString()}`;
     await this.server.query({ path: key, method: 'put' });
+    this._items = null;
+    return this;
   }
 
   /** Remove an item from a playlist. */
-  async removeItems(items: PlaylistContent[]) {
+  async removeItems(items: PlaylistContent[]): Promise<this> {
     if (this.smart) {
       throw new BadRequest('Cannot remove items to a smart playlist.');
     }
@@ -329,6 +412,47 @@ export class Playlist extends Playable {
 
       await this.server.query({ path: key, method: 'delete' });
     }
+
+    this._items = null;
+    return this;
+  }
+
+  /** Move an item within a regular playlist. */
+  async moveItem(item: PlaylistContent, { after }: MovePlaylistItemOptions = {}): Promise<this> {
+    if (this.smart) {
+      throw new BadRequest('Cannot move items in a smart playlist.');
+    }
+
+    const playlistItemID = await this._getPlaylistItemID(item);
+    const params = new URLSearchParams();
+    if (after) {
+      params.set('after', (await this._getPlaylistItemID(after)).toString());
+    }
+
+    const search = params.toString();
+    const key = `${this.key}/items/${playlistItemID}/move${search ? `?${search}` : ''}`;
+    await this.server.query({ path: key, method: 'put' });
+    this._items = null;
+    return this;
+  }
+
+  /** Replace the validated search behind a smart playlist. */
+  async updateFilters(options: SmartPlaylistSearchOptions = {}): Promise<this> {
+    if (!this.smart) {
+      throw new BadRequest('Cannot update filters for a regular playlist.');
+    }
+
+    const section = await this.section();
+    const searchKey = await section.buildSearchKey({
+      ...smartPlaylistSearchArgs(options),
+      libtype: options.libtype ?? section.METADATA_TYPE,
+    });
+    const uri = `${this.server._uriRoot()}${searchKey}`;
+    const key = `${this.key}/items?${new URLSearchParams({ uri }).toString()}`;
+    await this.server.query({ path: key, method: 'put' });
+    this._items = null;
+    await this.reload();
+    return this;
   }
 
   /** Delete the playlist. */
@@ -347,8 +471,14 @@ export class Playlist extends Playable {
     this.guid = data.guid;
     this.playlistType = data.playlistType;
     this.summary = data.summary;
-    this.smart = data.smart;
+    this.smart = parsePlexBoolean(data.smart);
     this.leafCount = data.leafCount;
+    this.content = data.content;
+    this.icon = data.icon;
+    this.librarySectionID = data.librarySectionID;
+    this.librarySectionKey = data.librarySectionKey;
+    this.librarySectionTitle = data.librarySectionTitle;
+    this.radio = parsePlexBoolean(data.radio);
 
     // TODO: verify these. Possibly audio playlist related
     this.allowSync = data.allowSync;

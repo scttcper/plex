@@ -1,4 +1,5 @@
 import type { ArtistData } from './audio.types.ts';
+import type { PlexBoolean } from './library.types.ts';
 
 export interface PlaylistResponse {
   ratingKey: string;
@@ -7,12 +8,18 @@ export interface PlaylistResponse {
   type: string;
   title: string;
   summary: string;
-  smart: boolean;
+  smart: PlexBoolean;
   playlistType: string;
   composite: string;
   leafCount: number;
   addedAt: number;
   updatedAt: number;
+  content?: string;
+  icon?: string;
+  librarySectionID?: number;
+  librarySectionKey?: string;
+  librarySectionTitle?: string;
+  radio?: PlexBoolean;
 
   // below props might be for audio playlists?
   allowSync?: boolean;

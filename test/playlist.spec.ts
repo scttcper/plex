@@ -14,6 +14,7 @@ let plex: PlexServer;
 let playlist: Playlist | undefined;
 let buckBunny: Movie;
 let ghostbusters: Movie;
+const smartPlaylistTitle = 'plexapi-ts-smart-playlist-test';
 
 beforeAll(async () => {
   plex = await createClient();
@@ -23,6 +24,8 @@ beforeAll(async () => {
   [ghostbusters] = await section.search({ title: 'Ghostbusters' });
   expect(buckBunny).toBeDefined();
   expect(ghostbusters).toBeDefined();
+  const leftovers = await plex.playlists({ title: smartPlaylistTitle });
+  await Promise.all(leftovers.map(item => item.delete()));
 });
 
 afterEach(async () => {
@@ -43,11 +46,10 @@ it('should create a playlist and add/remove an item', async () => {
 
   await playlist.removeItems([ghostbusters]);
 
-  // @ts-expect-error reset cached items
-  playlist._items = null;
-
   const itemsRemoved = await playlist.items();
   expect(itemsRemoved).toHaveLength(1);
+  expect(playlist.isVideo).toBe(true);
+  expect(playlist.metadataType).toBe('movie');
 });
 
 it('should retrieve playlist items grouped by library type', async () => {
@@ -110,14 +112,22 @@ it('should create and delete a smart playlist', async () => {
   const section = await library.section<MovieSection>('Movies');
   let smartPlaylist: Playlist | undefined;
   try {
-    smartPlaylist = await Playlist.create(plex, 'Test Smart Playlist', {
+    smartPlaylist = await Playlist.create(plex, smartPlaylistTitle, {
       smart: true,
       section,
-      sort: 'addedAt:desc',
-      limit: 5,
+      search: {
+        limit: 5,
+        sort: 'addedAt:desc',
+        where: { year: 2008 },
+      },
     });
     expect(smartPlaylist.smart).toBe(true);
-    expect(smartPlaylist.title).toBe('Test Smart Playlist');
+    expect(smartPlaylist.title).toBe(smartPlaylistTitle);
+    expect((await smartPlaylist.section()).key).toBe(section.key);
+
+    await smartPlaylist.updateFilters({ where: { year: 1984 } });
+    const items = await smartPlaylist.items();
+    expect(items.map(item => item.year)).toEqual([1984]);
   } finally {
     await smartPlaylist?.delete();
   }

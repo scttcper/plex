@@ -1,6 +1,7 @@
 import type { CommonSenseMediaData, ImageData, UltraBlurColorsData } from './media.types.ts';
 import type {
   ChapterSource,
+  EpisodeMetadata,
   MarkerData,
   MediaPartStreamData,
   MediaTagData,
@@ -407,6 +408,7 @@ export interface ShowData {
   UltraBlurColors?: UltraBlurColorsData;
   slug?: string;
   tagline?: string;
+  OnDeck?: { Metadata?: EpisodeMetadata };
 }
 
 export interface CollectionData {
@@ -416,7 +418,7 @@ export interface CollectionData {
   type: string;
   title: string;
   titleSort?: string;
-  smart?: boolean;
+  smart?: PlexBoolean;
   content?: string;
   collectionMode?: number;
   collectionSort?: number;

@@ -32,6 +32,21 @@ describe('Shows', () => {
     expect(episodes.length).toBe(18);
   });
 
+  it('should return watched, unwatched, and on-deck episodes', async () => {
+    const episodes = await show.episodes();
+    const watched = await show.watched();
+    const unwatched = await show.unwatched();
+    const onDeck = await show.onDeck();
+    const season = await show.season(1);
+
+    expect(watched.length + unwatched.length).toBe(episodes.length);
+    expect(watched.every(episode => episode.viewCount > 0)).toBe(true);
+    expect(unwatched.every(episode => episode.viewCount === 0)).toBe(true);
+    expect(onDeck?.ratingKey).toBe(episodes[0].ratingKey);
+    expect((await season.onDeck())?.ratingKey).toBe(episodes[0].ratingKey);
+    expect((await season.show()).ratingKey).toBe(show.ratingKey);
+  });
+
   it('should expose inherited edition fields and find other show editions', async () => {
     const season = await show.season(1);
     const episode = await season.episode(1);

@@ -2,7 +2,7 @@ import { URLSearchParams } from 'node:url';
 
 import { PlexObject } from './base/plexObject.ts';
 import { BadRequest, NotFound } from './exceptions.ts';
-import { lowerFirst } from './util.ts';
+import { lowerFirst, parsePlexBoolean } from './util.ts';
 
 export type SettingType = 'bool' | 'double' | 'enum' | 'int' | 'text';
 export type SettingValue = boolean | number | string;
@@ -184,10 +184,6 @@ export class Setting extends PlexObject {
 
     return enumValues.split('|');
   }
-}
-
-function parsePlexBoolean(value: unknown): boolean {
-  return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 export class Preferences extends Setting {

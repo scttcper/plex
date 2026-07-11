@@ -12,7 +12,8 @@ import type {
   UserResponse,
   WebLogin,
 } from './myplex.types.ts';
-import { PlexServer } from './server.ts';
+import type { PlexServer } from './server.ts';
+import { createPlexServer } from './serverFactory.ts';
 import { encodeBase64, type MediaContainer } from './util.ts';
 
 /**
@@ -419,13 +420,8 @@ export class MyPlexAccount {
 /**
  * Connects to the specified cls with url and token
  */
-async function connect(
-  cls: (...args: ConstructorParameters<typeof PlexServer>) => PlexServer,
-  url: string,
-  token: string,
-  timeout?: number,
-): Promise<PlexServer> {
-  const device = cls(url, token, timeout);
+async function connect(url: string, token: string, timeout?: number): Promise<PlexServer> {
+  const device = createPlexServer(url, token, timeout);
   await device.connect();
   return device;
 }
@@ -440,9 +436,7 @@ async function connectInPreferredOrder(
   timeout: number | undefined,
   resourceName: string,
 ): Promise<PlexServer> {
-  const results = await Promise.allSettled(
-    urls.map(async url => connect((...args) => new PlexServer(...args), url, token, timeout)),
-  );
+  const results = await Promise.allSettled(urls.map(async url => connect(url, token, timeout)));
 
   for (const result of results) {
     if (result.status === 'fulfilled') {

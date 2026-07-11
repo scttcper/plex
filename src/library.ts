@@ -66,13 +66,15 @@ import {
   Playlist,
   type CreateRegularPlaylistOptions,
   type CreateSmartPlaylistOptions,
+  type PlaylistContentType,
+  type SmartPlaylistSearchOptions,
 } from './playlist.ts';
 import { type Agent, searchType, SEARCHTYPES } from './search.ts';
 import type { SearchResultContainer } from './search.types.ts';
 import type { PlexServer } from './server.ts';
 import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { Setting, type SettingResponse, type SettingValue } from './settings.ts';
-import type { MediaContainer } from './util.ts';
+import { type MediaContainer, parsePlexBoolean } from './util.ts';
 import { Clip, Episode, Movie, Season, Show } from './video.ts';
 
 export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
@@ -863,7 +865,7 @@ export type LibrarySectionAllOptions = Omit<Partial<SearchArgs>, 'libtype' | 'ma
 export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
 export type LibrarySearchItem = SectionType | Season | Episode | Clip | Photo | Collections;
 export type HubItem = LibrarySearchItem | Playlist;
-type RatingKeyItem = { ratingKey?: number | string };
+export type RatingKeyItem = { ratingKey?: number | string };
 type SearchTagValue = { id: number | string; tag?: string } | { id?: number | string; tag: string };
 export type SearchFilterPrimitive =
   | boolean
@@ -956,6 +958,32 @@ const COLLECTION_SORT_VALUES = {
 
 type CollectionMode = keyof typeof COLLECTION_MODE_VALUES;
 type CollectionSort = keyof typeof COLLECTION_SORT_VALUES;
+
+export interface SmartCollectionSearchOptions extends Omit<SmartPlaylistSearchOptions, 'libtype'> {
+  /** Media type searched by the smart collection. */
+  libtype?: Libtype;
+}
+
+export interface CreateRegularCollectionOptions<T extends RatingKeyItem> {
+  /** Library section that will own the collection. */
+  section: LibrarySection<T>;
+  /** Items in the regular collection. */
+  items: RatingKeyItem[];
+  smart?: false;
+}
+
+export interface CreateSmartCollectionOptions<T extends RatingKeyItem> {
+  /** Library section that will own the collection. */
+  section: LibrarySection<T>;
+  /** Create a dynamic collection backed by a validated library search. */
+  smart: true;
+  /** Search used to populate the collection. */
+  search?: SmartCollectionSearchOptions;
+}
+
+export type CreateCollectionOptions<T extends RatingKeyItem> =
+  | CreateRegularCollectionOptions<T>
+  | CreateSmartCollectionOptions<T>;
 type SearchParamEntry = [string, string];
 type SearchFilterField = Pick<FilteringField, 'key' | 'type'>;
 type LibrarySearchMetadata = NonNullable<SearchResultContainer['Metadata']>[number];
@@ -993,14 +1021,6 @@ const CHOICE_FILTER_VALUE_TYPES = new Set<FilterValueType>([
   'subtitleLanguage',
   'tag',
 ]);
-
-function parsePlexBoolean(value: unknown, fallback = false): boolean {
-  if (value === undefined || value === null) {
-    return fallback;
-  }
-
-  return value === true || value === 1 || value === '1' || value === 'true';
-}
 
 function parseOptionalNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === '') {
@@ -1403,6 +1423,8 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
   declare uuid: string;
   declare CONTENT_TYPE: string;
+  /** Default item type used by smart filters in this section. */
+  declare METADATA_TYPE: Libtype;
   readonly SECTION_TYPE!: Class<SType>;
 
   declare _filterTypes?: FilteringType[];
@@ -1653,6 +1675,22 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   }
 
   /**
+   * Build and validate a server-side search key for smart playlists and collections.
+   * Local-only filters are rejected because Plex cannot persist them in a smart filter.
+   */
+  async buildSearchKey(args: Partial<SearchArgs> = {}): Promise<string> {
+    const { key, localFilters } = await this._buildSearchKey(args);
+    const localFilterNames = Object.keys(localFilters);
+    if (localFilterNames.length > 0) {
+      throw new BadRequest(
+        `Smart filters require server-side fields. Unsupported filters: ${localFilterNames.join(', ')}`,
+      );
+    }
+
+    return key;
+  }
+
+  /**
    * Run an analysis on all of the items in this library section.
    * See :func:`~plexapi.base.PlexPartialObject.analyze` for more details.
    */
@@ -1892,7 +1930,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     title: string,
     options: CreateRegularPlaylistOptions | Omit<CreateSmartPlaylistOptions, 'section'>,
   ): Promise<Playlist> {
-    if (options.smart) {
+    if (!('items' in options)) {
       return Playlist.create(this.server, title, { ...options, section: this });
     }
 
@@ -1920,8 +1958,24 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /**
    * Create a regular collection in this library section.
    */
-  async createCollection(title: string, items: RatingKeyItem[]): Promise<Collections<SType>> {
-    return Collections.create(this.server, title, this, items);
+  async createCollection(title: string, items: RatingKeyItem[]): Promise<Collections<SType>>;
+  async createCollection(
+    title: string,
+    options:
+      | Omit<CreateRegularCollectionOptions<RatingKeyItem>, 'section'>
+      | Omit<CreateSmartCollectionOptions<RatingKeyItem>, 'section'>,
+  ): Promise<Collections<SType>>;
+  async createCollection(
+    title: string,
+    itemsOrOptions:
+      | RatingKeyItem[]
+      | Omit<CreateRegularCollectionOptions<RatingKeyItem>, 'section'>
+      | Omit<CreateSmartCollectionOptions<RatingKeyItem>, 'section'>,
+  ): Promise<Collections<SType>> {
+    const options = Array.isArray(itemsOrOptions)
+      ? { section: this, items: itemsOrOptions }
+      : { ...itemsOrOptions, section: this };
+    return Collections.create(this.server, title, options as CreateCollectionOptions<SType>);
   }
 
   /**
@@ -2787,7 +2841,7 @@ export class MovieSection extends LibrarySection<Movie> {
   ];
 
   static override TAG = 'Directory';
-  METADATA_TYPE = 'movie';
+  override METADATA_TYPE = 'movie' as const;
   override CONTENT_TYPE = 'video';
   override readonly SECTION_TYPE = Movie;
 
@@ -2842,7 +2896,7 @@ export class ShowSection extends LibrarySection<Show> {
   ];
 
   static override TAG = 'Directory';
-  METADATA_TYPE = 'episode';
+  override METADATA_TYPE = 'episode' as const;
   override CONTENT_TYPE = 'video';
   override readonly SECTION_TYPE = Show;
 
@@ -2892,7 +2946,7 @@ export class ShowSection extends LibrarySection<Show> {
 export class MusicSection extends LibrarySection<Track> {
   static override TYPE = 'artist';
   static override TAG = 'Directory';
-  METADATA_TYPE = 'track';
+  override METADATA_TYPE = 'track' as const;
   override CONTENT_TYPE = 'audio';
   override readonly SECTION_TYPE = Track;
 
@@ -2964,7 +3018,7 @@ export class PhotoSection extends LibrarySection<Photoalbum> {
   static override ALLOWED_FILTERS = ['year', 'label', 'addedAt'];
   static override ALLOWED_SORT = ['addedAt', 'titleSort', 'viewUpdatedAt'];
   static override TAG = 'Directory';
-  METADATA_TYPE = 'photo';
+  override METADATA_TYPE = 'photo' as const;
   override CONTENT_TYPE = 'photo';
   override readonly SECTION_TYPE = Photoalbum;
 
@@ -3359,6 +3413,48 @@ export class Collections<
     return this.childCount;
   }
 
+  get metadataType(): Libtype {
+    return this.subtype as Libtype;
+  }
+
+  get isVideo(): boolean {
+    return ['episode', 'movie', 'season', 'show'].includes(this.subtype);
+  }
+
+  get isAudio(): boolean {
+    return ['album', 'artist', 'track'].includes(this.subtype);
+  }
+
+  get isPhoto(): boolean {
+    return ['photo', 'photoalbum'].includes(this.subtype);
+  }
+
+  get listType(): PlaylistContentType {
+    if (this.isVideo) {
+      return 'video';
+    }
+    if (this.isAudio) {
+      return 'audio';
+    }
+    if (this.isPhoto) {
+      return 'photo';
+    }
+
+    throw new Unsupported(`Unexpected collection subtype: ${this.subtype}`);
+  }
+
+  override async reload(): Promise<void> {
+    const data = await this.server.query<MediaContainer<{ Metadata?: CollectionData[] }>>({
+      path: `/library/metadata/${this.ratingKey}`,
+    });
+    const metadata = data.MediaContainer.Metadata?.[0];
+    if (!metadata) {
+      throw new NotFound(`Unable to reload collection "${this.title}".`);
+    }
+
+    this._loadData(metadata);
+  }
+
   /**
    * Returns a list of all items in the collection.
    */
@@ -3367,7 +3463,8 @@ export class Collections<
       throw new Error('Cannot fetch collection items without a collection item class.');
     }
 
-    const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
+    const collectionKey = this.key.endsWith('/children') ? this.key : `${this.key}/children`;
+    const key = this._buildQueryKey(collectionKey);
     const data = await this.server.query<MediaContainer<{ Metadata?: unknown[] }>>({ path: key });
     return (
       data.MediaContainer.Metadata?.map(
@@ -3457,6 +3554,26 @@ export class Collections<
     await this._updatePreference('collectionSort', sortValue);
   }
 
+  /** Replace the validated search behind a smart collection. */
+  async updateFilters(options: SmartCollectionSearchOptions = {}): Promise<this> {
+    if (!this.smart) {
+      throw new BadRequest('Cannot update filters for a regular collection.');
+    }
+
+    const section = await this.section();
+    const { where = {}, ...search } = options;
+    const searchKey = await section.buildSearchKey({
+      ...where,
+      ...search,
+      libtype: search.libtype ?? (this.subtype as Libtype),
+    });
+    const uri = `${this.server._uriRoot()}${searchKey}`;
+    const key = `/library/collections/${this.ratingKey}/items?${new URLSearchParams({ uri }).toString()}`;
+    await this.server.query({ path: key, method: 'put' });
+    await this.reload();
+    return this;
+  }
+
   /**
    * Create a new regular (non-smart) collection.
    * @param server The PlexServer instance.
@@ -3467,9 +3584,53 @@ export class Collections<
   static async create<T extends RatingKeyItem = SectionType>(
     server: PlexServer,
     title: string,
+    options: CreateCollectionOptions<T>,
+  ): Promise<Collections<T>>;
+  /** @deprecated Pass an options object instead. */
+  static async create<T extends RatingKeyItem = SectionType>(
+    server: PlexServer,
+    title: string,
     section: LibrarySection<T>,
     items: RatingKeyItem[],
+  ): Promise<Collections<T>>;
+  static async create<T extends RatingKeyItem = SectionType>(
+    server: PlexServer,
+    title: string,
+    optionsOrSection: CreateCollectionOptions<T> | LibrarySection<T>,
+    legacyItems: RatingKeyItem[] = [],
   ): Promise<Collections<T>> {
+    const options: CreateCollectionOptions<T> =
+      optionsOrSection instanceof LibrarySection
+        ? { section: optionsOrSection, items: legacyItems }
+        : optionsOrSection;
+    const { section } = options;
+
+    if (!('items' in options)) {
+      const { where = {}, ...search } = options.search ?? {};
+      const libtype = search.libtype ?? (section.type as Libtype);
+      const searchKey = await section.buildSearchKey({ ...where, ...search, libtype });
+      const uri = `${server._uriRoot()}${searchKey}`;
+      const params = new URLSearchParams({
+        sectionId: section.key,
+        smart: '1',
+        title,
+        type: searchType(libtype).toString(),
+        uri,
+      });
+      const key = `/library/collections?${params.toString()}`;
+      const data = await server.query<MediaContainer<{ Metadata?: CollectionData[] }>>({
+        path: key,
+        method: 'post',
+      });
+      const metadata = data.MediaContainer.Metadata?.[0];
+      if (!metadata) {
+        throw new Error('Failed to create smart collection');
+      }
+
+      return new Collections<T>(server, metadata, key, section, section.SECTION_TYPE);
+    }
+
+    const { items } = options;
     if (items.length === 0) {
       throw new BadRequest('At least one item is required to create a collection.');
     }
@@ -3520,7 +3681,7 @@ export class Collections<
     this.ratingKey = data.ratingKey;
     this.guid = data.guid;
     this.type = data.type;
-    this.smart = data.smart ?? false;
+    this.smart = parsePlexBoolean(data.smart);
     this.content = data.content;
     this.collectionMode = data.collectionMode;
     this.collectionSort = data.collectionSort;

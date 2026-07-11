@@ -63,12 +63,10 @@ describe('Collections', () => {
     const testItems = movies.slice(0, 2);
 
     // Create
-    const collection = await Collections.create(
-      plex,
-      TEST_COLLECTION_NAME,
-      movieSection,
-      testItems,
-    );
+    const collection = await Collections.create(plex, TEST_COLLECTION_NAME, {
+      section: movieSection,
+      items: testItems,
+    });
     expect(collection.title).toBe(TEST_COLLECTION_NAME);
     expect(collection.ratingKey).toBeTruthy();
 
@@ -89,8 +87,30 @@ describe('Collections', () => {
   });
 
   it('should reject creating a collection with no items', async () => {
-    await expect(Collections.create(plex, '__empty_test__', movieSection, [])).rejects.toThrow(
-      'At least one item is required',
-    );
+    await expect(
+      Collections.create(plex, '__empty_test__', { section: movieSection, items: [] }),
+    ).rejects.toThrow('At least one item is required');
+  });
+
+  it('should create and update a smart collection with validated filters', async () => {
+    const collection = await movieSection.createCollection(TEST_COLLECTION_NAME, {
+      smart: true,
+      search: { where: { year: 2008 } },
+    });
+
+    expect(collection.smart).toBe(true);
+    expect(collection.isVideo).toBe(true);
+    expect(collection.listType).toBe('video');
+    expect(collection.metadataType).toBe('movie');
+    const initialItems = await collection.items();
+    expect(initialItems.length).toBeGreaterThan(0);
+    expect(initialItems.every(item => item.year === 2008)).toBe(true);
+
+    await collection.updateFilters({ where: { year: 1984 } });
+    const updatedItems = await collection.items();
+    expect(updatedItems.length).toBeGreaterThan(0);
+    expect(updatedItems.every(item => item.year === 1984)).toBe(true);
+
+    await plex.query({ path: `/library/metadata/${collection.ratingKey}`, method: 'delete' });
   });
 });

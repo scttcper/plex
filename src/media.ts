@@ -5,7 +5,7 @@ import type {
   ParentalAdvisoryTopicData,
   TalkingPointData,
 } from './media.types.ts';
-import type { MediaContainer } from './util.ts';
+import { type MediaContainer, parsePlexBoolean } from './util.ts';
 import type {
   ChapterData,
   MarkerData,
@@ -260,13 +260,13 @@ export class SubtitleStream extends MediaPartStream {
 
   protected override _loadData(data: any): void {
     super._loadData(data);
-    this.canAutoSync = Boolean(data.canAutoSync); // Use !! for boolean casting from potential string/number
+    this.canAutoSync = parsePlexBoolean(data.canAutoSync);
     this.container = data.container;
-    this.forced = Boolean(Number.parseInt(data.forced ?? '0', 10));
+    this.forced = parsePlexBoolean(data.forced);
     this.format = data.format;
     this.headerCompression = data.headerCompression;
-    this.hearingImpaired = Boolean(Number.parseInt(data.hearingImpaired ?? '0', 10));
-    this.perfectMatch = Boolean(data.perfectMatch);
+    this.hearingImpaired = parsePlexBoolean(data.hearingImpaired);
+    this.perfectMatch = parsePlexBoolean(data.perfectMatch);
     this.providerTitle = data.providerTitle;
     this.score = data.score ? Number.parseInt(data.score, 10) : undefined;
     this.sourceKey = data.sourceKey;
@@ -295,7 +295,7 @@ export class LyricStream extends MediaPartStream {
     this.format = data.format;
     this.minLines = data.minLines ? Number.parseInt(data.minLines, 10) : undefined;
     this.provider = data.provider;
-    this.timed = Boolean(Number.parseInt(data.timed ?? '0', 10));
+    this.timed = parsePlexBoolean(data.timed);
   }
 }
 
@@ -781,7 +781,7 @@ export class AudioStream extends MediaPartStream {
     this.streamIdentifier = data.streamIdentifier
       ? Number.parseInt(data.streamIdentifier, 10)
       : undefined;
-    this.visualImpaired = Boolean(Number.parseInt(data.visualImpaired ?? '0', 10));
+    this.visualImpaired = parsePlexBoolean(data.visualImpaired);
 
     // Track only attributes
     this.albumGain = data.albumGain ? Number.parseFloat(data.albumGain) : undefined;
@@ -825,8 +825,7 @@ export class Field extends PlexObject {
   declare name: string;
 
   protected _loadData(data: any): void {
-    // Convert potential string '1' or '0' to boolean
-    this.locked = data.locked === '1' || data.locked === true;
+    this.locked = parsePlexBoolean(data.locked);
     this.name = data.name;
   }
 }

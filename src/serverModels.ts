@@ -9,6 +9,7 @@ import type {
   SystemAccountData,
   SystemDeviceData,
 } from './serverModels.types.ts';
+import { parsePlexBoolean } from './util.ts';
 
 export interface ServerWalkEntry {
   /** Directory path being visited. */
@@ -99,13 +100,9 @@ export class ServerPath extends PlexObject {
   }
 
   protected _loadData(data: ServerPathData): void {
-    this.home = data.home === true || data.home === 1 || data.home === '1' || data.home === 'true';
+    this.home = parsePlexBoolean(data.home);
     this.key = data.key;
-    this.network =
-      data.network === true ||
-      data.network === 1 ||
-      data.network === '1' ||
-      data.network === 'true';
+    this.network = parsePlexBoolean(data.network);
     this.path = data.path;
     this.title = data.title;
   }
