@@ -5,16 +5,22 @@ import { parseStringPromise } from 'xml2js';
 
 import { PlexObject } from './base/plexObject.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
+import { NotFound } from './exceptions.ts';
 import type {
   Connection,
   Device,
+  MyPlexInviteData,
+  MyPlexInvitesResponse,
+  MyPlexServerShareData,
+  MyPlexUserData,
+  MyPlexUsersResponse,
   ResourcesResponse,
   UserResponse,
   WebLogin,
 } from './myplex.types.ts';
 import type { PlexServer } from './server.ts';
 import { createPlexServer } from './serverFactory.ts';
-import { encodeBase64, type MediaContainer } from './util.ts';
+import { encodeBase64, type MediaContainer, parsePlexBoolean } from './util.ts';
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -253,6 +259,59 @@ export class MyPlexAccount {
     return data.map(device => new MyPlexResource(this, device, this.baseUrl));
   }
 
+  /** Return users connected to this Plex account, including managed home users. */
+  async users(): Promise<MyPlexUser[]> {
+    const data = await this.query<MyPlexUsersResponse>({ url: MyPlexUser.key });
+    return (data.MediaContainer.User ?? []).map(user => new MyPlexUser(this, user));
+  }
+
+  /** Find an account user by title, username, email, or account id. */
+  async user(identifier: number | string): Promise<MyPlexUser> {
+    const normalizedIdentifier = identifier.toString().toLowerCase();
+    const user = (await this.users()).find(candidate =>
+      [candidate.title, candidate.username, candidate.email, candidate.id?.toString()]
+        .filter((value): value is string => value !== undefined && value !== '')
+        .some(value => value.toLowerCase() === normalizedIdentifier),
+    );
+    if (!user) {
+      throw new NotFound(`Unable to find user ${identifier}.`);
+    }
+
+    return user;
+  }
+
+  /** Return pending invites sent from or received by this account. */
+  async pendingInvites(options: PendingInvitesOptions = {}): Promise<MyPlexInvite[]> {
+    const { includeReceived = true, includeSent = true } = options;
+    const requests: Array<Promise<MyPlexInvite[]>> = [];
+    if (includeSent) {
+      requests.push(this._pendingInvites(MyPlexInvite.requestedKey, 'sent'));
+    }
+    if (includeReceived) {
+      requests.push(this._pendingInvites(MyPlexInvite.requestsKey, 'received'));
+    }
+
+    return (await Promise.all(requests)).flat();
+  }
+
+  /** Find a pending invite by username, email, friendly name, or account id. */
+  async pendingInvite(
+    identifier: number | string,
+    options: PendingInvitesOptions = {},
+  ): Promise<MyPlexInvite> {
+    const normalizedIdentifier = identifier.toString().toLowerCase();
+    const invite = (await this.pendingInvites(options)).find(candidate =>
+      [candidate.username, candidate.email, candidate.friendlyName, candidate.id?.toString()]
+        .filter((value): value is string => value !== undefined && value !== '')
+        .some(value => value.toLowerCase() === normalizedIdentifier),
+    );
+    if (!invite) {
+      throw new NotFound(`Unable to find invite ${identifier}.`);
+    }
+
+    return invite;
+  }
+
   /**
    * @param name Name to match against.
    * @param clientId clientIdentifier to match against.
@@ -325,13 +384,28 @@ export class MyPlexAccount {
       // Can't seem to pass responseType
     });
 
-    if (url.includes('xml')) {
+    const trimmedBody = body.trimStart();
+    if (url.includes('xml') || trimmedBody.startsWith('<')) {
       const xml = await parseStringPromise(body);
       return xml;
     }
 
+    if (trimmedBody === '') {
+      return undefined as T;
+    }
+
     const res = JSON.parse(body);
     return res;
+  }
+
+  private async _pendingInvites(
+    url: string,
+    direction: MyPlexInviteDirection,
+  ): Promise<MyPlexInvite[]> {
+    const data = await this.query<MyPlexInvitesResponse>({ url });
+    return (data.MediaContainer.Invite ?? []).map(
+      invite => new MyPlexInvite(this, invite, direction),
+    );
   }
 
   /**
@@ -415,6 +489,142 @@ export class MyPlexAccount {
     this.subscriptionFeatures = user.subscription?.features ?? [];
     this.entitlements = user.entitlements;
   }
+}
+
+export interface PendingInvitesOptions {
+  /** Include invites this account received. */
+  includeReceived?: boolean;
+  /** Include invites this account sent. */
+  includeSent?: boolean;
+}
+
+export type MyPlexInviteDirection = 'received' | 'sent';
+
+export class MyPlexServerShare {
+  readonly account: MyPlexAccount;
+  readonly id?: number;
+  readonly accountID?: number;
+  readonly serverId?: number;
+  readonly machineIdentifier?: string;
+  readonly name?: string;
+  readonly lastSeenAt?: Date;
+  readonly numLibraries?: number;
+  readonly allLibraries: boolean;
+  readonly owned: boolean;
+  readonly pending: boolean;
+
+  constructor(account: MyPlexAccount, data: MyPlexServerShareData) {
+    this.account = account;
+    this.id = optionalNumber(data.$.id);
+    this.accountID = optionalNumber(data.$.accountID);
+    this.serverId = optionalNumber(data.$.serverId);
+    this.machineIdentifier = data.$.machineIdentifier;
+    this.name = data.$.name;
+    this.lastSeenAt = data.$.lastSeenAt ? new Date(data.$.lastSeenAt) : undefined;
+    this.numLibraries = optionalNumber(data.$.numLibraries);
+    this.allLibraries = parsePlexBoolean(data.$.allLibraries);
+    this.owned = parsePlexBoolean(data.$.owned);
+    this.pending = parsePlexBoolean(data.$.pending);
+  }
+}
+
+export class MyPlexUser {
+  static readonly key = 'https://plex.tv/api/users/';
+
+  readonly account: MyPlexAccount;
+  readonly friend = true;
+  readonly allowCameraUpload: boolean;
+  readonly allowChannels: boolean;
+  readonly allowSync: boolean;
+  readonly email?: string;
+  readonly filterAll?: string;
+  readonly filterMovies?: string;
+  readonly filterMusic?: string;
+  readonly filterPhotos?: string;
+  readonly filterTelevision?: string;
+  readonly home: boolean;
+  readonly id?: number;
+  readonly protected: boolean;
+  readonly recommendationsPlaylistId?: string;
+  readonly restricted?: string;
+  readonly servers: MyPlexServerShare[];
+  readonly thumb?: string;
+  readonly title?: string;
+  readonly username?: string;
+
+  constructor(account: MyPlexAccount, data: MyPlexUserData) {
+    this.account = account;
+    this.allowCameraUpload = parsePlexBoolean(data.$.allowCameraUpload);
+    this.allowChannels = parsePlexBoolean(data.$.allowChannels);
+    this.allowSync = parsePlexBoolean(data.$.allowSync);
+    this.email = data.$.email;
+    this.filterAll = data.$.filterAll;
+    this.filterMovies = data.$.filterMovies;
+    this.filterMusic = data.$.filterMusic;
+    this.filterPhotos = data.$.filterPhotos;
+    this.filterTelevision = data.$.filterTelevision;
+    this.home = parsePlexBoolean(data.$.home);
+    this.id = optionalNumber(data.$.id);
+    this.protected = parsePlexBoolean(data.$.protected);
+    this.recommendationsPlaylistId = data.$.recommendationsPlaylistId;
+    this.restricted = data.$.restricted;
+    this.servers = (data.Server ?? []).map(server => new MyPlexServerShare(account, server));
+    this.thumb = data.$.thumb;
+    this.title = data.$.title;
+    this.username = data.$.username;
+  }
+
+  /** Find a server shared with this user by name or machine identifier. */
+  server(identifier: string): MyPlexServerShare {
+    const normalizedIdentifier = identifier.toLowerCase();
+    const server = this.servers.find(
+      candidate =>
+        candidate.name?.toLowerCase() === normalizedIdentifier ||
+        candidate.machineIdentifier?.toLowerCase() === normalizedIdentifier,
+    );
+    if (!server) {
+      throw new NotFound(`Unable to find server ${identifier}.`);
+    }
+
+    return server;
+  }
+}
+
+export class MyPlexInvite {
+  static readonly requestsKey = 'https://plex.tv/api/invites/requests';
+  static readonly requestedKey = 'https://plex.tv/api/invites/requested';
+
+  readonly account: MyPlexAccount;
+  readonly direction: MyPlexInviteDirection;
+  readonly createdAt?: Date;
+  readonly email?: string;
+  readonly friend: boolean;
+  readonly friendlyName?: string;
+  readonly home: boolean;
+  readonly id?: number;
+  readonly server: boolean;
+  readonly servers: MyPlexServerShare[];
+  readonly thumb?: string;
+  readonly username?: string;
+
+  constructor(account: MyPlexAccount, data: MyPlexInviteData, direction: MyPlexInviteDirection) {
+    this.account = account;
+    this.direction = direction;
+    this.createdAt = data.$.createdAt ? new Date(data.$.createdAt) : undefined;
+    this.email = data.$.email;
+    this.friend = parsePlexBoolean(data.$.friend);
+    this.friendlyName = data.$.friendlyName;
+    this.home = parsePlexBoolean(data.$.home);
+    this.id = optionalNumber(data.$.id);
+    this.server = parsePlexBoolean(data.$.server);
+    this.servers = (data.Server ?? []).map(server => new MyPlexServerShare(account, server));
+    this.thumb = data.$.thumb;
+    this.username = data.$.username;
+  }
+}
+
+function optionalNumber(value: string | undefined): number | undefined {
+  return value === undefined || value === '' ? undefined : Number(value);
 }
 
 /**

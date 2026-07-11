@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { MyPlexAccount, MyPlexResource } from '../src/myplex.ts';
-import type { ResourcesResponse } from '../src/myplex.types.ts';
+import { MyPlexAccount, MyPlexInvite, MyPlexResource, MyPlexUser } from '../src/myplex.ts';
+import type {
+  MyPlexInvitesResponse,
+  MyPlexUsersResponse,
+  ResourcesResponse,
+} from '../src/myplex.types.ts';
 
 const resourceData: ResourcesResponse = {
   accessToken: 'resource-token',
@@ -74,5 +78,111 @@ describe('MyPlexResource IPv6 connections', () => {
     ]);
     expect(resource.connections[1].ipv6).toBe(true);
     expect(resource.connections[2].relay).toBe(true);
+  });
+});
+
+const usersResponse: MyPlexUsersResponse = {
+  MediaContainer: {
+    $: { size: '1' },
+    User: [
+      {
+        $: {
+          allowCameraUpload: '0',
+          allowChannels: '1',
+          allowSync: '1',
+          email: 'friend@example.com',
+          home: '0',
+          id: '42',
+          protected: '0',
+          title: 'Friendly Name',
+          username: 'friend',
+        },
+        Server: [
+          {
+            $: {
+              id: '7',
+              machineIdentifier: 'machine-id',
+              name: 'Shared Server',
+              allLibraries: '0',
+              owned: '1',
+              pending: '0',
+            },
+          },
+        ],
+      },
+    ],
+  },
+};
+
+const sentInvitesResponse: MyPlexInvitesResponse = {
+  MediaContainer: {
+    $: { size: '1' },
+    Invite: [
+      {
+        $: {
+          createdAt: '2026-07-11T00:00:00Z',
+          email: 'sent@example.com',
+          friend: '1',
+          home: '0',
+          id: '51',
+          server: '1',
+          username: 'sent-user',
+        },
+      },
+    ],
+  },
+};
+
+const receivedInvitesResponse: MyPlexInvitesResponse = {
+  MediaContainer: {
+    $: { size: '1' },
+    Invite: [
+      {
+        $: {
+          email: 'received@example.com',
+          friend: '1',
+          friendlyName: 'Received User',
+          home: '0',
+          id: '52',
+          server: '0',
+        },
+      },
+    ],
+  },
+};
+
+describe('MyPlexAccount users and invites', () => {
+  it('loads users and their shared servers', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    account.query = vi.fn(() => Promise.resolve(usersResponse)) as never;
+
+    const users = await account.users();
+    const user = await account.user('FRIEND@EXAMPLE.COM');
+
+    expect(users[0]).toBeInstanceOf(MyPlexUser);
+    expect(users[0].allowSync).toBe(true);
+    expect(users[0].allowCameraUpload).toBe(false);
+    expect(users[0].server('machine-id').name).toBe('Shared Server');
+    expect(user.id).toBe(42);
+  });
+
+  it('loads sent and received pending invites with their direction', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const responses = new Map<string, MyPlexInvitesResponse>([
+      [MyPlexInvite.requestedKey, sentInvitesResponse],
+      [MyPlexInvite.requestsKey, receivedInvitesResponse],
+    ]);
+    account.query = vi.fn(({ url }: { url: string }) =>
+      Promise.resolve(responses.get(url)),
+    ) as never;
+
+    const invites = await account.pendingInvites();
+    const received = await account.pendingInvite('Received User', { includeSent: false });
+
+    expect(invites.map(invite => invite.direction)).toEqual(['sent', 'received']);
+    expect(invites[0]).toBeInstanceOf(MyPlexInvite);
+    expect(invites[0].server).toBe(true);
+    expect(received.id).toBe(52);
+    expect(account.query).toHaveBeenLastCalledWith({ url: MyPlexInvite.requestsKey });
   });
 });

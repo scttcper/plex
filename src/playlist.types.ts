@@ -1,5 +1,5 @@
 import type { ArtistData } from './audio.types.ts';
-import type { PlexBoolean } from './library.types.ts';
+import type { PlexBoolean } from './util.ts';
 
 export interface PlaylistResponse {
   ratingKey: string;

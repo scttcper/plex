@@ -8,6 +8,8 @@ export interface MetadataContainer<T extends { Metadata: unknown }> {
   MediaContainer: T;
 }
 
+export type PlexBoolean = boolean | 0 | 1 | '0' | '1' | 'false' | 'true';
+
 /** Parse the boolean shapes returned by Plex JSON APIs. */
 export function parsePlexBoolean(value: unknown, fallback = false): boolean {
   if (value === undefined || value === null || value === '') {

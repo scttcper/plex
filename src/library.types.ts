@@ -1,4 +1,5 @@
 import type { CommonSenseMediaData, ImageData, UltraBlurColorsData } from './media.types.ts';
+import type { PlexBoolean } from './util.ts';
 import type {
   ChapterSource,
   EpisodeMetadata,
@@ -68,7 +69,7 @@ export interface Location {
   path: string;
 }
 
-export type PlexBoolean = boolean | number | string;
+export type { PlexBoolean } from './util.ts';
 
 export interface MediaProvidersResponse {
   MediaProvider?: MediaProviderData[];

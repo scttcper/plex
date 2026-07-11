@@ -1,20 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
 import { searchType } from '../src/search.ts';
-import { lowerFirst, ltrim, parsePlexBoolean, rsplit, tagHelper } from '../src/util.ts';
+import {
+  lowerFirst,
+  ltrim,
+  parsePlexBoolean,
+  type PlexBoolean,
+  rsplit,
+  tagHelper,
+} from '../src/util.ts';
+
+const plexBooleanShapes = [true, false, 1, 0, '1', '0', 'true', 'false'] satisfies PlexBoolean[];
 
 describe('parsePlexBoolean', () => {
   it('should parse Plex boolean response shapes', () => {
-    expect([true, 1, '1', 'true'].map(value => parsePlexBoolean(value))).toEqual([
+    expect(plexBooleanShapes.map(value => parsePlexBoolean(value))).toEqual([
       true,
-      true,
-      true,
-      true,
-    ]);
-    expect([false, 0, '0', 'false'].map(value => parsePlexBoolean(value))).toEqual([
       false,
+      true,
       false,
+      true,
       false,
+      true,
       false,
     ]);
     expect(parsePlexBoolean(undefined, true)).toBe(true);
