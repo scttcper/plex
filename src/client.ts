@@ -14,6 +14,7 @@ import type {
 } from './client.types.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import type { Playlist } from './playlist.ts';
+import { PlayQueue } from './playqueue.ts';
 import type { PlexServer } from './server.ts';
 import type { MediaContainer } from './util.ts';
 
@@ -598,7 +599,6 @@ export class PlexClient {
     options: CreateClientPlayQueueOptions = {},
   ): Promise<any> {
     const { offset = 0, paused = false, ...playQueueOptions } = options;
-    const { PlayQueue } = await import('./playqueue.ts');
     const args = await PlayQueue.createArgs(server, items, playQueueOptions);
     const serverUrl = new URL(server.baseurl);
 
@@ -625,7 +625,6 @@ export class PlexClient {
     }
 
     const { offset = 0, params: extraParams = {} } = options;
-    const { PlayQueue } = await import('./playqueue.ts');
     const playQueue = await PlayQueue.create(this._server, media);
 
     const commandParams: SendCommandParams = {
