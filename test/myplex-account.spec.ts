@@ -26,6 +26,7 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   expect(serverResource).toBeDefined();
   const sharingSections = await account.sharingSections(serverResource!.clientIdentifier);
   const watchlist = await account.watchlist({ limit: 1 });
+  const webhooks = await account.webhooks();
   const library = await plex.library();
   const movieSection = await library.section<MovieSection>('Movies');
   const [movie] = await movieSection.search<Movie>({ libtype: 'movie', maxresults: 1 });
@@ -40,6 +41,7 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   expect(typeof sharingSections[0].title).toBe('string');
   expect(typeof sharingSections[0].type).toBe('string');
   expect(Array.isArray(watchlist)).toBe(true);
+  expect(Array.isArray(webhooks)).toBe(true);
   expect(userState).toBeInstanceOf(PlexUserState);
   expect(typeof userState.ratingKey).toBe('string');
   expect(typeof userState.viewCount).toBe('number');

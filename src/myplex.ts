@@ -22,6 +22,7 @@ import type {
   UserResponse,
   WatchlistItemData,
   WatchlistResponse,
+  WebhookResponse,
   WebLogin,
 } from './myplex.types.ts';
 import type { PlexServer } from './server.ts';
@@ -569,6 +570,54 @@ export class MyPlexAccount {
     return this;
   }
 
+  /** Return webhook URLs configured for this Plex account. */
+  async webhooks(): Promise<string[]> {
+    const data = await this.query<WebhookResponse>({ url: this.WEBHOOKS });
+    return webhookUrls(data);
+  }
+
+  /** Replace all webhook URLs configured for this Plex account. */
+  async setWebhooks(urls: readonly string[]): Promise<string[]> {
+    const body = new URLSearchParams();
+    if (urls.length === 0) {
+      body.set('urls', '');
+    } else {
+      for (const url of urls) {
+        body.append('urls[]', url);
+      }
+    }
+    const data = await this.query<WebhookResponse>({
+      url: this.WEBHOOKS,
+      method: 'post',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    return webhookUrls(data);
+  }
+
+  /** Add one webhook while preserving the account's existing URLs. */
+  async addWebhook(url: string): Promise<string[]> {
+    const urls = await this.webhooks();
+    if (urls.includes(url)) {
+      throw new BadRequest(`Webhook already exists: ${url}`);
+    }
+    return this.setWebhooks([...urls, url]);
+  }
+
+  /** Remove one webhook while preserving the account's remaining URLs. */
+  async removeWebhook(url: string): Promise<string[]> {
+    const urls = await this.webhooks();
+    if (!urls.includes(url)) {
+      throw new BadRequest(`Webhook does not exist: ${url}`);
+    }
+    return this.setWebhooks(urls.filter(candidate => candidate !== url));
+  }
+
+  /** @deprecated Use {@link removeWebhook}. */
+  async deleteWebhook(url: string): Promise<string[]> {
+    return this.removeWebhook(url);
+  }
+
   /** Update a user's shared libraries and account-level sharing settings. */
   async updateFriend(
     userOrIdentifier: MyPlexUser | number | string,
@@ -793,7 +842,7 @@ export class MyPlexAccount {
   _headers(): Record<string, string> {
     const headers: Record<string, string> = {
       ...BASE_HEADERS,
-      'Content-type': 'application/json',
+      'Content-Type': 'application/json',
     };
     if (this.token) {
       headers['X-Plex-Token'] = this.token;
@@ -1287,6 +1336,10 @@ function normalizeWatchlistTargets(
 
 function timestampDate(value: number | undefined): Date | undefined {
   return value === undefined ? undefined : new Date(value * 1000);
+}
+
+function webhookUrls(response: WebhookResponse): string[] {
+  return response.map(webhook => (typeof webhook === 'string' ? webhook : webhook.url));
 }
 
 type PlexHomeAttributes = {

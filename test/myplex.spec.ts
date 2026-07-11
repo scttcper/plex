@@ -15,6 +15,7 @@ import type {
   ResourcesResponse,
   UserStateResponse,
   WatchlistResponse,
+  WebhookResponse,
 } from '../src/myplex.types.ts';
 
 const resourceData: ResourcesResponse = {
@@ -616,6 +617,86 @@ describe('MyPlexAccount users and invites', () => {
     );
     await expect(account.removeFromWatchlist(target)).rejects.toThrow(
       '"Discover Movie" is not on the watchlist.',
+    );
+  });
+
+  it('lists and normalizes account webhooks', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    account.query = vi.fn(() =>
+      Promise.resolve(['https://one.example/hook', { url: 'https://two.example/hook' }]),
+    ) as never;
+
+    const webhooks = await account.webhooks();
+
+    expect(account.query).toHaveBeenCalledWith({
+      url: 'https://plex.tv/api/v2/user/webhooks',
+    });
+    expect(webhooks).toEqual(['https://one.example/hook', 'https://two.example/hook']);
+  });
+
+  it('replaces and clears webhooks with form-encoded request bodies', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const query = vi.fn(
+      (options: Parameters<MyPlexAccount['query']>[0]): Promise<WebhookResponse> =>
+        Promise.resolve(options.body ? [{ url: 'https://one.example/hook' }] : []),
+    );
+    account.query = query as never;
+
+    await account.setWebhooks(['https://one.example/hook', 'https://two.example/hook']);
+    await account.setWebhooks([]);
+
+    expect(query.mock.calls[0][0].body?.toString()).toBe(
+      'urls%5B%5D=https%3A%2F%2Fone.example%2Fhook&urls%5B%5D=https%3A%2F%2Ftwo.example%2Fhook',
+    );
+    expect(query.mock.calls[1][0].body?.toString()).toBe('urls=');
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        url: 'https://plex.tv/api/v2/user/webhooks',
+        method: 'post',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }),
+    );
+  });
+
+  it('adds and removes individual webhooks without dropping existing URLs', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([{ url: 'https://one.example/hook' }])
+      .mockResolvedValueOnce([
+        { url: 'https://one.example/hook' },
+        { url: 'https://two.example/hook' },
+      ])
+      .mockResolvedValueOnce([
+        { url: 'https://one.example/hook' },
+        { url: 'https://two.example/hook' },
+      ])
+      .mockResolvedValueOnce([{ url: 'https://one.example/hook' }]);
+    account.query = query as never;
+
+    const added = await account.addWebhook('https://two.example/hook');
+    const removed = await account.removeWebhook('https://two.example/hook');
+
+    expect(added).toEqual(['https://one.example/hook', 'https://two.example/hook']);
+    expect(removed).toEqual(['https://one.example/hook']);
+    expect(query.mock.calls[1][0].body.toString()).toContain(
+      'urls%5B%5D=https%3A%2F%2Ftwo.example%2Fhook',
+    );
+    expect(query.mock.calls[3][0].body.toString()).toBe(
+      'urls%5B%5D=https%3A%2F%2Fone.example%2Fhook',
+    );
+  });
+
+  it('rejects duplicate additions and missing webhook removals', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    account.query = vi.fn(() => Promise.resolve([{ url: 'https://one.example/hook' }])) as never;
+
+    await expect(account.addWebhook('https://one.example/hook')).rejects.toThrow(
+      'Webhook already exists',
+    );
+    await expect(account.removeWebhook('https://missing.example/hook')).rejects.toThrow(
+      'Webhook does not exist',
     );
   });
 });

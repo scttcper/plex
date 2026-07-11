@@ -298,3 +298,5 @@ export interface UserStateResponse {
     UserState?: UserStateData;
   };
 }
+
+export type WebhookResponse = Array<string | { url: string }>;
