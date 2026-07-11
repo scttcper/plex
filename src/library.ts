@@ -3586,7 +3586,6 @@ export class Collections<
     title: string,
     options: CreateCollectionOptions<T>,
   ): Promise<Collections<T>>;
-  /** @deprecated Pass an options object instead. */
   static async create<T extends RatingKeyItem = SectionType>(
     server: PlexServer,
     title: string,

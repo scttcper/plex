@@ -199,11 +199,6 @@ abstract class Video extends Playable {
     return this;
   }
 
-  /** @deprecated Use {@link downloadSubtitle}. */
-  async downloadSubtitles(subtitle: SubtitleStream): Promise<this> {
-    return this.downloadSubtitle(subtitle);
-  }
-
   /** Upload an external subtitle file for this video. */
   async uploadSubtitle(options: UploadSubtitleOptions): Promise<this> {
     if (options.data.byteLength === 0) {
@@ -218,11 +213,6 @@ abstract class Video extends Playable {
       body: options.data,
     });
     return this;
-  }
-
-  /** @deprecated Use {@link uploadSubtitle}. */
-  async uploadSubtitles(options: UploadSubtitleOptions): Promise<this> {
-    return this.uploadSubtitle(options);
   }
 
   /** Remove an uploaded or downloaded external subtitle. */
@@ -246,11 +236,6 @@ abstract class Video extends Playable {
       part.streams = part.streams.filter(stream => stream.id !== subtitle.id);
     }
     return this;
-  }
-
-  /** @deprecated Use {@link removeSubtitle}. */
-  async removeSubtitles(options: RemoveSubtitleOptions): Promise<this> {
-    return this.removeSubtitle(options);
   }
 
   async extras(): Promise<Extra[]> {

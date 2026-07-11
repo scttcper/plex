@@ -613,11 +613,6 @@ export class MyPlexAccount {
     return this.setWebhooks(urls.filter(candidate => candidate !== url));
   }
 
-  /** @deprecated Use {@link removeWebhook}. */
-  async deleteWebhook(url: string): Promise<string[]> {
-    return this.removeWebhook(url);
-  }
-
   /** Update a user's shared libraries and account-level sharing settings. */
   async updateFriend(
     userOrIdentifier: MyPlexUser | number | string,
