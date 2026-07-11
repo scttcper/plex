@@ -44,6 +44,20 @@ export interface SearchSubtitlesOptions {
   forced?: SubtitleSearchPreference;
 }
 
+export interface UploadSubtitleOptions {
+  /** Subtitle file contents. */
+  data: Uint8Array;
+  /** Filename shown by Plex, usually including an extension. */
+  title: string;
+  /** Subtitle format such as `srt`; inferred from `title` when omitted. */
+  format?: string;
+}
+
+export type RemoveSubtitleOptions =
+  | { subtitle: SubtitleStream; id?: never; title?: never }
+  | { subtitle?: never; id: number; title?: never }
+  | { subtitle?: never; id?: never; title: string };
+
 type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
   CommonSenseMedia?: CommonSenseMediaData[];
   Guid?: Array<{ id: string }>;
@@ -190,6 +204,55 @@ abstract class Video extends Playable {
     return this.downloadSubtitle(subtitle);
   }
 
+  /** Upload an external subtitle file for this video. */
+  async uploadSubtitle(options: UploadSubtitleOptions): Promise<this> {
+    if (options.data.byteLength === 0) {
+      throw new BadRequest('Cannot upload an empty subtitle file.');
+    }
+    const format = options.format ?? subtitleFormat(options.title);
+    const params = new URLSearchParams({ title: options.title, format });
+    await this.server.query({
+      path: `${this.key}/subtitles?${params.toString()}`,
+      method: 'post',
+      headers: { Accept: 'text/plain, */*' },
+      body: options.data,
+    });
+    return this;
+  }
+
+  /** @deprecated Use {@link uploadSubtitle}. */
+  async uploadSubtitles(options: UploadSubtitleOptions): Promise<this> {
+    return this.uploadSubtitle(options);
+  }
+
+  /** Remove an uploaded or downloaded external subtitle. */
+  async removeSubtitle(options: RemoveSubtitleOptions): Promise<this> {
+    const subtitle =
+      'subtitle' in options
+        ? options.subtitle
+        : this.subtitleStreams().find(stream =>
+            'id' in options ? stream.id === options.id : stream.title === options.title,
+          );
+    if (!subtitle) {
+      const selector = 'id' in options ? options.id : options.title;
+      throw new BadRequest(`Subtitle stream "${selector}" was not found.`);
+    }
+    if (!subtitle.key || subtitle.key !== `/library/streams/${subtitle.id}`) {
+      throw new BadRequest('Embedded subtitles cannot be removed.');
+    }
+
+    await this.server.query({ path: subtitle.key, method: 'delete' });
+    for (const part of this.iterParts()) {
+      part.streams = part.streams.filter(stream => stream.id !== subtitle.id);
+    }
+    return this;
+  }
+
+  /** @deprecated Use {@link removeSubtitle}. */
+  async removeSubtitles(options: RemoveSubtitleOptions): Promise<this> {
+    return this.removeSubtitle(options);
+  }
+
   async extras(): Promise<Extra[]> {
     const data = await this.server.query({ path: this._detailsKey });
     return findItems(
@@ -274,6 +337,15 @@ abstract class Video extends Playable {
       ? new CommonSenseMedia(this.server, commonSenseMedia, undefined, this)
       : undefined;
   }
+}
+
+function subtitleFormat(title: string): string {
+  const separator = title.lastIndexOf('.');
+  const format = separator !== -1 ? title.slice(separator + 1) : '';
+  if (!format) {
+    throw new BadRequest('Subtitle format is required when the title has no extension.');
+  }
+  return format.toLowerCase();
 }
 
 /**
