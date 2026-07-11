@@ -215,11 +215,12 @@ export class MediaPartStream extends PlexObject {
   declare id: number;
   declare key: string;
   declare codec: string;
-  declare index: number;
+  declare index?: number;
   declare displayTitle?: string;
   declare extendedDisplayTitle?: string;
   declare title?: string;
   declare language?: string;
+  declare languageTag?: string;
   declare languageCode?: string;
   declare selected?: boolean;
   declare streamType?: number;
@@ -233,6 +234,7 @@ export class MediaPartStream extends PlexObject {
     this.extendedDisplayTitle = data.extendedDisplayTitle;
     this.title = data.title;
     this.language = data.language;
+    this.languageTag = data.languageTag;
     this.languageCode = data.languageCode;
     this.selected = data.selected;
     this.streamType = data.streamType;

@@ -468,7 +468,7 @@ export interface MediaPartStreamData {
   id: number;
   streamType: number;
   codec: string;
-  index: number;
+  index?: number;
   key?: string;
   bitrate?: number;
   height?: number;
@@ -479,6 +479,7 @@ export interface MediaPartStreamData {
   selected?: boolean;
   channels?: number;
   language?: string;
+  languageTag?: string;
   languageCode?: string;
   canAutoSync?: PlexBoolean;
   container?: string;
@@ -492,4 +493,14 @@ export interface MediaPartStreamData {
   sourceKey?: string;
   transient?: string;
   userID?: number | string;
+}
+
+export interface SubtitleSearchResponse {
+  MediaContainer: {
+    identifier: string;
+    mediaTagPrefix?: string;
+    mediaTagVersion?: number;
+    size: number;
+    Stream?: MediaPartStreamData[];
+  };
 }

@@ -2,6 +2,7 @@ import type { URL } from 'node:url';
 
 import { Playable } from './base/playable.ts';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.ts';
+import { BadRequest } from './exceptions.ts';
 import type { Libtype } from './library.ts';
 import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.ts';
 import {
@@ -20,11 +21,28 @@ import {
   Rating,
   Role,
   Similar,
+  SubtitleStream,
   Writer,
 } from './media.ts';
 import type { CommonSenseMediaData } from './media.types.ts';
 import type { MyPlexAccount } from './myplex.ts';
-import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.ts';
+import type {
+  ChapterSource,
+  EpisodeMetadata,
+  FullMovieResponse,
+  SubtitleSearchResponse,
+} from './video.types.ts';
+
+export type SubtitleSearchPreference = 0 | 1 | 2 | 3;
+
+export interface SearchSubtitlesOptions {
+  /** ISO 639-1 language code. */
+  language?: string;
+  /** 0 prefer non-SDH, 1 prefer SDH, 2 require SDH, 3 require non-SDH. */
+  hearingImpaired?: SubtitleSearchPreference;
+  /** 0 prefer non-forced, 1 prefer forced, 2 require forced, 3 require non-forced. */
+  forced?: SubtitleSearchPreference;
+}
 
 type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
   CommonSenseMedia?: CommonSenseMediaData[];
@@ -137,6 +155,39 @@ abstract class Video extends Playable {
     const key = `/:/rate?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&rating=${rate}`;
     await this.server.query({ path: key });
     await this.reload();
+  }
+
+  /** Search Plex's on-demand subtitle providers for this video. */
+  async searchSubtitles(options: SearchSubtitlesOptions = {}): Promise<SubtitleStream[]> {
+    const { forced = 0, hearingImpaired = 0, language = 'en' } = options;
+    const params = new URLSearchParams({
+      language,
+      hearingImpaired: hearingImpaired.toString(),
+      forced: forced.toString(),
+    });
+    const key = `${this.key}/subtitles?${params.toString()}`;
+    const data = await this.server.query<SubtitleSearchResponse>({ path: key });
+    return (data.MediaContainer.Stream ?? []).map(
+      stream => new SubtitleStream(this.server, stream, key),
+    );
+  }
+
+  /** Start downloading an on-demand subtitle search result. */
+  async downloadSubtitle(subtitle: SubtitleStream): Promise<this> {
+    if (!subtitle.key) {
+      throw new BadRequest('Cannot download a subtitle result without a key.');
+    }
+    const params = new URLSearchParams({ key: subtitle.key });
+    await this.server.query({
+      path: `${this.key}/subtitles?${params.toString()}`,
+      method: 'put',
+    });
+    return this;
+  }
+
+  /** @deprecated Use {@link downloadSubtitle}. */
+  async downloadSubtitles(subtitle: SubtitleStream): Promise<this> {
+    return this.downloadSubtitle(subtitle);
   }
 
   async extras(): Promise<Extra[]> {

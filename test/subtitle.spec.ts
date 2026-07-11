@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from 'node:timers/promises';
+
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import {
@@ -24,6 +26,30 @@ async function cleanupTestSubtitles(): Promise<void> {
       stream => stream.title === subtitleTitle && stream.key === `/library/streams/${stream.id}`,
     );
   for (const stream of leftovers) {
+    await plex.query({ path: stream.key, method: 'delete' });
+  }
+}
+
+async function waitForDownloadedSubtitle(
+  existingIds: ReadonlySet<number>,
+): Promise<SubtitleStream> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await sleep(500);
+    await movie.reload();
+    const downloaded = movie
+      .subtitleStreams()
+      .find(
+        stream => !existingIds.has(stream.id) && stream.key === `/library/streams/${stream.id}`,
+      );
+    if (downloaded) {
+      return downloaded;
+    }
+  }
+  throw new Error('Downloaded subtitle did not appear on the Plex item.');
+}
+
+async function cleanupDownloadedSubtitle(stream: SubtitleStream | undefined): Promise<void> {
+  if (stream?.key === `/library/streams/${stream.id}`) {
     await plex.query({ path: stream.key, method: 'delete' });
   }
 }
@@ -87,4 +113,35 @@ it('constructs typed subtitle streams and selects or resets them', async () => {
   await movie.reload();
   const resetSubtitle = movie.subtitleStreams().find(stream => stream.title === subtitleTitle);
   expect(resetSubtitle?.selected).toBeUndefined();
+});
+
+it('searches for and downloads an on-demand subtitle', async () => {
+  const results = await movie.searchSubtitles({
+    language: 'en',
+    hearingImpaired: 0,
+    forced: 0,
+  });
+  expect(results.length).toBeGreaterThan(0);
+  const [result] = results;
+  expect(result).toBeInstanceOf(SubtitleStream);
+  expect(typeof result.id).toBe('number');
+  expect(typeof result.key).toBe('string');
+  expect(typeof result.languageTag).toBe('string');
+  expect(typeof result.providerTitle).toBe('string');
+  expect(typeof result.score).toBe('number');
+  expect(typeof result.sourceKey).toBe('string');
+
+  const existingIds = new Set(movie.subtitleStreams().map(stream => stream.id));
+  let downloaded: SubtitleStream | undefined;
+  try {
+    await movie.downloadSubtitle(result);
+    downloaded = await waitForDownloadedSubtitle(existingIds);
+    expect(typeof downloaded.key).toBe('string');
+    expect(typeof downloaded.sourceKey).toBe('string');
+    expect(typeof downloaded.title).toBe('string');
+    expect(typeof downloaded.providerTitle).toBe('string');
+    expect(typeof downloaded.transient).toBe('string');
+  } finally {
+    await cleanupDownloadedSubtitle(downloaded);
+  }
 });
