@@ -185,4 +185,44 @@ describe('MyPlexAccount users and invites', () => {
     expect(received.id).toBe(52);
     expect(account.query).toHaveBeenLastCalledWith({ url: MyPlexInvite.requestsKey });
   });
+
+  it('accepts, cancels, and removes account relationships with exact request shapes', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    account.query = vi.fn(() => Promise.resolve()) as never;
+    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const sentInvite = new MyPlexInvite(
+      account,
+      sentInvitesResponse.MediaContainer.Invite[0],
+      'sent',
+    );
+    const receivedInvite = new MyPlexInvite(
+      account,
+      receivedInvitesResponse.MediaContainer.Invite[0],
+      'received',
+    );
+
+    await receivedInvite.accept();
+    await sentInvite.cancel();
+    await user.removeFriend();
+    await user.removeHomeUser();
+
+    expect(account.query).toHaveBeenNthCalledWith(1, {
+      url: 'https://plex.tv/api/invites/requests/52?friend=1&home=0&server=0',
+      method: 'put',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://plex.tv/api/invites/requested/51?friend=1&home=0&server=1',
+      method: 'delete',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(3, {
+      url: 'https://plex.tv/api/friends/42',
+      method: 'delete',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(4, {
+      url: 'https://plex.tv/api/home/users/42',
+      method: 'delete',
+    });
+    await expect(sentInvite.accept()).rejects.toThrow('Only received invites can be accepted.');
+    await expect(receivedInvite.cancel()).rejects.toThrow('Only sent invites can be cancelled.');
+  });
 });

@@ -5,7 +5,7 @@ import { parseStringPromise } from 'xml2js';
 
 import { PlexObject } from './base/plexObject.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
-import { NotFound } from './exceptions.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
 import type {
   Connection,
   Device,
@@ -312,6 +312,58 @@ export class MyPlexAccount {
     return invite;
   }
 
+  /** Accept a pending invite received by this account. */
+  async acceptInvite(inviteOrIdentifier: MyPlexInvite | number | string): Promise<void> {
+    const invite =
+      inviteOrIdentifier instanceof MyPlexInvite
+        ? inviteOrIdentifier
+        : await this.pendingInvite(inviteOrIdentifier, { includeSent: false });
+    if (invite.direction !== 'received') {
+      throw new BadRequest('Only received invites can be accepted.');
+    }
+
+    await this.query({
+      url: inviteActionUrl(invite, MyPlexInvite.requestsKey),
+      method: 'put',
+    });
+  }
+
+  /** Cancel a pending invite sent by this account. */
+  async cancelInvite(inviteOrIdentifier: MyPlexInvite | number | string): Promise<void> {
+    const invite =
+      inviteOrIdentifier instanceof MyPlexInvite
+        ? inviteOrIdentifier
+        : await this.pendingInvite(inviteOrIdentifier, { includeReceived: false });
+    if (invite.direction !== 'sent') {
+      throw new BadRequest('Only sent invites can be cancelled.');
+    }
+
+    await this.query({
+      url: inviteActionUrl(invite, MyPlexInvite.requestedKey),
+      method: 'delete',
+    });
+  }
+
+  /** Remove a user from this account's friends. */
+  async removeFriend(userOrIdentifier: MyPlexUser | number | string): Promise<void> {
+    const user =
+      userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
+    await this.query({
+      url: this.FRIENDUPDATE.replace('{userId}', requiredId(user, 'user')),
+      method: 'delete',
+    });
+  }
+
+  /** Remove a managed user from this Plex Home. */
+  async removeHomeUser(userOrIdentifier: MyPlexUser | number | string): Promise<void> {
+    const user =
+      userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
+    await this.query({
+      url: this.REMOVEHOMEUSER.replace('{userId}', requiredId(user, 'user')),
+      method: 'delete',
+    });
+  }
+
   /**
    * @param name Name to match against.
    * @param clientId clientIdentifier to match against.
@@ -588,6 +640,16 @@ export class MyPlexUser {
 
     return server;
   }
+
+  /** Remove this user from the account's friends. */
+  async removeFriend(): Promise<void> {
+    await this.account.removeFriend(this);
+  }
+
+  /** Remove this managed user from the account's Plex Home. */
+  async removeHomeUser(): Promise<void> {
+    await this.account.removeHomeUser(this);
+  }
 }
 
 export class MyPlexInvite {
@@ -621,10 +683,37 @@ export class MyPlexInvite {
     this.thumb = data.$.thumb;
     this.username = data.$.username;
   }
+
+  /** Accept this received invite. */
+  async accept(): Promise<void> {
+    await this.account.acceptInvite(this);
+  }
+
+  /** Cancel this sent invite. */
+  async cancel(): Promise<void> {
+    await this.account.cancelInvite(this);
+  }
 }
 
 function optionalNumber(value: string | undefined): number | undefined {
   return value === undefined || value === '' ? undefined : Number(value);
+}
+
+function requiredId(value: { id?: number }, model: string): string {
+  if (value.id === undefined) {
+    throw new BadRequest(`Cannot update a ${model} without an id.`);
+  }
+
+  return value.id.toString();
+}
+
+function inviteActionUrl(invite: MyPlexInvite, baseUrl: string): string {
+  const params = new URLSearchParams({
+    friend: invite.friend ? '1' : '0',
+    home: invite.home ? '1' : '0',
+    server: invite.server ? '1' : '0',
+  });
+  return `${baseUrl}/${requiredId(invite, 'invite')}?${params.toString()}`;
 }
 
 /**
