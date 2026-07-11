@@ -6,12 +6,14 @@ import { parseStringPromise } from 'xml2js';
 import { PlexObject } from './base/plexObject.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import { BadRequest, NotFound } from './exceptions.ts';
+import type { LibrarySection } from './library.ts';
 import type {
   Connection,
   Device,
   MyPlexInviteData,
   MyPlexInvitesResponse,
   MyPlexServerShareData,
+  MyPlexServerSectionsResponse,
   MyPlexUserData,
   MyPlexUsersResponse,
   ResourcesResponse,
@@ -344,6 +346,86 @@ export class MyPlexAccount {
     });
   }
 
+  /** Invite a Plex user and share selected libraries with them. */
+  async inviteFriend(user: MyPlexUser | string, options: InviteFriendOptions): Promise<void> {
+    const machineIdentifier = serverIdentifier(options.server);
+    const sectionIds = await this._sectionIds(machineIdentifier, options.sections ?? []);
+    const body = shareRequestBody({
+      invitedEmail: inviteUsername(user),
+      machineIdentifier,
+      sectionIds,
+      permissions: options.permissions ?? {},
+      filters: options.filters ?? {},
+    });
+    await this.query({
+      url: this.FRIENDINVITE.replace('{machineId}', machineIdentifier),
+      method: 'post',
+      body,
+    });
+  }
+
+  /** Return the server libraries available to account-sharing APIs. */
+  async sharingSections(server: PlexServer | string): Promise<MyPlexLibraryShareSection[]> {
+    const machineIdentifier = serverIdentifier(server);
+    const data = await this.query<MyPlexServerSectionsResponse>({
+      url: this.PLEXSERVERS.replace('{machineId}', machineIdentifier),
+    });
+    return (data.MediaContainer.Server?.[0]?.Section ?? []).map(section => ({
+      id: Number(section.$.id),
+      key: Number(section.$.key),
+      title: section.$.title,
+      type: section.$.type,
+    }));
+  }
+
+  /** Update a user's shared libraries and account-level sharing settings. */
+  async updateFriend(
+    userOrIdentifier: MyPlexUser | number | string,
+    options: UpdateFriendOptions,
+  ): Promise<void> {
+    const user =
+      userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
+    const userId = requiredId(user, 'user');
+    const machineIdentifier = serverIdentifier(options.server);
+    const existingShare = user.servers.find(share => share.machineIdentifier === machineIdentifier);
+
+    if (options.removeSections && existingShare) {
+      await this.query({
+        url: this.FRIENDSERVERS.replace('{machineId}', machineIdentifier).replace(
+          '{serverId}',
+          requiredId(existingShare, 'server share'),
+        ),
+        method: 'delete',
+        body: shareRequestBody({ machineIdentifier, sectionIds: [] }),
+      });
+    } else if (options.sections !== undefined) {
+      const sectionIds = await this._sectionIds(machineIdentifier, options.sections);
+      const hasExistingShare = existingShare !== undefined;
+      await this.query({
+        url: hasExistingShare
+          ? this.FRIENDSERVERS.replace('{machineId}', machineIdentifier).replace(
+              '{serverId}',
+              requiredId(existingShare, 'server share'),
+            )
+          : this.FRIENDINVITE.replace('{machineId}', machineIdentifier),
+        method: hasExistingShare ? 'put' : 'post',
+        body: shareRequestBody({
+          invitedId: hasExistingShare ? undefined : Number(userId),
+          machineIdentifier,
+          sectionIds,
+        }),
+      });
+    }
+
+    const settings = sharingSettingsQuery(options.permissions, options.filters);
+    if (settings.size > 0) {
+      await this.query({
+        url: `${this.FRIENDUPDATE.replace('{userId}', userId)}?${settings.toString()}`,
+        method: 'put',
+      });
+    }
+  }
+
   /** Remove a user from this account's friends. */
   async removeFriend(userOrIdentifier: MyPlexUser | number | string): Promise<void> {
     const user =
@@ -404,12 +486,14 @@ export class MyPlexAccount {
     url,
     method = 'get',
     headers,
+    body: requestBody,
     username,
     password,
   }: {
     url: string;
     method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
     headers?: Record<string, string>;
+    body?: BodyInit | Record<string, unknown>;
     username?: string;
     password?: string;
   }): Promise<T> {
@@ -427,18 +511,19 @@ export class MyPlexAccount {
       requestHeaders.accept = 'application/json';
     }
 
-    const body = await ofetch<string>(url, {
+    const responseBody = await ofetch<string>(url, {
       method,
       headers: requestHeaders,
+      body: requestBody,
       timeout: this.timeout ?? TIMEOUT,
       retry: 0,
       parseResponse: res => res,
       // Can't seem to pass responseType
     });
 
-    const trimmedBody = body.trimStart();
+    const trimmedBody = responseBody.trimStart();
     if (url.includes('xml') || trimmedBody.startsWith('<')) {
-      const xml = await parseStringPromise(body);
+      const xml = await parseStringPromise(responseBody);
       return xml;
     }
 
@@ -446,7 +531,7 @@ export class MyPlexAccount {
       return undefined as T;
     }
 
-    const res = JSON.parse(body);
+    const res = JSON.parse(responseBody);
     return res;
   }
 
@@ -458,6 +543,32 @@ export class MyPlexAccount {
     return (data.MediaContainer.Invite ?? []).map(
       invite => new MyPlexInvite(this, invite, direction),
     );
+  }
+
+  private async _sectionIds(
+    machineIdentifier: string,
+    sections: readonly LibraryShareSection[],
+  ): Promise<number[]> {
+    if (sections.length === 0) {
+      return [];
+    }
+
+    const availableSections = await this.sharingSections(machineIdentifier);
+    const byId = new Map(availableSections.map(section => [section.id.toString(), section.id]));
+    const byKey = new Map(availableSections.map(section => [section.key.toString(), section.id]));
+    const byTitle = new Map(
+      availableSections.map(section => [section.title.toLowerCase(), section.id]),
+    );
+
+    return sections.map(section => {
+      const value = typeof section === 'object' ? section.key.toString() : section.toString();
+      const id = byKey.get(value) ?? byId.get(value) ?? byTitle.get(value.toLowerCase());
+      if (id === undefined) {
+        throw new NotFound(`Unable to find library section ${value}.`);
+      }
+
+      return id;
+    });
   }
 
   /**
@@ -548,6 +659,51 @@ export interface PendingInvitesOptions {
   includeReceived?: boolean;
   /** Include invites this account sent. */
   includeSent?: boolean;
+}
+
+export type LibraryShareSection = Pick<LibrarySection<unknown>, 'key' | 'title'> | number | string;
+
+export interface MyPlexLibraryShareSection {
+  /** Account-level section id used in sharing requests. */
+  id: number;
+  /** Local Plex library section key. */
+  key: number;
+  title: string;
+  /** Plex library type such as `movie`, `show`, or `artist`. */
+  type: string;
+}
+
+export type VideoShareFilter = Partial<
+  Record<'contentRating' | 'contentRating!' | 'label' | 'label!', readonly string[]>
+>;
+export type MusicShareFilter = Partial<Record<'label' | 'label!', readonly string[]>>;
+
+export interface LibraryShareFilters {
+  movies?: VideoShareFilter;
+  music?: MusicShareFilter;
+  television?: VideoShareFilter;
+}
+
+export interface LibrarySharePermissions {
+  allowCameraUpload?: boolean;
+  allowChannels?: boolean;
+  allowSync?: boolean;
+}
+
+export interface InviteFriendOptions {
+  /** Plex server or machine identifier containing the libraries. */
+  server: PlexServer | string;
+  /** Libraries to share. Omit or pass an empty list to invite without libraries. */
+  sections?: readonly LibraryShareSection[];
+  /** Account capabilities granted to the invited user. */
+  permissions?: LibrarySharePermissions;
+  /** Optional content and label restrictions by library family. */
+  filters?: LibraryShareFilters;
+}
+
+export interface UpdateFriendOptions extends InviteFriendOptions {
+  /** Remove this server's library share. Supersedes `sections`. */
+  removeSections?: boolean;
 }
 
 export type MyPlexInviteDirection = 'received' | 'sent';
@@ -714,6 +870,97 @@ function inviteActionUrl(invite: MyPlexInvite, baseUrl: string): string {
     server: invite.server ? '1' : '0',
   });
   return `${baseUrl}/${requiredId(invite, 'invite')}?${params.toString()}`;
+}
+
+type ShareRequestOptions = {
+  filters?: LibraryShareFilters;
+  invitedEmail?: string;
+  invitedId?: number;
+  machineIdentifier: string;
+  permissions?: LibrarySharePermissions;
+  sectionIds: number[];
+};
+
+function shareRequestBody(options: ShareRequestOptions): Record<string, unknown> {
+  const sharedServer: Record<string, unknown> = {
+    library_section_ids: options.sectionIds,
+  };
+  if (options.invitedEmail !== undefined) {
+    sharedServer.invited_email = options.invitedEmail;
+  }
+  if (options.invitedId !== undefined) {
+    sharedServer.invited_id = options.invitedId;
+  }
+
+  const body: Record<string, unknown> = {
+    server_id: options.machineIdentifier,
+    shared_server: sharedServer,
+  };
+  if (options.permissions !== undefined || options.filters !== undefined) {
+    body.sharing_settings = {
+      allowSync: options.permissions?.allowSync ? '1' : '0',
+      allowCameraUpload: options.permissions?.allowCameraUpload ? '1' : '0',
+      allowChannels: options.permissions?.allowChannels ? '1' : '0',
+      filterMovies: shareFilterString(options.filters?.movies),
+      filterTelevision: shareFilterString(options.filters?.television),
+      filterMusic: shareFilterString(options.filters?.music),
+    };
+  }
+
+  return body;
+}
+
+function shareFilterString(filter: VideoShareFilter | MusicShareFilter | undefined): string {
+  return Object.entries(filter ?? {})
+    .map(([key, values]) => `${key}=${values.join('%2C')}`)
+    .join('|');
+}
+
+function sharingSettingsQuery(
+  permissions: LibrarySharePermissions | undefined,
+  filters: LibraryShareFilters | undefined,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  if (permissions?.allowSync !== undefined) {
+    params.set('allowSync', permissions.allowSync ? '1' : '0');
+  }
+  if (permissions?.allowCameraUpload !== undefined) {
+    params.set('allowCameraUpload', permissions.allowCameraUpload ? '1' : '0');
+  }
+  if (permissions?.allowChannels !== undefined) {
+    params.set('allowChannels', permissions.allowChannels ? '1' : '0');
+  }
+  if (filters?.movies !== undefined) {
+    params.set('filterMovies', shareFilterString(filters.movies));
+  }
+  if (filters?.television !== undefined) {
+    params.set('filterTelevision', shareFilterString(filters.television));
+  }
+  if (filters?.music !== undefined) {
+    params.set('filterMusic', shareFilterString(filters.music));
+  }
+  return params;
+}
+
+function serverIdentifier(server: PlexServer | string): string {
+  if (typeof server === 'string') {
+    return server;
+  }
+  if (!server.machineIdentifier) {
+    throw new BadRequest('Cannot share libraries from a server without a machine identifier.');
+  }
+  return server.machineIdentifier;
+}
+
+function inviteUsername(user: MyPlexUser | string): string {
+  if (typeof user === 'string') {
+    return user;
+  }
+  const username = user.username ?? user.email;
+  if (!username) {
+    throw new BadRequest('Cannot invite a user without a username or email.');
+  }
+  return username;
 }
 
 /**

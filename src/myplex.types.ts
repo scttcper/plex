@@ -229,3 +229,22 @@ export interface MyPlexInvitesResponse {
     Invite?: MyPlexInviteData[];
   };
 }
+
+export interface MyPlexServerSectionData {
+  $: {
+    id: string;
+    key: string;
+    type: string;
+    title: string;
+  };
+}
+
+export interface MyPlexServerSectionsResponse {
+  MediaContainer: {
+    $: Record<string, string>;
+    Server?: Array<{
+      $: Record<string, string>;
+      Section?: MyPlexServerSectionData[];
+    }>;
+  };
+}

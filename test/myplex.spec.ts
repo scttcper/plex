@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MyPlexAccount, MyPlexInvite, MyPlexResource, MyPlexUser } from '../src/myplex.ts';
 import type {
   MyPlexInvitesResponse,
+  MyPlexServerSectionsResponse,
   MyPlexUsersResponse,
   ResourcesResponse,
 } from '../src/myplex.types.ts';
@@ -151,6 +152,21 @@ const receivedInvitesResponse: MyPlexInvitesResponse = {
   },
 };
 
+const serverSectionsResponse: MyPlexServerSectionsResponse = {
+  MediaContainer: {
+    $: { size: '1' },
+    Server: [
+      {
+        $: { machineIdentifier: 'machine-id' },
+        Section: [
+          { $: { id: '10', key: '1', title: 'Movies', type: 'movie' } },
+          { $: { id: '20', key: '2', title: 'TV Shows', type: 'show' } },
+        ],
+      },
+    ],
+  },
+};
+
 describe('MyPlexAccount users and invites', () => {
   it('loads users and their shared servers', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
@@ -224,5 +240,122 @@ describe('MyPlexAccount users and invites', () => {
     });
     await expect(sentInvite.accept()).rejects.toThrow('Only received invites can be accepted.');
     await expect(receivedInvite.cancel()).rejects.toThrow('Only sent invites can be cancelled.');
+  });
+
+  it('invites a friend with resolved sections, permissions, and filters', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const responses = new Map<string, unknown>([
+      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+    ]);
+    account.query = vi.fn(({ url }: { url: string }) =>
+      Promise.resolve(responses.get(url)),
+    ) as never;
+
+    await account.inviteFriend('new@example.com', {
+      server: 'machine-id',
+      sections: ['Movies', 2],
+      permissions: { allowCameraUpload: true, allowSync: true },
+      filters: {
+        movies: { contentRating: ['G', 'PG'], label: ['kids'] },
+        music: { 'label!': ['explicit'] },
+      },
+    });
+
+    expect(account.query).toHaveBeenNthCalledWith(1, {
+      url: 'https://plex.tv/api/servers/machine-id',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://plex.tv/api/servers/machine-id/shared_servers',
+      method: 'post',
+      body: {
+        server_id: 'machine-id',
+        shared_server: {
+          library_section_ids: [10, 20],
+          invited_email: 'new@example.com',
+        },
+        sharing_settings: {
+          allowSync: '1',
+          allowCameraUpload: '1',
+          allowChannels: '0',
+          filterMovies: 'contentRating=G%2CPG|label=kids',
+          filterTelevision: '',
+          filterMusic: 'label!=explicit',
+        },
+      },
+    });
+  });
+
+  it('updates existing library shares and account-level permissions', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const responses = new Map<string, unknown>([
+      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+    ]);
+    account.query = vi.fn(({ url }: { url: string }) =>
+      Promise.resolve(responses.get(url)),
+    ) as never;
+
+    await account.updateFriend(user, {
+      server: 'machine-id',
+      sections: ['TV Shows'],
+      permissions: { allowCameraUpload: false, allowSync: true },
+      filters: { television: { 'contentRating!': ['TV-MA'] } },
+    });
+
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://plex.tv/api/servers/machine-id/shared_servers/7',
+      method: 'put',
+      body: {
+        server_id: 'machine-id',
+        shared_server: { library_section_ids: [20] },
+      },
+    });
+    expect(account.query).toHaveBeenNthCalledWith(3, {
+      url: 'https://plex.tv/api/friends/42?allowSync=1&allowCameraUpload=0&filterTelevision=contentRating%21%3DTV-MA',
+      method: 'put',
+    });
+  });
+
+  it('adds a server share to an existing user without one', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const user = new MyPlexUser(account, {
+      ...usersResponse.MediaContainer.User[0],
+      Server: [],
+    });
+    const responses = new Map<string, unknown>([
+      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+    ]);
+    account.query = vi.fn(({ url }: { url: string }) =>
+      Promise.resolve(responses.get(url)),
+    ) as never;
+
+    await account.updateFriend(user, { server: 'machine-id', sections: ['Movies'] });
+
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://plex.tv/api/servers/machine-id/shared_servers',
+      method: 'post',
+      body: {
+        server_id: 'machine-id',
+        shared_server: { library_section_ids: [10], invited_id: 42 },
+      },
+    });
+  });
+
+  it('removes an existing server share without changing other settings', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    account.query = vi.fn(() => Promise.resolve()) as never;
+
+    await account.updateFriend(user, { server: 'machine-id', removeSections: true });
+
+    expect(account.query).toHaveBeenCalledOnce();
+    expect(account.query).toHaveBeenCalledWith({
+      url: 'https://plex.tv/api/servers/machine-id/shared_servers/7',
+      method: 'delete',
+      body: {
+        server_id: 'machine-id',
+        shared_server: { library_section_ids: [] },
+      },
+    });
   });
 });
