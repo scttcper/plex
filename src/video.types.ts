@@ -1,4 +1,5 @@
 import type { ImageData } from './media.types.ts';
+import type { PlexBoolean } from './util.ts';
 
 export interface FullShowResponse {
   size: number;
@@ -468,12 +469,27 @@ export interface MediaPartStreamData {
   streamType: number;
   codec: string;
   index: number;
+  key?: string;
   bitrate?: number;
   height?: number;
   width?: number;
   displayTitle: string;
+  extendedDisplayTitle?: string;
+  title?: string;
   selected?: boolean;
   channels?: number;
   language?: string;
   languageCode?: string;
+  canAutoSync?: PlexBoolean;
+  container?: string;
+  forced?: PlexBoolean;
+  format?: string;
+  headerCompression?: string;
+  hearingImpaired?: PlexBoolean;
+  perfectMatch?: PlexBoolean;
+  providerTitle?: string;
+  score?: number | string;
+  sourceKey?: string;
+  transient?: string;
+  userID?: number | string;
 }

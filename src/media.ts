@@ -139,6 +139,9 @@ export class MediaPart extends PlexObject {
     const streamId = typeof stream === 'number' ? stream : stream.id;
     params.set('audioStreamID', streamId.toString());
     await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
+    for (const audioStream of this.audioStreams()) {
+      audioStream.selected = audioStream.id === streamId;
+    }
     return this;
   }
 
@@ -152,6 +155,20 @@ export class MediaPart extends PlexObject {
     const streamId = typeof stream === 'number' ? stream : stream.id;
     params.set('subtitleStreamID', streamId.toString());
     await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
+    for (const subtitleStream of this.subtitleStreams()) {
+      subtitleStream.selected = subtitleStream.id === streamId;
+    }
+    return this;
+  }
+
+  /** Disable subtitles for this media part. */
+  async resetSelectedSubtitleStream(): Promise<this> {
+    const key = `/library/parts/${this.id}`;
+    const params = new URLSearchParams({ allParts: '1', subtitleStreamID: '0' });
+    await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
+    for (const subtitleStream of this.subtitleStreams()) {
+      subtitleStream.selected = false;
+    }
     return this;
   }
 
@@ -188,8 +205,7 @@ export class MediaPart extends PlexObject {
     this.optimizedForStreaming = data.optimizedForStreaming;
     this.videoProfile = data.videoProfile;
     this.exists = data.exists;
-    this.streams =
-      data.Stream?.map(stream => new MediaPartStream(this.server, stream, undefined, this)) ?? [];
+    this.streams = data.Stream?.map(stream => createMediaPartStream(this, stream)) ?? [];
   }
 }
 
@@ -197,8 +213,12 @@ export class MediaPartStream extends PlexObject {
   static override TAG = 'Stream' as const;
 
   declare id: number;
+  declare key: string;
   declare codec: string;
   declare index: number;
+  declare displayTitle?: string;
+  declare extendedDisplayTitle?: string;
+  declare title?: string;
   declare language?: string;
   declare languageCode?: string;
   declare selected?: boolean;
@@ -206,8 +226,12 @@ export class MediaPartStream extends PlexObject {
 
   protected _loadData(data: MediaPartStreamData) {
     this.id = data.id;
+    this.key = data.key ?? '';
     this.codec = data.codec;
     this.index = data.index;
+    this.displayTitle = data.displayTitle;
+    this.extendedDisplayTitle = data.extendedDisplayTitle;
+    this.title = data.title;
     this.language = data.language;
     this.languageCode = data.languageCode;
     this.selected = data.selected;
@@ -251,8 +275,8 @@ export class SubtitleStream extends MediaPartStream {
    * Alias for `MediaPart.setSelectedSubtitleStream`.
    */
   async setSelected(): Promise<void> {
-    const parent = this.parent?.deref() as MediaPart;
-    if (!parent) {
+    const parent = this.parent?.deref();
+    if (!(parent instanceof MediaPart)) {
       throw new Error('SubtitleStream must have a parent MediaPart');
     }
     await parent.setSelectedSubtitleStream(this);
@@ -762,8 +786,8 @@ export class AudioStream extends MediaPartStream {
    * Alias for {@link MediaPart.setSelectedAudioStream}.
    */
   async setSelected(): Promise<void> {
-    const parent = this.parent?.deref() as MediaPart;
-    if (!parent) {
+    const parent = this.parent?.deref();
+    if (!(parent instanceof MediaPart)) {
       throw new Error('AudioStream must have a parent MediaPart');
     }
     await parent.setSelectedAudioStream(this);
@@ -794,6 +818,19 @@ export class AudioStream extends MediaPartStream {
     this.peak = data.peak ? Number.parseFloat(data.peak) : undefined;
     this.startRamp = data.startRamp;
   }
+}
+
+function createMediaPartStream(parent: MediaPart, data: MediaPartStreamData): MediaPartStream {
+  if (data.streamType === AudioStream.STREAMTYPE) {
+    return new AudioStream(parent.server, data, undefined, parent);
+  }
+  if (data.streamType === SubtitleStream.STREAMTYPE) {
+    return new SubtitleStream(parent.server, data, undefined, parent);
+  }
+  if (data.streamType === LyricStream.STREAMTYPE) {
+    return new LyricStream(parent.server, data, undefined, parent);
+  }
+  return new MediaPartStream(parent.server, data, undefined, parent);
 }
 
 /** Represents a single Image media tag. */

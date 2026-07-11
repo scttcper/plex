@@ -1,6 +1,12 @@
 import { beforeAll, expect, it } from 'vitest';
 
-import { type Movie, type MovieSection, type PlexServer, MediaPart } from '../src/index.ts';
+import {
+  AudioStream,
+  type Movie,
+  type MovieSection,
+  type PlexServer,
+  MediaPart,
+} from '../src/index.ts';
 
 import { createClient } from './test-client.ts';
 
@@ -34,12 +40,9 @@ it('should return MediaPart objects from iterParts', () => {
 });
 
 it('should have audio streams accessible from media parts', () => {
-  // Note: Playable.audioStreams() uses instanceof AudioStream, but MediaPart._loadData
-  // constructs all streams as MediaPartStream. Access audio streams via streamType instead.
-  const parts = movie.iterParts();
-  expect(parts.length).toBeGreaterThan(0);
-  const audioStreams = parts[0].streams.filter(s => s.streamType === 2);
+  const audioStreams = movie.audioStreams();
   expect(audioStreams.length).toBeGreaterThan(0);
+  expect(audioStreams[0]).toBeInstanceOf(AudioStream);
   expect(audioStreams[0].codec).toBeDefined();
 });
 
