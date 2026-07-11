@@ -114,12 +114,14 @@ export class MyPlexAccount {
   }
 
   FRIENDINVITE = 'https://plex.tv/api/servers/{machineId}/shared_servers'; // post with data
+  HOMEUSERS = 'https://plex.tv/api/home/users';
   HOMEUSERCREATE = 'https://plex.tv/api/home/users?title={title}'; // post with data
   EXISTINGUSER = 'https://plex.tv/api/home/users?invitedEmail={username}'; // post with data
   FRIENDSERVERS = 'https://plex.tv/api/servers/{machineId}/shared_servers/{serverId}'; // put with data
   PLEXSERVERS = 'https://plex.tv/api/servers/{machineId}'; // get
-  FRIENDUPDATE = 'https://plex.tv/api/friends/{userId}'; // put with args, delete
-  REMOVEHOMEUSER = 'https://plex.tv/api/home/users/{userId}'; // delete
+  FRIENDUPDATE = 'https://plex.tv/api/v2/sharings/{userId}'; // put with args, delete
+  HOMEUSER = 'https://plex.tv/api/home/users/{userId}'; // delete, put
+  MANAGEDHOMEUSER = 'https://plex.tv/api/v2/home/users/restricted/{userId}'; // post
   REMOVEINVITE = 'https://plex.tv/api/invites/requested/{userId}?friend=0&server=1&home=0'; // delete
   REQUESTED = 'https://plex.tv/api/invites/requested'; // get
   REQUESTS = 'https://plex.tv/api/invites/requests'; // get
@@ -378,6 +380,108 @@ export class MyPlexAccount {
     }));
   }
 
+  /** Create a managed Plex Home user and assign their shared libraries. */
+  async createHomeUser(title: string, options: CreateHomeUserOptions): Promise<void> {
+    const machineIdentifier = serverIdentifier(options.server);
+    const sectionIds = await this._sectionIds(machineIdentifier, options.sections ?? []);
+    const createUrl = `${this.HOMEUSERS}?${new URLSearchParams({ title }).toString()}`;
+    const createdUser = await this.query<unknown>({ url: createUrl, method: 'post' });
+    const userId = responseAttribute(createdUser, 'id');
+    if (!userId) {
+      throw new BadRequest('Plex did not return an id for the created home user.');
+    }
+
+    await this.query({
+      url: this.FRIENDINVITE.replace('{machineId}', machineIdentifier),
+      method: 'post',
+      body: shareRequestBody({
+        invitedId: Number(userId),
+        machineIdentifier,
+        sectionIds,
+        permissions: options.permissions ?? {},
+        filters: options.filters ?? {},
+      }),
+    });
+  }
+
+  /** Add an existing Plex user to this Plex Home. */
+  async addUserToHome(user: MyPlexUser | string, sharing?: InviteFriendOptions): Promise<void> {
+    const username = inviteUsername(user);
+    const url = `${this.HOMEUSERS}?${new URLSearchParams({ invitedEmail: username }).toString()}`;
+    await this.query({ url, method: 'post' });
+    if (sharing !== undefined) {
+      await this.inviteFriend(username, sharing);
+    }
+  }
+
+  /** Switch authentication to a managed Plex Home user. */
+  async switchHomeUser(
+    userOrIdentifier: MyPlexUser | number | string,
+    options: SwitchHomeUserOptions = {},
+  ): Promise<MyPlexAccount> {
+    const user =
+      userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
+    const params = new URLSearchParams();
+    if (options.pin !== undefined) {
+      params.set('pin', options.pin);
+    }
+    const query = params.toString();
+    const url = `${this.HOMEUSERS}/${requiredId(user, 'user')}/switch${query ? `?${query}` : ''}`;
+    const data = await this.query<unknown>({ url, method: 'post' });
+    const token = responseAttribute(data, 'authenticationToken');
+    if (!token) {
+      throw new BadRequest('Plex did not return an authentication token for the home user.');
+    }
+
+    const switchedAccount = new MyPlexAccount({
+      baseUrl: this.baseUrl,
+      token,
+      timeout: this.timeout,
+    });
+    return switchedAccount.connect();
+  }
+
+  /** Set or change the signed-in account's Plex Home PIN. */
+  async setPin(options: SetAccountPinOptions): Promise<void> {
+    const params = new URLSearchParams({ pin: options.pin });
+    if (options.currentPin !== undefined) {
+      params.set('currentPin', options.currentPin);
+    }
+    await this.query({
+      url: `${this.HOMEUSER.replace('{userId}', requiredId(this, 'account'))}?${params.toString()}`,
+      method: 'put',
+    });
+  }
+
+  /** Remove the signed-in account's Plex Home PIN. */
+  async removePin(options: RemoveAccountPinOptions): Promise<void> {
+    await this.setPin({ pin: '', currentPin: options.currentPin });
+  }
+
+  /** Set or change a managed Plex Home user's PIN. */
+  async setManagedUserPin(
+    userOrIdentifier: MyPlexUser | number | string,
+    options: SetManagedUserPinOptions,
+  ): Promise<void> {
+    const user =
+      userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
+    const params = new URLSearchParams({ pin: options.pin });
+    await this.query({
+      url: `${this.MANAGEDHOMEUSER.replace('{userId}', requiredId(user, 'user'))}?${params.toString()}`,
+      method: 'post',
+    });
+  }
+
+  /** Remove a managed Plex Home user's PIN. */
+  async removeManagedUserPin(userOrIdentifier: MyPlexUser | number | string): Promise<void> {
+    const user =
+      userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
+    await this.query({
+      url: `${this.MANAGEDHOMEUSER.replace('{userId}', requiredId(user, 'user'))}?removePin=1`,
+      method: 'post',
+    });
+  }
+
   /** Update a user's shared libraries and account-level sharing settings. */
   async updateFriend(
     userOrIdentifier: MyPlexUser | number | string,
@@ -441,7 +545,7 @@ export class MyPlexAccount {
     const user =
       userOrIdentifier instanceof MyPlexUser ? userOrIdentifier : await this.user(userOrIdentifier);
     await this.query({
-      url: this.REMOVEHOMEUSER.replace('{userId}', requiredId(user, 'user')),
+      url: this.HOMEUSER.replace('{userId}', requiredId(user, 'user')),
       method: 'delete',
     });
   }
@@ -699,6 +803,28 @@ export interface InviteFriendOptions {
   permissions?: LibrarySharePermissions;
   /** Optional content and label restrictions by library family. */
   filters?: LibraryShareFilters;
+}
+
+export type CreateHomeUserOptions = InviteFriendOptions;
+
+export interface SwitchHomeUserOptions {
+  /** PIN required by a protected home user. */
+  pin?: string;
+}
+
+export interface SetAccountPinOptions {
+  /** New PIN. Pass an empty string to remove it. */
+  pin: string;
+  /** Current PIN when changing an existing PIN. */
+  currentPin?: string;
+}
+
+export interface RemoveAccountPinOptions {
+  currentPin: string;
+}
+
+export interface SetManagedUserPinOptions {
+  pin: string;
 }
 
 export interface UpdateFriendOptions extends InviteFriendOptions {
@@ -961,6 +1087,42 @@ function inviteUsername(user: MyPlexUser | string): string {
     throw new BadRequest('Cannot invite a user without a username or email.');
   }
   return username;
+}
+
+function responseAttribute(value: unknown, name: string): string | undefined {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const match = responseAttribute(item, name);
+      if (match !== undefined) {
+        return match;
+      }
+    }
+    return undefined;
+  }
+  if (typeof value !== 'object' || value === null) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const directAttribute = record[name];
+  if (typeof directAttribute === 'string') {
+    return directAttribute;
+  }
+  const attributes = record.$;
+  if (typeof attributes === 'object' && attributes !== null) {
+    const attribute = (attributes as Record<string, unknown>)[name];
+    if (typeof attribute === 'string') {
+      return attribute;
+    }
+  }
+
+  for (const child of Object.values(record)) {
+    const match = responseAttribute(child, name);
+    if (match !== undefined) {
+      return match;
+    }
+  }
+  return undefined;
 }
 
 /**

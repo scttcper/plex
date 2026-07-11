@@ -231,7 +231,7 @@ describe('MyPlexAccount users and invites', () => {
       method: 'delete',
     });
     expect(account.query).toHaveBeenNthCalledWith(3, {
-      url: 'https://plex.tv/api/friends/42',
+      url: 'https://plex.tv/api/v2/sharings/42',
       method: 'delete',
     });
     expect(account.query).toHaveBeenNthCalledWith(4, {
@@ -311,7 +311,7 @@ describe('MyPlexAccount users and invites', () => {
       },
     });
     expect(account.query).toHaveBeenNthCalledWith(3, {
-      url: 'https://plex.tv/api/friends/42?allowSync=1&allowCameraUpload=0&filterTelevision=contentRating%21%3DTV-MA',
+      url: 'https://plex.tv/api/v2/sharings/42?allowSync=1&allowCameraUpload=0&filterTelevision=contentRating%21%3DTV-MA',
       method: 'put',
     });
   });
@@ -356,6 +356,140 @@ describe('MyPlexAccount users and invites', () => {
         server_id: 'machine-id',
         shared_server: { library_section_ids: [] },
       },
+    });
+  });
+
+  it('creates a managed home user and assigns library access', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const responses = new Map<string, unknown>([
+      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/home/users?title=Kid+One', { User: { $: { id: '77' } } }],
+    ]);
+    account.query = vi.fn(({ url }: { url: string }) =>
+      Promise.resolve(responses.get(url)),
+    ) as never;
+
+    await account.createHomeUser('Kid One', {
+      server: 'machine-id',
+      sections: ['Movies'],
+      permissions: { allowSync: true },
+      filters: { movies: { contentRating: ['G'] } },
+    });
+
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://plex.tv/api/home/users?title=Kid+One',
+      method: 'post',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(3, {
+      url: 'https://plex.tv/api/servers/machine-id/shared_servers',
+      method: 'post',
+      body: {
+        server_id: 'machine-id',
+        shared_server: { library_section_ids: [10], invited_id: 77 },
+        sharing_settings: {
+          allowSync: '1',
+          allowCameraUpload: '0',
+          allowChannels: '0',
+          filterMovies: 'contentRating=G',
+          filterTelevision: '',
+          filterMusic: '',
+        },
+      },
+    });
+  });
+
+  it('switches to a managed home user with an optional PIN', async () => {
+    const account = new MyPlexAccount({
+      baseUrl: 'http://localhost:32400',
+      token: 'account-token',
+      timeout: 5000,
+    });
+    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    account.query = vi.fn(() =>
+      Promise.resolve({ user: { $: { authenticationToken: 'home-token' } } }),
+    ) as never;
+    const connect = vi
+      .spyOn(MyPlexAccount.prototype, 'connect')
+      .mockImplementationOnce(async function (this: MyPlexAccount) {
+        return this;
+      });
+
+    const switchedAccount = await account.switchHomeUser(user, { pin: '0123' });
+
+    expect(account.query).toHaveBeenCalledWith({
+      url: 'https://plex.tv/api/home/users/42/switch?pin=0123',
+      method: 'post',
+    });
+    expect(switchedAccount.token).toBe('home-token');
+    expect(switchedAccount.baseUrl).toBe('http://localhost:32400');
+    expect(switchedAccount.timeout).toBe(5000);
+    expect(connect).toHaveBeenCalledOnce();
+    connect.mockRestore();
+  });
+
+  it('adds an existing Plex user to the Home and optionally shares libraries', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const responses = new Map<string, unknown>([
+      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+    ]);
+    account.query = vi.fn(({ url }: { url: string }) =>
+      Promise.resolve(responses.get(url)),
+    ) as never;
+
+    await account.addUserToHome(user, {
+      server: 'machine-id',
+      sections: ['Movies'],
+    });
+
+    expect(account.query).toHaveBeenNthCalledWith(1, {
+      url: 'https://plex.tv/api/home/users?invitedEmail=friend',
+      method: 'post',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(3, {
+      url: 'https://plex.tv/api/servers/machine-id/shared_servers',
+      method: 'post',
+      body: {
+        server_id: 'machine-id',
+        shared_server: { library_section_ids: [10], invited_email: 'friend' },
+        sharing_settings: {
+          allowSync: '0',
+          allowCameraUpload: '0',
+          allowChannels: '0',
+          filterMovies: '',
+          filterTelevision: '',
+          filterMusic: '',
+        },
+      },
+    });
+  });
+
+  it('sets and removes account and managed-user PINs', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    account.id = 99;
+    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    account.query = vi.fn(() => Promise.resolve()) as never;
+
+    await account.setPin({ pin: '1234', currentPin: '0000' });
+    await account.removePin({ currentPin: '1234' });
+    await account.setManagedUserPin(user, { pin: '5678' });
+    await account.removeManagedUserPin(user);
+
+    expect(account.query).toHaveBeenNthCalledWith(1, {
+      url: 'https://plex.tv/api/home/users/99?pin=1234&currentPin=0000',
+      method: 'put',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://plex.tv/api/home/users/99?pin=&currentPin=1234',
+      method: 'put',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(3, {
+      url: 'https://plex.tv/api/v2/home/users/restricted/42?pin=5678',
+      method: 'post',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(4, {
+      url: 'https://plex.tv/api/v2/home/users/restricted/42?removePin=1',
+      method: 'post',
     });
   });
 });
