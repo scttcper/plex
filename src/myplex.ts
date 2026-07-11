@@ -17,7 +17,11 @@ import type {
   MyPlexUserData,
   MyPlexUsersResponse,
   ResourcesResponse,
+  UserStateData,
+  UserStateResponse,
   UserResponse,
+  WatchlistItemData,
+  WatchlistResponse,
   WebLogin,
 } from './myplex.types.ts';
 import type { PlexServer } from './server.ts';
@@ -127,6 +131,8 @@ export class MyPlexAccount {
   REQUESTS = 'https://plex.tv/api/invites/requests'; // get
   SIGNIN = 'https://plex.tv/users/sign_in.json'; // get with auth
   WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'; // get, post with data
+  DISCOVER = 'https://discover.provider.plex.tv';
+  METADATA = 'https://metadata.provider.plex.tv';
 
   /** Your Plex account ID */
   declare id?: number;
@@ -385,7 +391,7 @@ export class MyPlexAccount {
     const machineIdentifier = serverIdentifier(options.server);
     const sectionIds = await this._sectionIds(machineIdentifier, options.sections ?? []);
     const createUrl = `${this.HOMEUSERS}?${new URLSearchParams({ title }).toString()}`;
-    const createdUser = await this.query<unknown>({ url: createUrl, method: 'post' });
+    const createdUser = await this.query<PlexHomeResponse>({ url: createUrl, method: 'post' });
     const userId = homeResponseAttribute(createdUser, 'id');
     if (!userId) {
       throw new BadRequest('Plex did not return an id for the created home user.');
@@ -427,7 +433,7 @@ export class MyPlexAccount {
     }
     const query = params.toString();
     const url = `${this.HOMEUSERS}/${requiredId(user, 'user')}/switch${query ? `?${query}` : ''}`;
-    const data = await this.query<unknown>({ url, method: 'post' });
+    const data = await this.query<PlexHomeResponse>({ url, method: 'post' });
     const token = homeResponseAttribute(data, 'authenticationToken');
     if (!token) {
       throw new BadRequest('Plex did not return an authentication token for the home user.');
@@ -480,6 +486,87 @@ export class MyPlexAccount {
       url: `${this.MANAGEDHOMEUSER.replace('{userId}', requiredId(user, 'user'))}?removePin=1`,
       method: 'post',
     });
+  }
+
+  /** Return movies and shows in this account's Plex Discover watchlist. */
+  async watchlist(options: WatchlistOptions = {}): Promise<WatchlistItem[]> {
+    const {
+      filter = 'all',
+      filters = {},
+      includeCollections = true,
+      includeExternalMedia = true,
+      limit,
+      sort,
+      type,
+    } = options;
+    const params = new URLSearchParams({
+      includeCollections: includeCollections ? '1' : '0',
+      includeExternalMedia: includeExternalMedia ? '1' : '0',
+    });
+    if (sort !== undefined) {
+      params.set('sort', sort);
+    }
+    if (type !== undefined) {
+      params.set('type', type === 'movie' ? '1' : '2');
+    }
+    if (limit !== undefined) {
+      params.set('X-Plex-Container-Size', limit.toString());
+    }
+    for (const [key, value] of Object.entries(filters)) {
+      params.set(key, String(value));
+    }
+
+    const url = `${this.DISCOVER}/library/sections/watchlist/${filter}?${params.toString()}`;
+    const data = await this.query<WatchlistResponse>({ url });
+    return (data.MediaContainer.Metadata ?? []).map(item => new WatchlistItem(this, item));
+  }
+
+  /** Return Plex Discover user state for a movie or show. */
+  async userState(item: WatchlistTarget): Promise<PlexUserState> {
+    const ratingKey = discoverRatingKey(item);
+    const data = await this.query<UserStateResponse>({
+      url: `${this.METADATA}/library/metadata/${encodeURIComponent(ratingKey)}/userState`,
+    });
+    const state = data.MediaContainer.UserState;
+    if (!state) {
+      throw new NotFound(`Plex did not return user state for "${item.title ?? ratingKey}".`);
+    }
+    return new PlexUserState(state);
+  }
+
+  /** Return whether a movie or show is currently on this account's watchlist. */
+  async onWatchlist(item: WatchlistTarget): Promise<boolean> {
+    return (await this.userState(item)).watchlistedAt !== undefined;
+  }
+
+  /** Add one or more movies or shows to this account's watchlist. */
+  async addToWatchlist(items: WatchlistTarget | readonly WatchlistTarget[]): Promise<this> {
+    for (const item of normalizeWatchlistTargets(items)) {
+      if (await this.onWatchlist(item)) {
+        throw new BadRequest(`"${item.title ?? item.guid}" is already on the watchlist.`);
+      }
+      const ratingKey = discoverRatingKey(item);
+      await this.query({
+        url: `${this.DISCOVER}/actions/addToWatchlist?${new URLSearchParams({ ratingKey }).toString()}`,
+        method: 'put',
+      });
+    }
+    return this;
+  }
+
+  /** Remove one or more movies or shows from this account's watchlist. */
+  async removeFromWatchlist(items: WatchlistTarget | readonly WatchlistTarget[]): Promise<this> {
+    for (const item of normalizeWatchlistTargets(items)) {
+      if (!(await this.onWatchlist(item))) {
+        throw new BadRequest(`"${item.title ?? item.guid}" is not on the watchlist.`);
+      }
+      const ratingKey = discoverRatingKey(item);
+      await this.query({
+        url: `${this.DISCOVER}/actions/removeFromWatchlist?${new URLSearchParams({ ratingKey }).toString()}`,
+        method: 'put',
+      });
+    }
+    return this;
   }
 
   /** Update a user's shared libraries and account-level sharing settings. */
@@ -827,12 +914,107 @@ export interface SetManagedUserPinOptions {
   pin: string;
 }
 
+export type WatchlistFilter = 'all' | 'available' | 'released';
+export type WatchlistSortField = 'originallyAvailableAt' | 'rating' | 'titleSort' | 'watchlistedAt';
+export type WatchlistSort = `${WatchlistSortField}:${'asc' | 'desc'}`;
+
+export interface WatchlistOptions {
+  filter?: WatchlistFilter;
+  sort?: WatchlistSort;
+  type?: 'movie' | 'show';
+  limit?: number;
+  includeCollections?: boolean;
+  includeExternalMedia?: boolean;
+  /** Provider-specific filters not covered by the common options. */
+  filters?: Readonly<Record<string, boolean | number | string>>;
+}
+
+export interface WatchlistTarget {
+  /** Plex Discover GUID such as `plex://movie/…` or `plex://show/…`. */
+  guid: string;
+  title?: string;
+}
+
 export interface UpdateFriendOptions extends InviteFriendOptions {
   /** Remove this server's library share. Supersedes `sections`. */
   removeSections?: boolean;
 }
 
 export type MyPlexInviteDirection = 'received' | 'sent';
+
+export class PlexUserState {
+  readonly ratingKey: string;
+  readonly type: string;
+  readonly lastViewedAt?: Date;
+  readonly viewCount: number;
+  readonly viewedLeafCount?: number;
+  readonly viewOffset: number;
+  readonly viewState: boolean;
+  readonly watchlistedAt?: Date;
+
+  constructor(data: UserStateData) {
+    this.ratingKey = data.ratingKey;
+    this.type = data.type;
+    this.lastViewedAt = timestampDate(data.lastViewedAt);
+    this.viewCount = data.viewCount;
+    this.viewedLeafCount = data.viewedLeafCount;
+    this.viewOffset = data.viewOffset;
+    this.viewState = data.viewState === 'complete';
+    this.watchlistedAt = timestampDate(data.watchlistedAt);
+  }
+}
+
+export class WatchlistItem implements WatchlistTarget {
+  readonly account: MyPlexAccount;
+  readonly ratingKey: string;
+  readonly key: string;
+  readonly guid: string;
+  readonly type: 'movie' | 'show';
+  readonly title: string;
+  readonly addedAt?: Date;
+  readonly art?: string;
+  readonly duration?: number;
+  readonly originallyAvailableAt?: string;
+  readonly rating?: number;
+  readonly slug?: string;
+  readonly source?: string;
+  readonly thumb?: string;
+  readonly titleSort?: string;
+  readonly watchlistedAt?: Date;
+  readonly year?: number;
+
+  constructor(account: MyPlexAccount, data: WatchlistItemData) {
+    this.account = account;
+    this.ratingKey = data.ratingKey;
+    this.key = data.key;
+    this.guid = data.guid;
+    this.type = data.type;
+    this.title = data.title;
+    this.addedAt = timestampDate(data.addedAt);
+    this.art = data.art;
+    this.duration = data.duration;
+    this.originallyAvailableAt = data.originallyAvailableAt;
+    this.rating = data.rating;
+    this.slug = data.slug;
+    this.source = data.source;
+    this.thumb = data.thumb;
+    this.titleSort = data.titleSort;
+    this.watchlistedAt = timestampDate(data.watchlistedAt);
+    this.year = data.year;
+  }
+
+  async onWatchlist(): Promise<boolean> {
+    return this.account.onWatchlist(this);
+  }
+
+  async addToWatchlist(): Promise<void> {
+    await this.account.addToWatchlist(this);
+  }
+
+  async removeFromWatchlist(): Promise<void> {
+    await this.account.removeFromWatchlist(this);
+  }
+}
 
 export class MyPlexServerShare {
   readonly account: MyPlexAccount;
@@ -1089,32 +1271,46 @@ function inviteUsername(user: MyPlexUser | string): string {
   return username;
 }
 
-function homeResponseAttribute(
-  value: unknown,
-  name: 'authenticationToken' | 'id',
-): string | undefined {
-  const response = objectRecord(value);
-  const mediaContainer = objectRecord(response?.MediaContainer);
-  const containerUsers = Array.isArray(mediaContainer?.User) ? mediaContainer.User : [];
-  const user =
-    objectRecord(response?.User) ??
-    objectRecord(response?.user) ??
-    objectRecord(containerUsers[0]) ??
-    response;
-  const directValue = user?.[name];
-  if (typeof directValue === 'string') {
-    return directValue;
+function discoverRatingKey(item: WatchlistTarget): string {
+  const ratingKey = item.guid.split('/').at(-1);
+  if (!ratingKey || !item.guid.startsWith('plex://')) {
+    throw new BadRequest(`"${item.title ?? item.guid}" does not have a Plex Discover GUID.`);
   }
-
-  const attributes = objectRecord(user?.$);
-  const attributeValue = attributes?.[name];
-  return typeof attributeValue === 'string' ? attributeValue : undefined;
+  return ratingKey;
 }
 
-function objectRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
+function normalizeWatchlistTargets(
+  items: WatchlistTarget | readonly WatchlistTarget[],
+): readonly WatchlistTarget[] {
+  return 'guid' in items ? [items] : items;
+}
+
+function timestampDate(value: number | undefined): Date | undefined {
+  return value === undefined ? undefined : new Date(value * 1000);
+}
+
+type PlexHomeAttributes = {
+  authenticationToken?: string;
+  id?: string;
+};
+
+type PlexHomeUserResponse = PlexHomeAttributes | { $: PlexHomeAttributes };
+
+type PlexHomeResponse = {
+  MediaContainer?: { User?: PlexHomeUserResponse[] };
+  User?: PlexHomeUserResponse;
+  user?: PlexHomeUserResponse;
+};
+
+function homeResponseAttribute(
+  response: PlexHomeResponse,
+  name: keyof PlexHomeAttributes,
+): string | undefined {
+  const user = response.User ?? response.user ?? response.MediaContainer?.User?.[0];
+  if (!user) {
+    return undefined;
+  }
+  return '$' in user ? user.$[name] : user[name];
 }
 
 /**

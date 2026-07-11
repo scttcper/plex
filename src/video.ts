@@ -23,6 +23,7 @@ import {
   Writer,
 } from './media.ts';
 import type { CommonSenseMediaData } from './media.types.ts';
+import type { MyPlexAccount } from './myplex.ts';
 import type { ChapterSource, EpisodeMetadata, FullMovieResponse } from './video.types.ts';
 
 type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
@@ -282,6 +283,18 @@ export class Movie extends Video {
     return this.roles;
   }
 
+  async onWatchlist(account: MyPlexAccount): Promise<boolean> {
+    return account.onWatchlist(this);
+  }
+
+  async addToWatchlist(account: MyPlexAccount): Promise<void> {
+    await account.addToWatchlist(this);
+  }
+
+  async removeFromWatchlist(account: MyPlexAccount): Promise<void> {
+    await account.removeFromWatchlist(this);
+  }
+
   async locations(): Promise<string[]> {
     if (!this.isFullObject) {
       await this.reload();
@@ -406,6 +419,18 @@ export class Show extends Video {
    */
   get actors(): Role[] {
     return this.roles;
+  }
+
+  async onWatchlist(account: MyPlexAccount): Promise<boolean> {
+    return account.onWatchlist(this);
+  }
+
+  async addToWatchlist(account: MyPlexAccount): Promise<void> {
+    await account.addToWatchlist(this);
+  }
+
+  async removeFromWatchlist(account: MyPlexAccount): Promise<void> {
+    await account.removeFromWatchlist(this);
   }
 
   /** @returns True if this show is fully watched. */

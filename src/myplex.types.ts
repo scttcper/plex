@@ -248,3 +248,53 @@ export interface MyPlexServerSectionsResponse {
     }>;
   };
 }
+
+export interface WatchlistItemData {
+  ratingKey: string;
+  key: string;
+  guid: string;
+  type: 'movie' | 'show';
+  title: string;
+  addedAt?: number;
+  art?: string;
+  duration?: number;
+  originallyAvailableAt?: string;
+  rating?: number;
+  slug?: string;
+  source?: string;
+  thumb?: string;
+  titleSort?: string;
+  watchlistedAt?: number;
+  year?: number;
+}
+
+export interface WatchlistResponse {
+  MediaContainer: {
+    identifier: string;
+    librarySectionID?: string;
+    librarySectionTitle?: string;
+    offset?: number;
+    size: number;
+    totalSize?: number;
+    Metadata?: WatchlistItemData[];
+  };
+}
+
+export interface UserStateData {
+  ratingKey: string;
+  type: string;
+  lastViewedAt?: number;
+  viewCount: number;
+  viewedLeafCount?: number;
+  viewOffset: number;
+  viewState?: string;
+  watchlistedAt?: number;
+}
+
+export interface UserStateResponse {
+  MediaContainer: {
+    identifier: string;
+    size: number;
+    UserState?: UserStateData;
+  };
+}

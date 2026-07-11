@@ -1,11 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { MyPlexAccount, MyPlexInvite, MyPlexResource, MyPlexUser } from '../src/myplex.ts';
+import {
+  MyPlexAccount,
+  MyPlexInvite,
+  MyPlexResource,
+  MyPlexUser,
+  PlexUserState,
+  WatchlistItem,
+} from '../src/myplex.ts';
 import type {
   MyPlexInvitesResponse,
   MyPlexServerSectionsResponse,
   MyPlexUsersResponse,
   ResourcesResponse,
+  UserStateResponse,
+  WatchlistResponse,
 } from '../src/myplex.types.ts';
 
 const resourceData: ResourcesResponse = {
@@ -164,6 +173,53 @@ const serverSectionsResponse: MyPlexServerSectionsResponse = {
         ],
       },
     ],
+  },
+};
+
+const watchlistResponse: WatchlistResponse = {
+  MediaContainer: {
+    identifier: 'com.plexapp.plugins.library',
+    size: 1,
+    totalSize: 1,
+    Metadata: [
+      {
+        addedAt: 1_720_000_000,
+        guid: 'plex://movie/discover-id',
+        key: '/library/metadata/discover-id',
+        originallyAvailableAt: '1984-06-08',
+        rating: 7.8,
+        ratingKey: 'discover-id',
+        thumb: '/library/metadata/discover-id/thumb',
+        title: 'Discover Movie',
+        type: 'movie',
+        watchlistedAt: 1_720_000_100,
+        year: 1984,
+      },
+    ],
+  },
+};
+
+const notWatchlistedState: UserStateResponse = {
+  MediaContainer: {
+    identifier: 'com.plexapp.plugins.library',
+    size: 1,
+    UserState: {
+      ratingKey: 'discover-id',
+      type: 'movie',
+      viewCount: 0,
+      viewOffset: 0,
+    },
+  },
+};
+
+const watchlistedState: UserStateResponse = {
+  MediaContainer: {
+    identifier: 'com.plexapp.plugins.library',
+    size: 1,
+    UserState: {
+      ...notWatchlistedState.MediaContainer.UserState!,
+      watchlistedAt: 1_720_000_100,
+    },
   },
 };
 
@@ -491,5 +547,75 @@ describe('MyPlexAccount users and invites', () => {
       url: 'https://plex.tv/api/v2/home/users/restricted/42?removePin=1',
       method: 'post',
     });
+  });
+
+  it('lists typed watchlist items with options-object filters', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    account.query = vi.fn(() => Promise.resolve(watchlistResponse)) as never;
+
+    const items = await account.watchlist({
+      filter: 'released',
+      sort: 'rating:desc',
+      type: 'movie',
+      limit: 5,
+      filters: { genre: 'Comedy' },
+    });
+
+    expect(account.query).toHaveBeenCalledWith({
+      url: 'https://discover.provider.plex.tv/library/sections/watchlist/released?includeCollections=1&includeExternalMedia=1&sort=rating%3Adesc&type=1&X-Plex-Container-Size=5&genre=Comedy',
+    });
+    expect(items[0]).toBeInstanceOf(WatchlistItem);
+    expect(items[0].title).toBe('Discover Movie');
+    expect(items[0].watchlistedAt).toEqual(new Date(1_720_000_100_000));
+  });
+
+  it('reads user state and adds or removes a watchlist item', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const target = { guid: 'plex://movie/discover-id', title: 'Discover Movie' };
+    account.query = vi
+      .fn()
+      .mockResolvedValueOnce(notWatchlistedState)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(watchlistedState)
+      .mockResolvedValueOnce(null) as never;
+
+    await account.addToWatchlist(target);
+    await account.removeFromWatchlist(target);
+
+    expect(account.query).toHaveBeenNthCalledWith(1, {
+      url: 'https://metadata.provider.plex.tv/library/metadata/discover-id/userState',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(2, {
+      url: 'https://discover.provider.plex.tv/actions/addToWatchlist?ratingKey=discover-id',
+      method: 'put',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(3, {
+      url: 'https://metadata.provider.plex.tv/library/metadata/discover-id/userState',
+    });
+    expect(account.query).toHaveBeenNthCalledWith(4, {
+      url: 'https://discover.provider.plex.tv/actions/removeFromWatchlist?ratingKey=discover-id',
+      method: 'put',
+    });
+  });
+
+  it('exposes Discover user-state values and rejects invalid watchlist transitions', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const target = { guid: 'plex://movie/discover-id', title: 'Discover Movie' };
+    account.query = vi
+      .fn()
+      .mockResolvedValueOnce(watchlistedState)
+      .mockResolvedValueOnce(watchlistedState)
+      .mockResolvedValueOnce(notWatchlistedState) as never;
+
+    const state = await account.userState(target);
+
+    expect(state).toBeInstanceOf(PlexUserState);
+    expect(state.watchlistedAt).toEqual(new Date(1_720_000_100_000));
+    await expect(account.addToWatchlist(target)).rejects.toThrow(
+      '"Discover Movie" is already on the watchlist.',
+    );
+    await expect(account.removeFromWatchlist(target)).rejects.toThrow(
+      '"Discover Movie" is not on the watchlist.',
+    );
   });
 });
