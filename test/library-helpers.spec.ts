@@ -897,6 +897,42 @@ describe('LibrarySection edit helpers', () => {
 });
 
 describe('Hub helpers', () => {
+  it('passes typed section hub options and allows overriding stations', async () => {
+    const { query, section } = createMovieSection();
+
+    await section.hubs({ count: 5, includeMyMixes: true, includeStations: false });
+
+    expect(query).toHaveBeenCalledWith({
+      path: '/hubs/sections/1?includeGuids=1&includeStations=0&count=5&includeMyMixes=1',
+    });
+  });
+
+  it('loads the nested centroid artist from a personalized playlist', () => {
+    const { section } = createMovieSection();
+    const playlist = new Playlist(
+      section.server,
+      {
+        ...playlistData,
+        smart: true,
+        Directory: [
+          {
+            centroid: '1',
+            guid: 'plex://artist/centroid',
+            key: '/library/metadata/100/children',
+            ratingKey: '100',
+            title: 'Centroid Artist',
+            type: 'artist',
+          },
+        ],
+      },
+      undefined,
+      section,
+    );
+
+    expect(playlist.centroid?.title).toBe('Centroid Artist');
+    expect(playlist.centroid?.type).toBe('artist');
+  });
+
   it('returns typed items from inline hub metadata', async () => {
     const { query, section } = createMovieSection();
 

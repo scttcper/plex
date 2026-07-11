@@ -2,6 +2,7 @@ import type { URL } from 'node:url';
 
 import { Playable } from './base/playable.ts';
 import { fetchItem, fetchItems, findItems } from './baseFunctionality.ts';
+import type { Libtype } from './library.ts';
 import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.ts';
 import {
   Chapter,
@@ -31,6 +32,7 @@ type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
   playlistItemID?: number;
   artBlurHash?: string;
   thumbBlurHash?: string;
+  editionTitle?: string;
 };
 
 abstract class Video extends Playable {
@@ -52,6 +54,10 @@ abstract class Video extends Playable {
   declare viewCount?: number;
   declare art?: string;
   declare grandparentArt?: string;
+  /** Plex GUID used to identify matching editions. */
+  declare guid?: string;
+  /** Edition shared by a movie or inherited from a show's hierarchy. */
+  declare editionTitle?: string;
   /** Common Sense Media rating and advisory data, when returned by Plex. */
   declare commonSenseMedia?: CommonSenseMedia;
   /** External GUID objects for this video item. */
@@ -90,6 +96,22 @@ abstract class Video extends Playable {
   get artUrl(): URL {
     const art = this.art ?? this.grandparentArt;
     return this.server.url(art, { includeToken: true });
+  }
+
+  /** Return the other editions with the same Plex GUID. */
+  async editions<T extends Video>(this: T): Promise<T[]> {
+    const section = await this.section();
+    const libtype = (this as T & { TYPE: Libtype }).TYPE;
+    return section.search<T>(
+      {
+        libtype,
+        filters: {
+          guid: this.guid ?? '',
+          'id!': this.ratingKey ?? '',
+        },
+      },
+      this.constructor as new (...args: any[]) => T,
+    );
   }
 
   /**
@@ -190,6 +212,7 @@ abstract class Video extends Playable {
     this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.viewCount = (data as MovieData).viewCount;
     this.playlistItemID = videoData.playlistItemID;
+    this.editionTitle = videoData.editionTitle;
     // todo: update one of them with this property
     this.artBlurHash = videoData.artBlurHash;
     this.thumbBlurHash = videoData.thumbBlurHash;
@@ -516,6 +539,9 @@ export class Season extends Video {
     this.key = (data.key || '').replace('/children', '');
     this.index = data.index;
     this.leafCount = data.leafCount;
+    this.parentKey = data.parentKey ?? '';
+    this.parentRatingKey = data.parentRatingKey ?? '';
+    this.parentTitle = data.parentTitle ?? '';
     this.viewedLeafCount = data.viewedLeafCount;
   }
 

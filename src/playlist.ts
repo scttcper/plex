@@ -4,7 +4,8 @@ import { Album, Artist, Track } from './audio.ts';
 import { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';
 import { BadRequest, NotFound } from './exceptions.ts';
-import type { LibrarySection, SectionType } from './library.ts';
+import type { LibrarySection, Libtype, SearchClassForLibtype } from './library.ts';
+import { Photo, Photoalbum } from './photo.ts';
 import type {
   PlaylistContainerResponse,
   PlaylistItemData,
@@ -12,7 +13,7 @@ import type {
 } from './playlist.types.ts';
 import { searchType } from './search.ts';
 import type { PlexServer } from './server.ts';
-import { Episode, Movie } from './video.ts';
+import { Episode, Movie, Season, Show } from './video.ts';
 
 /**
  * Map media types to their respective class
@@ -30,6 +31,12 @@ function createPlaylistContent(
     case 'movie': {
       return new Movie(server, data, key, parent) as PlaylistItem;
     }
+    case 'show': {
+      return new Show(server, data, key, parent) as PlaylistItem;
+    }
+    case 'season': {
+      return new Season(server, data, key, parent) as PlaylistItem;
+    }
     case 'track': {
       return new Track(server, data, key, parent) as PlaylistItem;
     }
@@ -38,6 +45,12 @@ function createPlaylistContent(
     }
     case 'artist': {
       return new Artist(server, data, key, parent) as PlaylistItem;
+    }
+    case 'photoalbum': {
+      return new Photoalbum(server, data, key, parent) as PlaylistItem;
+    }
+    case 'photo': {
+      return new Photo(server, data, key, parent) as PlaylistItem;
     }
     default: {
       throw new Error(`Media type '${data.type}' not implemented`);
@@ -49,7 +62,7 @@ export interface CreateRegularPlaylistOptions {
   /** True to create a smart playlist */
   smart?: false;
   /** Regular playlists only */
-  items: SectionType[];
+  items: PlaylistContent[];
 }
 
 export interface CreateSmartPlaylistOptions {
@@ -73,8 +86,24 @@ export interface CreateSmartPlaylistOptions {
 }
 
 export type CreatePlaylistOptions = CreateRegularPlaylistOptions | CreateSmartPlaylistOptions;
-type PlaylistContent = Episode | Movie | Track | Album | Artist;
+type PlaylistContent =
+  | Album
+  | Artist
+  | Episode
+  | Movie
+  | Photo
+  | Photoalbum
+  | Season
+  | Show
+  | Track;
 type PlaylistItem = PlaylistContent & { playlistItemID?: number };
+
+export type PlaylistItemLibtype = Exclude<Libtype, 'clip' | 'collection'>;
+
+export interface PlaylistItemsOptions<T extends PlaylistItemLibtype = PlaylistItemLibtype> {
+  /** Return playlist contents grouped as a specific Plex library type. */
+  libtype: T;
+}
 
 export interface UpdatePlaylistOptions {
   /** New title for the playlist */
@@ -180,7 +209,7 @@ export class Playlist extends Playable {
   private static async _create(
     server: PlexServer,
     title: string,
-    items: SectionType[],
+    items: PlaylistContent[],
   ): Promise<Playlist> {
     if (!items || items.length === 0) {
       throw new BadRequest('Must include items to add when creating new playlist.');
@@ -219,6 +248,8 @@ export class Playlist extends Playable {
   declare allowSync?: boolean;
   declare duration?: number;
   declare durationInSeconds?: number;
+  /** Artist that a personalized "Mix For You" playlist is centered on. */
+  declare centroid?: Artist;
   /** Cache of playlist items */
   private _items: PlaylistItem[] | null = null;
 
@@ -241,14 +272,29 @@ export class Playlist extends Playable {
     return matched ?? null;
   }
 
-  async items<T extends PlaylistContent>(): Promise<T[]> {
+  async items<T extends PlaylistContent = PlaylistContent>(): Promise<T[]>;
+  async items<T extends PlaylistItemLibtype>(
+    options: PlaylistItemsOptions<T>,
+  ): Promise<Array<SearchClassForLibtype<T>>>;
+  async items<T extends PlaylistItemLibtype>(
+    options?: PlaylistItemsOptions<T>,
+  ): Promise<PlaylistContent[] | Array<SearchClassForLibtype<T>>> {
+    const key = this._buildQueryKey(`/playlists/${this.ratingKey}/items`, {
+      type: options ? searchType(options.libtype) : undefined,
+    });
+    if (options) {
+      const items = await fetchItems<PlaylistItemData>(this.server, key);
+      return items.map(data => createPlaylistContent(this.server, data, key, this)) as Array<
+        SearchClassForLibtype<T>
+      >;
+    }
+
     if (this._items === null) {
-      const key = this._buildQueryKey(`/playlists/${this.ratingKey}/items`);
       const items = await fetchItems<PlaylistItemData>(this.server, key);
       this._items = items.map(data => createPlaylistContent(this.server, data, key, this));
     }
 
-    return this._items as T[];
+    return this._items;
   }
 
   /** Add items to a playlist. */
@@ -308,6 +354,8 @@ export class Playlist extends Playable {
     this.allowSync = data.allowSync;
     this.duration = data.duration;
     this.durationInSeconds = data.durationInSeconds;
+    const centroid = data.Directory?.find(item => [true, 1, '1'].includes(item.centroid ?? false));
+    this.centroid = centroid ? new Artist(this.server, centroid, undefined, this) : undefined;
   }
 
   protected _loadFullData(data: { Metadata: PlaylistResponse[] }) {
@@ -315,7 +363,7 @@ export class Playlist extends Playable {
   }
 
   private async _getPlaylistItemID(item: PlaylistContent): Promise<number> {
-    const items = await this.items();
+    const items = await this.items<PlaylistItem>();
     const playlistItem = items.find(i => i.ratingKey === item.ratingKey);
     if (!playlistItem) {
       throw new NotFound(`Item with title "${item.title}" not found in the playlist`);

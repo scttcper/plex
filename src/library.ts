@@ -113,6 +113,8 @@ export interface LibraryHubsOptions {
   [param: string]: LibraryHubOptionValue | undefined;
 }
 
+export type LibrarySectionHubsOptions = Record<string, QueryParamValue>;
+
 export interface LibrarySearchOptions {
   /** Exact or partial title query. */
   title?: string;
@@ -1818,8 +1820,11 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     await this.server.query({ path: key, method: 'delete' });
   }
 
-  async hubs(): Promise<Hub[]> {
-    const key = this._buildQueryKey(`/hubs/sections/${this.key}`, { includeStations: 1 });
+  async hubs(options: LibrarySectionHubsOptions = {}): Promise<Hub[]> {
+    const key = this._buildQueryKey(`/hubs/sections/${this.key}`, {
+      includeStations: true,
+      ...options,
+    });
     const hubs = await fetchItems<Hub>(this.server, key, undefined, Hub, this);
     return hubs;
   }

@@ -19,7 +19,6 @@ type PlayQueuePlayable = Playable & {
   key: string;
   listType: string;
   ratingKey: string;
-  section: () => Promise<{ uuid: string }>;
 };
 
 function hasPlaylistShape(item: Playable | Playlist): item is PlaylistLike {
@@ -31,13 +30,11 @@ function asPlayQueuePlayable(item: Playable): PlayQueuePlayable {
     key?: unknown;
     listType?: unknown;
     ratingKey?: unknown;
-    section?: unknown;
   };
   if (
     typeof playable.key !== 'string' ||
     typeof playable.listType !== 'string' ||
-    typeof playable.ratingKey !== 'string' ||
-    typeof playable.section !== 'function'
+    typeof playable.ratingKey !== 'string'
   ) {
     throw new BadRequest('Item is missing required playback metadata');
   }
@@ -134,6 +131,24 @@ export class PlayQueue extends PlexObject {
     items: Playable | Playable[] | Playlist,
     options: CreatePlayQueueOptions = {},
   ): Promise<PlayQueue> {
+    const args = await this.createArgs(server, items, options);
+
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(args)) {
+      params.set(key, value.toString());
+    }
+    const path = `/playQueues?${params.toString()}`;
+    const data = await server.query<PlayQueueContainerResponse>({ path, method: 'post' });
+    const playQueue = new PlayQueue(server, data.MediaContainer, path);
+    return playQueue;
+  }
+
+  /** Build the parameters used by server and client play queue creation commands. */
+  static async createArgs(
+    server: PlexServer,
+    items: Playable | Playable[] | Playlist,
+    options: CreatePlayQueueOptions = {},
+  ): Promise<Record<string, string | number | boolean>> {
     const {
       startItem,
       shuffle = false,
@@ -141,14 +156,16 @@ export class PlayQueue extends PlexObject {
       includeChapters = true,
       includeRelated = true,
       continuous = false,
+      params: extraParams = {},
     } = options;
 
-    const args: Record<string, string | number> = {
+    const args: Record<string, string | number | boolean> = {
       includeChapters: includeChapters ? 1 : 0,
       includeRelated: includeRelated ? 1 : 0,
       repeat: repeat ? 1 : 0,
       shuffle: shuffle ? 1 : 0,
       continuous: continuous ? 1 : 0,
+      ...extraParams,
     };
 
     if (Array.isArray(items)) {
@@ -171,14 +188,7 @@ export class PlayQueue extends PlexObject {
       args.key = startItem.key;
     }
 
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(args)) {
-      params.set(key, value.toString());
-    }
-    const path = `/playQueues?${params.toString()}`;
-    const data = await server.query<PlayQueueContainerResponse>({ path, method: 'post' });
-    const playQueue = new PlayQueue(server, data.MediaContainer, path);
-    return playQueue;
+    return args;
   }
 
   /**

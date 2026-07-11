@@ -2,8 +2,10 @@ import { URL, URLSearchParams } from 'node:url';
 
 import { ofetch } from 'ofetch';
 
+import type { Playable } from './base/playable.ts';
 import type {
   ClientTimelineData,
+  CreateClientPlayQueueOptions,
   Player,
   PlayMediaOptions,
   SendCommandParams,
@@ -11,6 +13,7 @@ import type {
   SetStreamsOptions,
 } from './client.types.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
+import type { Playlist } from './playlist.ts';
 import type { PlexServer } from './server.ts';
 import type { MediaContainer } from './util.ts';
 
@@ -586,6 +589,29 @@ export class PlexClient {
    */
   async setVideoStream(videoStreamID: number, mtype?: string): Promise<any> {
     return this.setStreams({ videoStreamID, mtype });
+  }
+
+  /** Create a play queue on a Plex client and begin playback. */
+  async createPlayQueue(
+    server: PlexServer,
+    items: Playable | Playable[] | Playlist,
+    options: CreateClientPlayQueueOptions = {},
+  ): Promise<any> {
+    const { offset = 0, paused = false, ...playQueueOptions } = options;
+    const { PlayQueue } = await import('./playqueue.ts');
+    const args = await PlayQueue.createArgs(server, items, playQueueOptions);
+    const serverUrl = new URL(server.baseurl);
+
+    return this.sendCommand('playback/createPlayQueue', {
+      ...args,
+      address: serverUrl.hostname,
+      machineIdentifier: server.machineIdentifier,
+      offset,
+      paused: paused ? 1 : 0,
+      port: Number(serverUrl.port || (serverUrl.protocol === 'https:' ? 443 : 80)),
+      protocol: serverUrl.protocol.slice(0, -1),
+      source: server.machineIdentifier,
+    });
   }
 
   /**

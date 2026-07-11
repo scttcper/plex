@@ -286,6 +286,7 @@ export interface MovieData {
   thumb?: string;
   art?: string;
   duration?: number;
+  editionTitle?: string;
   originallyAvailableAt?: string;
   addedAt: number;
   updatedAt: number;
@@ -375,6 +376,9 @@ export interface ShowData {
   librarySectionTitle?: string;
   librarySectionID?: number;
   librarySectionKey?: string;
+  parentKey?: string;
+  parentRatingKey?: string;
+  parentTitle?: string;
   contentRating?: string;
   contentRatingAge?: number | string;
   summary?: string;
@@ -388,6 +392,7 @@ export interface ShowData {
   banner?: string;
   theme: string;
   duration?: number;
+  editionTitle?: string;
   originallyAvailableAt?: string;
   leafCount: number;
   viewedLeafCount: number;

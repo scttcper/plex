@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ClientTimeline, PlexClient } from '../src/client.ts';
 import { PlexServer } from '../src/server.ts';
+import type { Movie } from '../src/video.ts';
 
 describe('PlexClient', () => {
   it('should initialize with default values', () => {
@@ -79,6 +80,35 @@ describe('PlexClient', () => {
     const client = new PlexClient();
     await expect(client.playMedia({ key: '/library/metadata/1' })).rejects.toThrow(
       'PlexServer is required',
+    );
+  });
+
+  it('should send a modern createPlayQueue command', async () => {
+    const server = new PlexServer('http://192.168.1.2:32400', 'server-token');
+    server.machineIdentifier = 'server-machine';
+    server.library = vi.fn(async () => ({ identifier: 'com.plexapp.plugins.library' })) as never;
+    const client = new PlexClient({ server });
+    client.sendCommand = vi.fn(async () => {});
+    const movie = {
+      key: '/library/metadata/10',
+      listType: 'video',
+      ratingKey: '10',
+    } as Movie;
+
+    await client.createPlayQueue(server, movie, { paused: true, shuffle: true });
+
+    expect(client.sendCommand).toHaveBeenCalledWith(
+      'playback/createPlayQueue',
+      expect.objectContaining({
+        address: '192.168.1.2',
+        machineIdentifier: 'server-machine',
+        paused: 1,
+        port: 32_400,
+        protocol: 'http',
+        shuffle: 1,
+        type: 'video',
+        uri: 'server://server-machine/com.plexapp.plugins.library/library/metadata/10',
+      }),
     );
   });
 });

@@ -3,6 +3,7 @@ export type { AlertTypes } from './alert.types.ts';
 export * from './client.ts';
 export type {
   ClientTimelineData,
+  CreateClientPlayQueueOptions,
   SendCommandParams,
   SetParametersOptions,
   SetStreamsOptions,

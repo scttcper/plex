@@ -1,6 +1,12 @@
 import { afterEach, beforeAll, expect, it } from 'vitest';
 
-import { type Movie, type MovieSection, Playlist, type PlexServer } from '../src/index.ts';
+import {
+  type Movie,
+  type MovieSection,
+  Playlist,
+  type PlexServer,
+  type ShowSection,
+} from '../src/index.ts';
 
 import { createClient } from './test-client.ts';
 
@@ -42,6 +48,26 @@ it('should create a playlist and add/remove an item', async () => {
 
   const itemsRemoved = await playlist.items();
   expect(itemsRemoved).toHaveLength(1);
+});
+
+it('should retrieve playlist items grouped by library type', async () => {
+  const library = await plex.library();
+  const section = await library.section<ShowSection>('TV Shows');
+  const show = await section.get({ title: 'Silicon Valley' });
+  const episodes = (await show.episodes()).slice(0, 3);
+  playlist = await Playlist.create(plex, 'grouped playlist items', { items: episodes });
+
+  const shows = await playlist.items({ libtype: 'show' });
+  const seasons = await playlist.items({ libtype: 'season' });
+  const groupedEpisodes = await playlist.items({ libtype: 'episode' });
+
+  expect(shows).toHaveLength(1);
+  expect(shows[0].ratingKey).toBe(show.ratingKey);
+  expect(seasons).toHaveLength(1);
+  expect(seasons[0].parentRatingKey).toBe(show.ratingKey);
+  expect(groupedEpisodes.map(episode => episode.ratingKey)).toEqual(
+    episodes.map(episode => episode.ratingKey),
+  );
 });
 
 it('should edit a playlist', async () => {

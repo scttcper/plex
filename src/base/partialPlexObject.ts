@@ -208,6 +208,21 @@ export abstract class PartialPlexObject extends PlexObject {
   }
 
   async section(): Promise<Section> {
+    const parent = this.parent?.deref() as
+      | { agent?: unknown; search?: unknown; section?: () => Promise<Section>; uuid?: unknown }
+      | undefined;
+    if (
+      typeof parent?.agent === 'string' &&
+      typeof parent.search === 'function' &&
+      typeof parent.uuid === 'string'
+    ) {
+      return parent as Section;
+    }
+
+    if (typeof parent?.section === 'function') {
+      return parent.section();
+    }
+
     return (await this.server.library()).sectionByID(this.librarySectionID);
   }
 

@@ -32,6 +32,16 @@ describe('Shows', () => {
     expect(episodes.length).toBe(18);
   });
 
+  it('should expose inherited edition fields and find other show editions', async () => {
+    const season = await show.season(1);
+    const episode = await season.episode(1);
+
+    expect(show.editionTitle).toBeUndefined();
+    expect(season.editionTitle).toBeUndefined();
+    expect(episode.editionTitle).toBeUndefined();
+    await expect(show.editions()).resolves.toEqual([]);
+  });
+
   it("should get a season's episodes", async () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();

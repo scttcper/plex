@@ -453,12 +453,34 @@ async function connectInPreferredOrder(
   throw new Error(`Unable to connect to resource: ${resourceName}`);
 }
 
+export type ResourceConnectionLocation = 'local' | 'remote' | 'relay';
+export type ResourceConnectionScheme = 'http' | 'https';
+export type ResourceIpVersion = 'ipv4' | 'ipv6';
+
+export interface PreferredConnectionOptions {
+  /** Restrict connections to HTTPS (`true`), HTTP (`false`), or either (`null`). */
+  ssl?: boolean | null;
+  /** Restrict connections to IPv6 (`true`), IPv4 (`false`), or either (`null`). */
+  ipv6?: boolean | null;
+  /** Location priority. */
+  locations?: readonly ResourceConnectionLocation[];
+  /** Protocol priority. */
+  schemes?: readonly ResourceConnectionScheme[];
+  /** IP-version priority. */
+  ipVersions?: readonly ResourceIpVersion[];
+}
+
+export interface ResourceConnectOptions extends PreferredConnectionOptions {
+  /** Per-connection timeout in milliseconds. */
+  timeout?: number;
+}
+
 /**
  * This object represents resources connected to your Plex server that can provide
  * content such as Plex Media Servers, iPhone or Android clients, etc.
  */
 export class MyPlexResource {
-  static key = 'https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1';
+  static key = 'https://plex.tv/api/v2/resources?includeHttps=1&includeRelay=1&includeIPv6=1';
   TAG = 'Device';
   readonly account: MyPlexAccount;
   private readonly baseUrl: string | null;
@@ -501,8 +523,14 @@ export class MyPlexResource {
     this._loadData(data);
   }
 
-  async connect(ssl: boolean | null = null, timeout?: number): Promise<PlexServer> {
-    const connections = [...this.connections].sort((a, b) => Number(b.local) - Number(a.local));
+  preferredConnections(options: PreferredConnectionOptions = {}): string[] {
+    const {
+      ssl = null,
+      ipv6 = null,
+      locations = ['local', 'remote', 'relay'],
+      schemes = ['https', 'http'],
+      ipVersions = ['ipv4', 'ipv6'],
+    } = options;
     const ownedOrUnownedNonLocal = (connection: ResourceConnection): boolean => {
       if (this.owned || (!this.owned && !connection.local)) {
         return true;
@@ -511,21 +539,63 @@ export class MyPlexResource {
       return false;
     };
 
-    // Sort connections from (https, local) to (http, remote)
-    // Only check non-local connections unless we own the resource
-    const https = connections.filter(x => ownedOrUnownedNonLocal(x)).map(x => x.uri);
-    const http = connections.filter(x => ownedOrUnownedNonLocal(x)).map(x => x.httpuri);
+    const allowedSchemes = schemes.filter(scheme =>
+      ssl === null ? true : ssl ? scheme === 'https' : scheme === 'http',
+    );
+    const allowedIpVersions = ipVersions.filter(ipVersion =>
+      ipv6 === null ? true : ipv6 ? ipVersion === 'ipv6' : ipVersion === 'ipv4',
+    );
+    const grouped = new Map<string, string[]>();
 
-    let attemptUrls: string[];
-    if (ssl === null) {
-      attemptUrls = [...https, ...http];
-    } else {
-      attemptUrls = ssl ? https : http;
+    for (const connection of this.connections) {
+      if (!ownedOrUnownedNonLocal(connection)) {
+        continue;
+      }
+
+      const location: ResourceConnectionLocation = connection.relay
+        ? 'relay'
+        : connection.local
+          ? 'local'
+          : 'remote';
+      const ipVersion: ResourceIpVersion = connection.ipv6 ? 'ipv6' : 'ipv4';
+      for (const scheme of allowedSchemes) {
+        const groupKey = `${location}:${scheme}:${ipVersion}`;
+        const urls = grouped.get(groupKey) ?? [];
+        urls.push(scheme === 'https' ? connection.uri : connection.httpuri);
+        grouped.set(groupKey, urls);
+      }
+    }
+
+    const attemptUrls: string[] = [];
+    for (const location of locations) {
+      for (const scheme of allowedSchemes) {
+        for (const ipVersion of allowedIpVersions) {
+          attemptUrls.push(...(grouped.get(`${location}:${scheme}:${ipVersion}`) ?? []));
+        }
+      }
     }
 
     if (this.baseUrl) {
       attemptUrls.push(this.baseUrl);
     }
+
+    return attemptUrls;
+  }
+
+  async connect(options?: ResourceConnectOptions): Promise<PlexServer>;
+  async connect(ssl?: boolean | null, timeout?: number): Promise<PlexServer>;
+  async connect(
+    optionsOrSsl: ResourceConnectOptions | boolean | null = null,
+    legacyTimeout?: number,
+  ): Promise<PlexServer> {
+    let options: ResourceConnectOptions;
+    if (typeof optionsOrSsl === 'object' && optionsOrSsl !== null) {
+      options = optionsOrSsl;
+    } else {
+      options = { ssl: optionsOrSsl as boolean | null, timeout: legacyTimeout };
+    }
+    const { timeout, ...connectionOptions } = options;
+    const attemptUrls = this.preferredConnections(connectionOptions);
 
     return connectInPreferredOrder(attemptUrls, this.accessToken, timeout, this.name);
   }
@@ -565,6 +635,10 @@ export class ResourceConnection {
   declare httpuri: string;
   /** True if local */
   declare local: boolean;
+  /** True if this connection uses an IPv6 address. */
+  declare ipv6: boolean;
+  /** True if this connection uses Plex Relay. */
+  declare relay: boolean;
   /** 32400 */
   declare port: number;
   /** HTTP or HTTPS */
@@ -582,7 +656,11 @@ export class ResourceConnection {
     this.port = Number(data.port);
     this.uri = data.uri;
     this.local = data.local;
-    this.httpuri = `http://${data.address}:${data.port}`;
+    this.ipv6 = data.IPv6;
+    this.relay = data.relay;
+    const httpAddress =
+      this.ipv6 && !data.address.startsWith('[') ? `[${data.address}]` : data.address;
+    this.httpuri = `http://${httpAddress}:${data.port}`;
   }
 }
 

@@ -53,6 +53,8 @@ export interface CreatePlayQueueOptions {
   includeRelated?: boolean;
   /** Include additional items after the initial item */
   continuous?: boolean;
+  /** Additional Plex play queue parameters. */
+  params?: Record<string, string | number | boolean>;
 }
 
 export interface GetPlayQueueOptions {

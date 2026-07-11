@@ -1,3 +1,5 @@
+import type { ArtistData } from './audio.types.ts';
+
 export interface PlaylistResponse {
   ratingKey: string;
   key: string;
@@ -16,6 +18,8 @@ export interface PlaylistResponse {
   allowSync?: boolean;
   duration?: number;
   durationInSeconds?: number;
+  /** Nested artist that a personalized "Mix For You" playlist is centered on. */
+  Directory?: Array<ArtistData & { centroid?: boolean | number | string }>;
 }
 
 export interface PlaylistItemData {

@@ -55,3 +55,11 @@ export interface PlayMediaOptions {
   offset?: number;
   params?: Record<string, string | number>;
 }
+
+export interface CreateClientPlayQueueOptions extends CreatePlayQueueOptions {
+  /** Playback offset in milliseconds. */
+  offset?: number;
+  /** Start playback paused. */
+  paused?: boolean;
+}
+import type { CreatePlayQueueOptions } from './playqueue.types.ts';

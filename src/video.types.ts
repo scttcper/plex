@@ -379,6 +379,7 @@ export interface EpisodeMetadata {
   chapterSource?: string;
   contentRating?: string;
   duration: number;
+  editionTitle?: string;
   audienceRating?: number;
   audienceRatingImage?: string;
   grandparentArt: string;
