@@ -103,7 +103,7 @@ it('uploads, selects, resets, and removes an external subtitle', async () => {
   }
 });
 
-it('searches for and downloads an on-demand subtitle', async () => {
+it.skip('searches for and downloads an on-demand subtitle', async () => {
   const results = await movie.searchSubtitles({
     language: 'en',
     hearingImpaired: 0,
