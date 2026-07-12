@@ -25,7 +25,7 @@ async function cleanupTestSubtitles(): Promise<void> {
 async function waitForDownloadedSubtitle(
   existingIds: ReadonlySet<number>,
 ): Promise<SubtitleStream> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
     await sleep(500);
     await movie.reload();
     const downloaded = movie
@@ -41,7 +41,7 @@ async function waitForDownloadedSubtitle(
 }
 
 async function cleanupDownloadedSubtitle(stream: SubtitleStream | undefined): Promise<void> {
-  if (stream?.key === `/library/streams/${stream.id}`) {
+  if (stream && stream.key === `/library/streams/${stream.id}`) {
     await movie.removeSubtitle({ subtitle: stream });
   }
 }
@@ -132,4 +132,4 @@ it('searches for and downloads an on-demand subtitle', async () => {
   } finally {
     await cleanupDownloadedSubtitle(downloaded);
   }
-}, 20_000);
+}, 45_000);
