@@ -1,7 +1,7 @@
-import type { Playable } from './base/playable.ts';
+import { Playable } from './base/playable.ts';
 import { PlexObject } from './base/plexObject.ts';
-import { findItems } from './baseFunctionality.ts';
 import { BadRequest } from './exceptions.ts';
+import { createPlexItem } from './itemFactory.ts';
 import type { Playlist } from './playlist.ts';
 import type {
   AddPlayQueueItemOptions,
@@ -217,13 +217,13 @@ export class PlayQueue extends PlexObject {
    */
   get items(): QueueItem[] {
     if (this._items === null) {
-      this._items = findItems(
-        this._data?.Metadata ?? [],
-        {},
-        undefined,
-        this.server,
-        this,
-      ) as QueueItem[];
+      this._items = (this._data?.Metadata ?? []).map(data => {
+        const item = createPlexItem(this.server, data, this.initpath, this);
+        if (!(item instanceof Playable)) {
+          throw new BadRequest(`PlayQueue item type "${data.type}" is not playable.`);
+        }
+        return item;
+      });
 
       // Set selectedItem based on the offset now that items are loaded
       if (

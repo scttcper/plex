@@ -1,20 +1,33 @@
 import { URLSearchParams } from 'node:url';
 
 import type { PlexObject } from './base/plexObject.ts';
+import { X_PLEX_CONTAINER_SIZE } from './config.ts';
+import { NotFound } from './exceptions.ts';
 import type { PlexServer } from './server.ts';
 import type { MediaContainer } from './util.ts';
 
 export type QueryParamValue = string | number | boolean | null | undefined;
-export type ItemFilterValue = string | number | boolean;
+export type ItemFilterPrimitive = string | number | boolean;
+export type ItemFilterValue = ItemFilterPrimitive | ItemFilterPrimitive[];
 export type PlexItemData = Record<string, unknown>;
 export type PlexItemParent = unknown;
+
+export interface FetchItemsOptions {
+  containerTag?: string | null;
+  containerStart?: number;
+  containerSize?: number;
+  maxResults?: number;
+}
 
 export interface PlexItemConstructor<T> {
   readonly TAG?: string | null;
   new (server: PlexServer, data: PlexItemData, initpath?: string, parent?: PlexObject): T;
 }
 
-type PlexItemContainer = Record<string, PlexItemData[] | undefined>;
+type PlexItemContainer = Record<string, unknown> & {
+  size?: number | string;
+  totalSize?: number | string;
+};
 type ItemOperator = (value: unknown, query: ItemFilterValue) => boolean;
 
 /**
@@ -50,10 +63,11 @@ export function buildQueryKey(
 export const OPERATORS = {
   exact: (value, query) => value === query,
   iexact: (value, query) => String(value).toLowerCase() === String(query).toLowerCase(),
-  contains: (value, query) => String(query).includes(String(value)),
-  icontains: (value, query) => String(query).toLowerCase().includes(String(value).toLowerCase()),
+  contains: (value, query) => String(value).includes(String(query)),
+  icontains: (value, query) => String(value).toLowerCase().includes(String(query).toLowerCase()),
   ne: (value, query) => value !== query,
-  in: (value, query) => String(query).includes(String(value)),
+  in: (value, query) =>
+    Array.isArray(query) ? query.some(candidate => candidate === value) : query === value,
   gt: (value, query) => Number(value) > Number(query),
   gte: (value, query) => Number(value) >= Number(query),
   lt: (value, query) => Number(value) < Number(query),
@@ -77,23 +91,40 @@ export const OPERATORS = {
  * in, the key will be translated to /library/metadata/<key>. This allows
  * fetching an item only knowing its key-id.
  */
-export async function fetchItem<T = PlexItemData>(
+export async function fetchItem<T>(
+  server: PlexServer,
+  ekey: string | number,
+  options: Record<string, ItemFilterValue> | undefined,
+  Cls: PlexItemConstructor<T>,
+  parent?: PlexItemParent,
+): Promise<T> {
+  const key = typeof ekey === 'number' ? `/library/metadata/${ekey.toString()}` : ekey;
+  const items = await fetchItems(server, key, options, Cls, parent, { maxResults: 1 });
+  const [item] = items;
+  if (item !== undefined) {
+    return item;
+  }
+
+  throw new NotFound(`Unable to find item at "${key}".`);
+}
+
+export async function fetchItemData<T = PlexItemData>(
   server: PlexServer,
   ekey: string | number,
   options?: Record<string, ItemFilterValue>,
   cls?: Pick<PlexItemConstructor<unknown>, 'TAG'>,
 ): Promise<T> {
   const key = typeof ekey === 'number' ? `/library/metadata/${ekey.toString()}` : ekey;
-  const response = await server.query<MediaContainer<PlexItemContainer>>({ path: key });
-  const containerKey = cls?.TAG ?? 'Metadata';
-  const elems = response.MediaContainer[containerKey] ?? [];
-  for (const elem of elems) {
-    if (checkAttrs(elem, options)) {
-      return elem as T;
-    }
+  const items = await fetchItems<PlexItemData>(server, key, options, undefined, undefined, {
+    containerTag: cls?.TAG,
+    maxResults: 1,
+  });
+  const [item] = items;
+  if (item !== undefined) {
+    return item as T;
   }
 
-  throw new Error('Unable to find item');
+  throw new NotFound(`Unable to find item at "${key}".`);
 }
 
 /**
@@ -107,11 +138,15 @@ export async function fetchItems<T>(
   options: Record<string, ItemFilterValue> | undefined,
   Cls: PlexItemConstructor<T>,
   parent?: PlexItemParent,
+  fetchOptions?: FetchItemsOptions,
 ): Promise<T[]>;
 export async function fetchItems<T = PlexItemData>(
   server: PlexServer,
   ekey: string,
   options?: Record<string, ItemFilterValue>,
+  Cls?: undefined,
+  parent?: PlexItemParent,
+  fetchOptions?: FetchItemsOptions,
 ): Promise<T[]>;
 export async function fetchItems<T = PlexItemData>(
   server: PlexServer,
@@ -119,11 +154,48 @@ export async function fetchItems<T = PlexItemData>(
   options?: Record<string, ItemFilterValue>,
   Cls?: PlexItemConstructor<T>,
   parent?: PlexItemParent,
+  fetchOptions: FetchItemsOptions = {},
 ): Promise<T[]> {
-  const response = await server.query<MediaContainer<PlexItemContainer>>({ path: ekey });
-  const { MediaContainer } = response;
-  const elems = MediaContainer[Cls?.TAG] ?? MediaContainer.Metadata ?? [];
-  return findItems(elems, options, Cls, server, parent, ekey);
+  const keyParams = new URLSearchParams(ekey.split('?', 2)[1] ?? '');
+  let containerStart =
+    fetchOptions.containerStart ?? optionalNumber(keyParams.get('X-Plex-Container-Start')) ?? 0;
+  const keyContainerSize = optionalNumber(keyParams.get('X-Plex-Container-Size'));
+  const requestedContainerSize = fetchOptions.containerSize ?? keyContainerSize;
+  let inferredContainerSize: number | undefined;
+  const maxResults = fetchOptions.maxResults;
+  const results: T[] = [];
+  const hasLocalFilters = Object.keys(options ?? {}).length > 0;
+  let firstPage = true;
+
+  while (maxResults === undefined || results.length < maxResults) {
+    const remaining = maxResults === undefined ? undefined : maxResults - results.length;
+    const defaultContainerSize =
+      hasLocalFilters || remaining === undefined
+        ? X_PLEX_CONTAINER_SIZE
+        : Math.min(X_PLEX_CONTAINER_SIZE, remaining);
+    const containerSize = requestedContainerSize ?? inferredContainerSize ?? defaultContainerSize;
+    const hasExplicitWindowOverride =
+      fetchOptions.containerStart !== undefined || fetchOptions.containerSize !== undefined;
+    const pageKey =
+      firstPage && !hasExplicitWindowOverride
+        ? ekey
+        : buildContainerKey(ekey, containerStart, containerSize);
+    const response = await server.query<MediaContainer<PlexItemContainer>>({ path: pageKey });
+    const { MediaContainer } = response;
+    const elems = containerItems(MediaContainer, Cls?.TAG ?? fetchOptions.containerTag);
+    results.push(...findItems(elems, options, Cls, server, parent, pageKey));
+
+    const totalSize = optionalNumber(MediaContainer.totalSize);
+    const rawPageSize = optionalNumber(MediaContainer.size) ?? elems.length;
+    inferredContainerSize ??= rawPageSize;
+    containerStart += rawPageSize;
+    firstPage = false;
+    if (rawPageSize === 0 || totalSize === undefined || containerStart >= totalSize) {
+      break;
+    }
+  }
+
+  return maxResults === undefined ? results : results.slice(0, maxResults);
 }
 
 /**
@@ -176,25 +248,61 @@ export function findItems<T = PlexItemData>(
 function checkAttrs(elem: unknown, obj: Record<string, ItemFilterValue> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
-    const [key, , operator] = getAttrOperator(attr);
-    const value =
-      typeof elem === 'object' && elem !== null
-        ? (elem as Record<string, unknown>)[key]
-        : undefined;
-    attrsFound[key] = operator(value, query);
+    const [path, , operator] = getAttrOperator(attr);
+    const values = nestedValues(elem, path);
+    attrsFound[attr] = values.some(value => operator(value, query));
   }
 
   return Object.values(attrsFound).every(x => x);
 }
 
-function getAttrOperator(attr: string): [string, keyof typeof OPERATORS, ItemOperator] {
+function buildContainerKey(key: string, start: number, size: number): string {
+  const [path, search = ''] = key.split('?', 2);
+  const params = new URLSearchParams(search);
+  params.set('X-Plex-Container-Start', start.toString());
+  params.set('X-Plex-Container-Size', size.toString());
+  return `${path}?${params.toString()}`;
+}
+
+function containerItems(container: PlexItemContainer, tag?: string | null): PlexItemData[] {
+  const value = container[tag ?? 'Metadata'] ?? container.Metadata;
+  return Array.isArray(value) ? (value as PlexItemData[]) : [];
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const result = Number(value);
+  return Number.isNaN(result) ? undefined : result;
+}
+
+function getAttrOperator(attr: string): [string[], keyof typeof OPERATORS, ItemOperator] {
   // OPERATORS
   for (const [op, operator] of Object.entries(OPERATORS)) {
     if (attr.endsWith(`__${op}`)) {
-      const key = attr.split('__', 1)[0];
-      return [key, op as keyof typeof OPERATORS, operator];
+      const path = attr.split('__').slice(0, -1);
+      return [path, op as keyof typeof OPERATORS, operator];
     }
   }
 
-  return [attr, 'exact', OPERATORS.exact];
+  return [attr.split('__'), 'exact', OPERATORS.exact];
+}
+
+function nestedValues(value: unknown, path: string[]): unknown[] {
+  if (path.length === 0) {
+    return [value];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(item => nestedValues(item, path));
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return [];
+  }
+
+  const [key, ...rest] = path;
+  return nestedValues((value as Record<string, unknown>)[key], rest);
 }

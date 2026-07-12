@@ -3,7 +3,7 @@ import { URL, URLSearchParams } from 'node:url';
 import { ofetch } from 'ofetch';
 
 import { Playable } from './base/playable.ts';
-import { fetchItem, fetchItems } from './baseFunctionality.ts';
+import { fetchItemData, fetchItems } from './baseFunctionality.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
 import { NotFound } from './exceptions.ts';
@@ -680,7 +680,7 @@ export class PlexServer {
 
   /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
-    const backgroundProcessing = await fetchItem<{ key: string }>(this, '/playlists?type=42');
+    const backgroundProcessing = await fetchItemData<{ key: string }>(this, '/playlists?type=42');
     const items = await fetchItems<Optimized>(
       this,
       backgroundProcessing.key,

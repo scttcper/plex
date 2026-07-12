@@ -2,7 +2,6 @@ import { URLSearchParams } from 'node:url';
 
 import type { AlbumData, ArtistData, TrackData } from './audio.types.ts';
 import { Playable } from './base/playable.ts';
-import { PlexObject } from './base/plexObject.ts';
 import { fetchItem, fetchItems } from './baseFunctionality.ts';
 import { NotFound } from './exceptions.ts';
 import {
@@ -21,7 +20,6 @@ import {
   Style,
   Subformat,
 } from './media.ts';
-import type { PlexServer } from './server.ts';
 
 type MusicSectionLike = {
   sonicAdventure: (start: any, end: any) => Promise<any[]>;
@@ -69,7 +67,7 @@ export class Audio extends Playable {
   declare viewCount?: number;
 
   /** Store the raw data from the Plex API for lazy loading related items. */
-  declare protected _data?: any;
+  declare protected _data?: Record<string, any>;
 
   /** List of field objects. */
   declare fields?: Field[];
@@ -77,23 +75,6 @@ export class Audio extends Playable {
   declare images?: Image[];
   /** List of mood objects. */
   declare moods?: Mood[];
-
-  /**
-   * @protected Should not be called directly. Use `server.fetchItem()`.
-   * Initializes a new instance of the Audio class.
-   * @param server The PlexServer instance used for communication.
-   * @param data The raw data object received from the Plex API.
-   * @param initpath The path used to fetch this item initially.
-   */
-  constructor(
-    server: PlexServer,
-    data: any,
-    initpath: string | undefined,
-    parent: PlexObject | undefined,
-  ) {
-    super(server, data, initpath, parent);
-    this._loadData(data);
-  }
 
   /**
    * Returns the full URL for a given part (like a media stream) relative to the item's key.
@@ -301,16 +282,6 @@ export class Track extends Audio {
   // thumb inherited from Audio (used as poster?)
   // theme inherited from Audio
 
-  constructor(
-    server: PlexServer,
-    data: any,
-    initpath: string | undefined,
-    parent: PlexObject | undefined,
-  ) {
-    super(server, data, initpath, parent);
-    this._loadData(data);
-  }
-
   /**
    * @returns List of file paths where the track is found on disk.
    */
@@ -350,8 +321,7 @@ export class Track extends Audio {
       throw new Error('Missing parentKey to fetch album');
     }
     const key = this._buildQueryKey(this.parentKey);
-    const data = await fetchItem(this.server, key);
-    return new Album(this.server, data, this.parentKey, this);
+    return fetchItem(this.server, key, undefined, Album, this);
   }
 
   /**
@@ -362,8 +332,7 @@ export class Track extends Audio {
       throw new Error('Missing grandparentKey to fetch artist');
     }
     const key = this._buildQueryKey(this.grandparentKey);
-    const data = await fetchItem(this.server, key);
-    return new Artist(this.server, data, this.grandparentKey, this);
+    return fetchItem(this.server, key, undefined, Artist, this);
   }
 
   /**
@@ -498,18 +467,6 @@ export class Artist extends Audio {
     return this._data?.Location?.map((loc: { path?: string }) => loc.path).filter(Boolean) ?? [];
   }
 
-  // Constructor calls super and _loadData
-  constructor(
-    server: PlexServer,
-    data: any,
-    initpath?: string,
-    parent?: PlexObject, // Allow parent like LibrarySection
-  ) {
-    super(server, data, initpath, parent);
-    // super constructor already calls _loadData, call again to apply Artist specifics
-    this._loadData(data);
-  }
-
   /**
    * Returns a list of Album objects by the artist.
    * @param options Additional search options.
@@ -576,8 +533,7 @@ export class Artist extends Audio {
     }
 
     try {
-      const data = await fetchItem(this.server, key, query);
-      return new Track(this.server, data, key, this);
+      return await fetchItem(this.server, key, query, Track, this);
     } catch (e) {
       if (e instanceof NotFound) {
         return undefined;
@@ -738,16 +694,6 @@ export class Album extends Audio {
   declare subformats?: Subformat[];
   declare viewedLeafCount?: number;
 
-  constructor(
-    server: PlexServer,
-    data: any,
-    initpath: string | undefined,
-    parent: PlexObject | undefined,
-  ) {
-    super(server, data, initpath, parent);
-    this._loadData(data);
-  }
-
   // TODO: not sure why this isn't working yet
   // /**
   //  * Returns the Track that matches the specified criteria.
@@ -790,8 +736,7 @@ export class Album extends Audio {
       throw new Error('Missing parentKey to fetch artist');
     }
     const key = this._buildQueryKey(this.parentKey);
-    const data = await fetchItem(this.server, key);
-    return new Artist(this.server, data, this.parentKey, this);
+    return fetchItem(this.server, key, undefined, Artist, this);
   }
 
   /**

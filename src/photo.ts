@@ -318,8 +318,7 @@ export class Photo extends Playable {
     }
 
     const key = this._buildQueryKey(this.parentKey);
-    const data = await fetchItem(this.server, key);
-    return new Photoalbum(this.server, data, this.parentKey, this);
+    return fetchItem(this.server, key, undefined, Photoalbum, this);
   }
 
   override getWebURL({ base }: { base?: string } = {}): string {

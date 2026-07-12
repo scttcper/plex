@@ -4,6 +4,7 @@ import { Album, Artist, Track } from './audio.ts';
 import { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';
 import { BadRequest, NotFound, Unsupported } from './exceptions.ts';
+import { createPlexItem } from './itemFactory.ts';
 import type {
   AdvancedSearchFilters,
   LibrarySection,
@@ -33,38 +34,11 @@ function createPlaylistContent(
   key: string,
   parent: Playlist,
 ): PlaylistItem {
-  switch (data.type) {
-    case 'episode': {
-      return new Episode(server, data, key, parent) as PlaylistItem;
-    }
-    case 'movie': {
-      return new Movie(server, data, key, parent) as PlaylistItem;
-    }
-    case 'show': {
-      return new Show(server, data, key, parent) as PlaylistItem;
-    }
-    case 'season': {
-      return new Season(server, data, key, parent) as PlaylistItem;
-    }
-    case 'track': {
-      return new Track(server, data, key, parent) as PlaylistItem;
-    }
-    case 'album': {
-      return new Album(server, data, key, parent) as PlaylistItem;
-    }
-    case 'artist': {
-      return new Artist(server, data, key, parent) as PlaylistItem;
-    }
-    case 'photoalbum': {
-      return new Photoalbum(server, data, key, parent) as PlaylistItem;
-    }
-    case 'photo': {
-      return new Photo(server, data, key, parent) as PlaylistItem;
-    }
-    default: {
-      throw new Error(`Media type '${data.type}' not implemented`);
-    }
+  if (data.type === 'clip') {
+    throw new Unsupported('Clips are not supported as playlist content.');
   }
+
+  return createPlexItem(server, data, key, parent) as PlaylistItem;
 }
 
 export interface CreateRegularPlaylistOptions {

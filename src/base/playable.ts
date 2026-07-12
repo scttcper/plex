@@ -1,7 +1,7 @@
 import { URLSearchParams } from 'node:url';
 
 import type { AudioStream, Media, MediaPart, MediaPartStream, SubtitleStream } from '../media.ts';
-import { PlayQueue, type PlayQueue as PlayQueueType } from '../playqueue.ts';
+import type { PlayQueue } from '../playqueue.ts';
 import type { CreatePlayQueueOptions } from '../playqueue.types.ts';
 
 import { PartialPlexObject } from './partialPlexObject.ts';
@@ -26,6 +26,8 @@ export abstract class Playable extends PartialPlexObject {
   declare viewedAt: any;
   /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
   declare playlistItemID?: number;
+  /** Queue-local item ID (only populated for PlayQueue items). */
+  declare playQueueItemID?: number;
 
   /**
    * Returns a new PlayQueue from this media item.
@@ -33,8 +35,8 @@ export abstract class Playable extends PartialPlexObject {
    * @param options Options for creating the PlayQueue
    * @returns New PlayQueue instance
    */
-  async createPlayQueue(options: CreatePlayQueueOptions = {}): Promise<PlayQueueType> {
-    return PlayQueue.create(this.server, this, options);
+  async createPlayQueue(options: CreatePlayQueueOptions = {}): Promise<PlayQueue> {
+    return this.server.createPlayQueue(this, options);
   }
 
   /**

@@ -564,8 +564,7 @@ export class Show extends Video {
     });
     const query =
       typeof titleOrIndex === 'string' ? { title__iexact: titleOrIndex } : { index: titleOrIndex };
-    const data = await fetchItem(this.server, key, query);
-    return new Season(this.server, data, key, this);
+    return fetchItem(this.server, key, query, Season, this);
   }
 
   async seasons(query?: Record<string, string | number>): Promise<Season[]> {
@@ -581,8 +580,7 @@ export class Show extends Video {
       'title' in args
         ? { title__iexact: args.title }
         : { parentIndex: args.season, index: args.episode };
-    const data = await fetchItem(this.server, key, query);
-    return new Episode(this.server, data, key, this);
+    return fetchItem(this.server, key, query, Episode, this);
   }
 
   async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
@@ -676,8 +674,7 @@ export class Season extends Video {
     const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
     const query =
       typeof titleOrIndex === 'string' ? { title__iexact: titleOrIndex } : { index: titleOrIndex };
-    const data = await fetchItem(this.server, key, query);
-    return new Episode(this.server, data, key, this);
+    return fetchItem(this.server, key, query, Episode, this);
   }
 
   async episodes(query?: Record<string, string | number>): Promise<Episode[]> {
@@ -699,8 +696,7 @@ export class Season extends Video {
   /** Return the parent show. */
   async show(): Promise<Show> {
     const key = this._buildQueryKey(this.parentKey);
-    const data = await fetchItem<ShowData>(this.server, key);
-    return new Show(this.server, data, key, this);
+    return fetchItem(this.server, key, undefined, Show, this);
   }
 
   /** Return the episode Plex currently considers on deck for this season. */
@@ -797,14 +793,12 @@ export class Episode extends Video {
 
   async season(): Promise<Season> {
     const key = this._buildQueryKey(this.parentKey);
-    const data = await fetchItem(this.server, key);
-    return new Season(this.server, data, this.parentKey, this);
+    return fetchItem(this.server, key, undefined, Season, this);
   }
 
   async show(): Promise<Show> {
     const key = this._buildQueryKey(this.grandparentKey);
-    const data = await fetchItem(this.server, key);
-    return new Show(this.server, data, this.grandparentKey, this);
+    return fetchItem(this.server, key, undefined, Show, this);
   }
 
   locations(): string[] {

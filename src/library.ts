@@ -8,6 +8,7 @@ import { PlexObject } from './base/plexObject.ts';
 import {
   buildQueryKey,
   fetchItem,
+  fetchItemData,
   fetchItems,
   type ItemFilterValue,
   OPERATORS,
@@ -15,6 +16,7 @@ import {
   type QueryParamValue,
 } from './baseFunctionality.ts';
 import { BadRequest, NotFound, Unsupported } from './exceptions.ts';
+import { classForPlexType, createPlexItem } from './itemFactory.ts';
 import type {
   CommonData,
   CollectionData,
@@ -990,19 +992,6 @@ type LibrarySearchMetadata = NonNullable<SearchResultContainer['Metadata']>[numb
 type ManualFilteringField = Pick<FilteringFieldData, 'key' | 'title' | 'type'>;
 type ManualFilteringFilter = Pick<FilteringFilterData, 'filter' | 'filterType' | 'title'>;
 type ManualFilteringSort = Pick<FilteringSortData, 'defaultDirection' | 'key' | 'title'>;
-type LibrarySearchMetadataContainer = { Metadata?: LibrarySearchMetadata[] };
-const LIBTYPE_CLASSES = {
-  album: Album,
-  artist: Artist,
-  clip: Clip,
-  episode: Episode,
-  movie: Movie,
-  photo: Photo,
-  photoalbum: Photoalbum,
-  season: Season,
-  show: Show,
-  track: Track,
-} satisfies Partial<Record<Libtype, Class<LibrarySearchItem>>>;
 const FILTER_VALUE_TYPES = [
   'audioLanguage',
   'boolean',
@@ -1079,7 +1068,11 @@ function withLibraryTagItems<T extends MediaTag | LibraryMediaTag>(
 }
 
 function isItemFilterValue(value: SearchArgValue): value is ItemFilterValue {
-  return ['boolean', 'number', 'string'].includes(typeof value);
+  return (
+    ['boolean', 'number', 'string'].includes(typeof value) ||
+    (Array.isArray(value) &&
+      value.every(item => ['boolean', 'number', 'string'].includes(typeof item)))
+  );
 }
 
 function isFilterValueType(type: string): type is FilterValueType {
@@ -1200,7 +1193,9 @@ function classForLibtype(libtype?: string): Class<LibrarySearchItem> | undefined
     return Collections;
   }
 
-  return libtype && isLibtype(libtype) ? LIBTYPE_CLASSES[libtype] : undefined;
+  return libtype && isLibtype(libtype)
+    ? (classForPlexType(libtype) as Class<LibrarySearchItem> | undefined)
+    : undefined;
 }
 
 function createLibrarySearchItem(
@@ -1208,12 +1203,11 @@ function createLibrarySearchItem(
   data: LibrarySearchMetadata,
   parent?: PlexObject,
 ): LibrarySearchItem {
-  const Cls = classForLibtype(data.type);
-  if (!Cls) {
-    throw new Unsupported(`Unsupported library item type: ${String(data.type)}`);
+  if (data.type === 'collection') {
+    return new Collections(server, data as unknown as CollectionData, undefined, parent);
   }
 
-  return new Cls(server, data, undefined, parent) as LibrarySearchItem;
+  return createPlexItem(server, data, undefined, parent) as LibrarySearchItem;
 }
 
 async function fetchLibrarySearchItems(
@@ -1221,10 +1215,8 @@ async function fetchLibrarySearchItems(
   key: string,
   parent?: PlexObject,
 ): Promise<LibrarySearchItem[]> {
-  const data = await server.query<MediaContainer<LibrarySearchMetadataContainer>>({ path: key });
-  return (data.MediaContainer.Metadata ?? []).map(item =>
-    createLibrarySearchItem(server, item, parent),
-  );
+  const items = await fetchItems<LibrarySearchMetadata>(server, key);
+  return items.map(item => createLibrarySearchItem(server, item, parent));
 }
 
 function createHubItem<T extends HubItem>(
@@ -1620,7 +1612,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
    */
   async getGuid(guid: string): Promise<SType> {
     const key = this._buildQueryKey(`/library/sections/${this.key}/all`);
-    return fetchItem(this.server, key, { Guid__id__iexact: guid });
+    return fetchItem(this.server, key, { Guid__id__iexact: guid }, this.SECTION_TYPE, this);
   }
 
   /**
@@ -1670,7 +1662,11 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   async search<C = SType>(args: Partial<SearchArgs> = {}, Cls?: Class<C>): Promise<C[]> {
     const { key, localFilters } = await this._buildSearchKey(args);
     const ClsToUse = Cls ?? this._classForSearch(args.libtype);
-    const data = await fetchItems(this.server, key, localFilters, ClsToUse, this);
+    const data = await fetchItems(this.server, key, localFilters, ClsToUse, this, {
+      containerSize: args.container_size,
+      containerStart: args.container_start,
+      maxResults: args.maxresults,
+    });
     return data;
   }
 
@@ -3137,7 +3133,7 @@ export class ManagedHub extends PlexObject {
 
   override async reload(): Promise<void> {
     const key = `/hubs/sections/${this.librarySectionID}/manage`;
-    const data = await fetchItem<ManagedHubData>(
+    const data = await fetchItemData<ManagedHubData>(
       this.server,
       key,
       { identifier: this.identifier },
