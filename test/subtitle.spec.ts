@@ -132,4 +132,4 @@ it('searches for and downloads an on-demand subtitle', async () => {
   } finally {
     await cleanupDownloadedSubtitle(downloaded);
   }
-});
+}, 20_000);
