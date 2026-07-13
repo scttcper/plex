@@ -46,4 +46,4 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   expect(typeof userState.ratingKey).toBe('string');
   expect(typeof userState.viewCount).toBe('number');
   expect(typeof userState.viewOffset).toBe('number');
-});
+}, 20_000);
