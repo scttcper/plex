@@ -1,13 +1,6 @@
+import { createLocalJWKSet, exportJWK, generateKeyPair, importJWK, jwtVerify, SignJWT } from 'jose';
 import { ofetch } from 'ofetch';
-import {
-  base64ToString,
-  base64ToUint8Array,
-  concatUint8Arrays,
-  stringToBase64,
-  stringToUint8Array,
-  uint8ArrayToBase64,
-  uint8ArrayToHex,
-} from 'uint8array-extras';
+import { base64ToUint8Array, concatUint8Arrays, uint8ArrayToHex } from 'uint8array-extras';
 
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import { BadRequest, Unauthorized } from './exceptions.ts';
@@ -33,12 +26,6 @@ export const PLEX_JWT_SCOPES = [
   'anonymous',
   'joinedAt',
 ] as const satisfies readonly KnownPlexJwtScope[];
-
-interface PlexJwtHeader {
-  readonly alg: 'EdDSA';
-  readonly kid: string;
-  readonly typ?: 'JWT';
-}
 
 interface PlexJwtNonceResponse {
   readonly nonce: string;
@@ -95,13 +82,10 @@ async function toPublicKey(privateKey: PlexJwtPrivateKey): Promise<PlexJwtPublic
 }
 
 async function createPrivateKey(): Promise<PlexJwtPrivateKey> {
-  const generated = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
-  if (!('privateKey' in generated)) {
-    throw new BadRequest('Unable to generate an Ed25519 key pair.');
-  }
-  const privateJwk = await crypto.subtle.exportKey('jwk', generated.privateKey);
+  const { privateKey } = await generateKeyPair('EdDSA', { extractable: true });
+  const privateJwk = await exportJWK(privateKey);
   if (!privateJwk.d || !privateJwk.x) {
-    throw new Error('Web Crypto returned an incomplete Ed25519 private key.');
+    throw new Error('Unable to export a complete Ed25519 private key.');
   }
   return {
     kty: 'OKP',
@@ -109,26 +93,6 @@ async function createPrivateKey(): Promise<PlexJwtPrivateKey> {
     x: privateJwk.x,
     d: privateJwk.d,
   };
-}
-
-function decodeJson<T>(encoded: string, name: string): T {
-  try {
-    return JSON.parse(base64ToString(encoded)) as T;
-  } catch {
-    throw new Unauthorized(`Plex JWT ${name} is not valid base64url JSON.`);
-  }
-}
-
-function parseHeader(encoded: string): PlexJwtHeader {
-  const header = decodeJson<PlexJwtHeader>(encoded, 'header');
-  if (
-    header.alg !== 'EdDSA' ||
-    typeof header.kid !== 'string' ||
-    (header.typ !== undefined && header.typ !== 'JWT')
-  ) {
-    throw new Unauthorized('Plex JWT header is invalid.');
-  }
-  return header;
 }
 
 async function fetchNonce(clientIdentifier: string, timeout: number): Promise<string> {
@@ -141,34 +105,18 @@ async function fetchNonce(clientIdentifier: string, timeout: number): Promise<st
 }
 
 async function clientJwt(client: PlexJwtClient, timeout: number): Promise<string> {
-  const privateKey = await crypto.subtle.importKey(
-    'jwk',
-    { ...client.privateKey, ext: true, key_ops: ['sign'] },
-    'Ed25519',
-    false,
-    ['sign'],
-  );
+  const privateKey = await importJWK(client.privateKey, 'EdDSA');
   const now = Math.floor(Date.now() / 1000);
-  const header: PlexJwtHeader = {
-    alg: 'EdDSA',
-    typ: 'JWT',
-    kid: await keyId(client.privateKey),
-  };
-  const payload = {
+  return new SignJWT({
     nonce: await fetchNonce(client.clientIdentifier, timeout),
     scope: client.scopes.join(','),
-    aud: 'plex.tv',
-    iss: client.clientIdentifier,
-    iat: now,
-    exp: now + clientTokenLifetimeSeconds,
-  };
-  const signingInput = `${stringToBase64(JSON.stringify(header), { urlSafe: true })}.${stringToBase64(JSON.stringify(payload), { urlSafe: true })}`;
-  const signature = await crypto.subtle.sign(
-    'Ed25519',
-    privateKey,
-    stringToUint8Array(signingInput),
-  );
-  return `${signingInput}.${uint8ArrayToBase64(new Uint8Array(signature), { urlSafe: true })}`;
+  })
+    .setProtectedHeader({ alg: 'EdDSA', typ: 'JWT', kid: await keyId(client.privateKey) })
+    .setAudience('plex.tv')
+    .setIssuer(client.clientIdentifier)
+    .setIssuedAt(now)
+    .setExpirationTime(now + clientTokenLifetimeSeconds)
+    .sign(privateKey);
 }
 
 async function exchange(client: PlexJwtClient, timeout: number): Promise<string> {
@@ -233,46 +181,31 @@ export async function verifyPlexJwt({
     throw new BadRequest('refreshWithinSeconds must be a non-negative number.');
   }
 
-  const parts = credentials.token.split('.');
-  if (parts.length !== 3 || parts.some(part => part.length === 0)) {
-    throw new Unauthorized('Plex JWT must contain three encoded segments.');
-  }
-  const [encodedHeader, encodedClaims, encodedSignature] = parts;
-  const header = parseHeader(encodedHeader);
   const keyResponse = await ofetch<PlexJwtKeysResponse>(`${AUTH_URL}/keys`, {
     headers: requestHeaders(credentials.clientIdentifier),
     timeout,
     retry: 0,
   });
-  const signingKey = keyResponse.keys.find(key => key.kid === header.kid);
-  if (!signingKey) {
-    throw new Unauthorized(`Plex JWT signing key ${header.kid} is not published by Plex.`);
-  }
-  const verificationKey = await crypto.subtle.importKey(
-    'jwk',
-    { ...signingKey, ext: true, key_ops: ['verify'] },
-    'Ed25519',
-    false,
-    ['verify'],
-  );
-  const validSignature = await crypto.subtle.verify(
-    'Ed25519',
-    verificationKey,
-    base64ToUint8Array(encodedSignature),
-    stringToUint8Array(`${encodedHeader}.${encodedClaims}`),
-  );
-  if (!validSignature) {
-    throw new Unauthorized('Plex JWT signature is invalid.');
-  }
-
-  const claims = decodeJson<PlexJwtClaims>(encodedClaims, 'payload');
-  if (claims.iss !== 'plex.tv') {
-    throw new Unauthorized('Plex JWT issuer is invalid.');
+  let claims: PlexJwtClaims;
+  try {
+    const verified = await jwtVerify<PlexJwtClaims>(
+      credentials.token,
+      createLocalJWKSet(keyResponse),
+      {
+        algorithms: ['EdDSA'],
+        audience: credentials.clientIdentifier,
+        issuer: 'plex.tv',
+        requiredClaims: ['exp', 'iat', 'nonce', 'thumbprint', 'user'],
+      },
+    );
+    claims = verified.payload;
+  } catch {
+    throw new Unauthorized('Plex JWT signature or claims are invalid.');
   }
   if (claims.thumbprint !== (await keyId(credentials.privateKey))) {
     throw new Unauthorized('Plex JWT was issued for a different key pair.');
   }
-  if (!claims.aud.includes('plex.tv') || !claims.aud.includes(credentials.clientIdentifier)) {
+  if (!claims.aud.includes('plex.tv')) {
     throw new Unauthorized('Plex JWT audience does not include Plex and this client.');
   }
   const now = Math.floor(Date.now() / 1000);
