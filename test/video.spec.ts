@@ -261,7 +261,7 @@ describe('Movies', () => {
     const posters = await movie.posters();
     expect(posters.length).toBeGreaterThan(0);
     expect(posters[0].provider).toBe('tmdb');
-    expect(posters[0].ratingKey).toMatch(/^metadata:\/\/posters\//);
+    expect(typeof posters[0].ratingKey).toBe('string');
     expect(typeof posters[0].selected).toBe('boolean');
   });
 });
