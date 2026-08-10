@@ -2,7 +2,7 @@ import { URL, URLSearchParams } from 'node:url';
 
 import { ofetch } from 'ofetch';
 
-import { Playable } from './base/playable.ts';
+import type { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
@@ -29,8 +29,6 @@ import type {
   HistoryResult,
   ServerRootResponse,
   HistoryOptions,
-  SessionData,
-  TranscodeSessionData,
   TranscodeImageOptions,
 } from './server.types.ts';
 import { registerPlexServer } from './serverFactory.ts';
@@ -47,6 +45,13 @@ import {
   type ServerWalkEntry,
 } from './serverModels.ts';
 import type { ButlerTaskData, ServerFileData, ServerPathData } from './serverModels.types.ts';
+import { createPlexSessionItem, createPlexTranscodeSession } from './session.ts';
+import type {
+  PlexSessionItem,
+  PlexSessionMetadataData,
+  PlexTranscodeSession,
+  PlexTranscodeSessionData,
+} from './session.types.ts';
 import { type SettingResponse, Settings } from './settings.ts';
 import { encodeBase64, type MediaContainer } from './util.ts';
 
@@ -457,19 +462,21 @@ export class PlexServer {
   }
 
   /** Returns a list of all active session (currently playing) media objects. */
-  async sessions(): Promise<SessionData[]> {
+  async sessions(): Promise<PlexSessionItem[]> {
     const key = '/status/sessions';
-    const data = await this.query<MediaContainer<{ Metadata?: SessionData[] }>>({ path: key });
-    return data.MediaContainer.Metadata ?? [];
+    const data = await this.query<MediaContainer<{ Metadata?: PlexSessionMetadataData[] }>>({
+      path: key,
+    });
+    return (data.MediaContainer.Metadata ?? []).map(item => createPlexSessionItem(this, item));
   }
 
   /** Returns a list of all active transcode sessions. */
-  async transcodeSessions(): Promise<TranscodeSessionData[]> {
+  async transcodeSessions(): Promise<PlexTranscodeSession[]> {
     const key = '/transcode/sessions';
-    const data = await this.query<MediaContainer<{ TranscodeSession?: TranscodeSessionData[] }>>({
-      path: key,
-    });
-    return data.MediaContainer.TranscodeSession ?? [];
+    const data = await this.query<
+      MediaContainer<{ TranscodeSession?: PlexTranscodeSessionData[] }>
+    >({ path: key });
+    return (data.MediaContainer.TranscodeSession ?? []).map(createPlexTranscodeSession);
   }
 
   /** Returns a list of all current server activities. */
