@@ -1,40 +1,26 @@
 import { randomUUID } from 'node:crypto';
 
-import { ofetch } from 'ofetch';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 
-import { BASE_HEADERS } from '../src/config.ts';
 import { refreshPlexJwt, registerPlexJwt, verifyPlexJwt } from '../src/jwt.ts';
 import type { PlexJwtScope } from '../src/jwt.types.ts';
 import { MyPlexAccount } from '../src/myplex.ts';
+import { MyPlexPinLogin } from '../src/pin.ts';
 
 import { createAccount } from './test-client.ts';
 
-const clientIdentifier = `plex-ts-jwt-test-${randomUUID()}`;
+const clientIdentifierPrefix = 'plex-ts-jwt-test-';
+const clientIdentifier = `${clientIdentifierPrefix}${randomUUID()}`;
 const scopes = ['username', 'email', 'friendly_name'] as const satisfies readonly PlexJwtScope[];
-
-interface PlexPinResponse {
-  readonly id: number;
-  readonly code: string;
-  readonly authToken: string | null;
-}
 
 let account: MyPlexAccount;
 let bootstrapToken: string;
 
-function pinHeaders(token?: string): Headers {
-  const headers = new Headers(BASE_HEADERS);
-  headers.set('Accept', 'application/json');
-  headers.set('X-Plex-Client-Identifier', clientIdentifier);
-  if (token) {
-    headers.set('X-Plex-Token', token);
-  }
-  return headers;
-}
-
 async function cleanupJwtDevices(): Promise<void> {
   const devices = await account.devices();
-  const matchingDevices = devices.filter(device => device.clientIdentifier === clientIdentifier);
+  const matchingDevices = devices.filter(device =>
+    device.clientIdentifier.startsWith(clientIdentifierPrefix),
+  );
   await Promise.all(
     matchingDevices.map(device =>
       account.query({ url: `https://plex.tv/devices/${device.id}.xml`, method: 'delete' }),
@@ -43,28 +29,9 @@ async function cleanupJwtDevices(): Promise<void> {
 }
 
 async function createBootstrapToken(): Promise<string> {
-  const pin = await ofetch<PlexPinResponse>('https://clients.plex.tv/api/v2/pins', {
-    method: 'POST',
-    headers: pinHeaders(),
-    retry: 0,
-  });
-  const linkHeaders = pinHeaders(account.authenticationToken);
-  linkHeaders.set('Content-Type', 'application/x-www-form-urlencoded');
-  linkHeaders.set('X-Plex-Product', 'Plex SSO');
-  await ofetch('https://plex.tv/api/v2/pins/link', {
-    method: 'PUT',
-    headers: linkHeaders,
-    body: new URLSearchParams({ code: pin.code }),
-    retry: 0,
-  });
-  const linkedPin = await ofetch<PlexPinResponse>(`https://clients.plex.tv/api/v2/pins/${pin.id}`, {
-    headers: pinHeaders(),
-    retry: 0,
-  });
-  if (!linkedPin.authToken) {
-    throw new Error('Plex did not return a token for the linked JWT test device.');
-  }
-  return linkedPin.authToken;
+  const login = await MyPlexPinLogin.create({ clientIdentifier });
+  await account.linkPin(login);
+  return (await login.wait({ pollInterval: 100, timeout: 5000 })).token;
 }
 
 beforeAll(async () => {

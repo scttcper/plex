@@ -41,15 +41,30 @@ const library = await plex.library();
 const sections = await library.sections();
 ```
 
+Authenticate without collecting a Plex username or password. Persist the client identifier so it
+stays stable across logins.
+
+```ts
+import { MyPlexAccount, MyPlexPinLogin } from '@ctrl/plex';
+
+const clientIdentifier = crypto.randomUUID();
+const login = await MyPlexPinLogin.create({ clientIdentifier, mode: 'oauth' });
+
+console.log(`Open ${login.oauthUrl()} to sign in`);
+
+const authentication = await login.wait({ timeout: 120_000 });
+const account = await new MyPlexAccount({ token: authentication.token }).connect();
+```
+
 Create and refresh a signed Plex JWT. The bootstrap token must have been issued for the same
 client identifier. Store the returned credentials securely; they contain the private signing key.
 
 ```ts
-import { MyPlexAccount, refreshPlexJwt, registerPlexJwt, X_PLEX_IDENTIFIER } from '@ctrl/plex';
+import { MyPlexAccount, refreshPlexJwt, registerPlexJwt } from '@ctrl/plex';
 
 let credentials = await registerPlexJwt({
-  token: account.authenticationToken!,
-  clientIdentifier: X_PLEX_IDENTIFIER,
+  token: authentication.token,
+  clientIdentifier,
   scopes: ['username', 'email', 'friendly_name'],
 });
 
