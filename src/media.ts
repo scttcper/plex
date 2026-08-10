@@ -14,6 +14,7 @@ import type {
   MediaData,
   MediaPartData,
   MediaPartStreamData,
+  VideoStreamData,
 } from './video.types.ts';
 
 /**
@@ -197,6 +198,13 @@ export class MediaPart extends PlexObject {
     return this.streams.filter((stream): stream is LyricStream => stream instanceof LyricStream);
   }
 
+  /**
+   * Returns the video streams in this media part.
+   */
+  videoStreams(): VideoStream[] {
+    return this.streams.filter((stream): stream is VideoStream => stream instanceof VideoStream);
+  }
+
   protected _loadData(data: MediaPartData) {
     this.container = data.container;
     this.duration = data.duration;
@@ -217,6 +225,9 @@ export class MediaPartStream extends PlexObject {
   declare id: number;
   declare key: string;
   declare codec: string;
+  declare bitrate?: number;
+  declare decision?: string;
+  declare default: boolean;
   declare index?: number;
   declare displayTitle?: string;
   declare extendedDisplayTitle?: string;
@@ -224,13 +235,18 @@ export class MediaPartStream extends PlexObject {
   declare language?: string;
   declare languageTag?: string;
   declare languageCode?: string;
+  declare location?: string;
+  declare requiredBandwidths?: string;
   declare selected?: boolean;
-  declare streamType?: number;
+  declare streamType: number;
 
   protected _loadData(data: MediaPartStreamData) {
     this.id = data.id;
     this.key = data.key ?? '';
     this.codec = data.codec;
+    this.bitrate = data.bitrate;
+    this.decision = data.decision;
+    this.default = parsePlexBoolean(data.default);
     this.index = data.index;
     this.displayTitle = data.displayTitle;
     this.extendedDisplayTitle = data.extendedDisplayTitle;
@@ -238,8 +254,94 @@ export class MediaPartStream extends PlexObject {
     this.language = data.language;
     this.languageTag = data.languageTag;
     this.languageCode = data.languageCode;
-    this.selected = data.selected;
+    this.location = data.location;
+    this.requiredBandwidths = data.requiredBandwidths;
+    this.selected = data.selected === undefined ? undefined : parsePlexBoolean(data.selected);
     this.streamType = data.streamType;
+  }
+}
+
+/** Represents the encoded video stream within a {@link MediaPart}. */
+export class VideoStream extends MediaPartStream {
+  static override TAG = 'Stream' as const;
+  static STREAMTYPE = 1;
+
+  declare anamorphic?: string;
+  declare bitDepth?: number;
+  declare cabac?: number;
+  declare chromaLocation?: string;
+  declare chromaSubsampling?: string;
+  declare codecId?: string;
+  declare codedHeight?: number;
+  declare codedWidth?: number;
+  declare colorPrimaries?: string;
+  declare colorRange?: string;
+  declare colorSpace?: string;
+  declare colorTransfer?: string;
+  declare dolbyVisionBaseLayerCompatibilityId?: number;
+  declare dolbyVisionBaseLayerPresent?: boolean;
+  declare dolbyVisionEnhancementLayerPresent?: boolean;
+  declare dolbyVisionLevel?: number;
+  declare dolbyVisionPresent?: boolean;
+  declare dolbyVisionProfile?: number;
+  declare dolbyVisionRpuPresent?: boolean;
+  declare dolbyVisionVersion?: number;
+  declare duration?: number;
+  declare frameRate?: number;
+  declare frameRateMode?: string;
+  declare hasScalingMatrix?: boolean;
+  declare height?: number;
+  declare level?: number;
+  declare pixelAspectRatio?: string;
+  declare pixelFormat?: string;
+  declare profile?: string;
+  declare refFrames?: number;
+  declare scanType?: string;
+  declare streamIdentifier?: number;
+  declare width?: number;
+
+  protected override _loadData(data: VideoStreamData): void {
+    super._loadData(data);
+    this.anamorphic = data.anamorphic;
+    this.bitDepth = data.bitDepth;
+    this.cabac = data.cabac;
+    this.chromaLocation = data.chromaLocation;
+    this.chromaSubsampling = data.chromaSubsampling;
+    this.codecId = data.codecID;
+    this.codedHeight = data.codedHeight;
+    this.codedWidth = data.codedWidth;
+    this.colorPrimaries = data.colorPrimaries;
+    this.colorRange = data.colorRange;
+    this.colorSpace = data.colorSpace;
+    this.colorTransfer = data.colorTrc;
+    this.dolbyVisionBaseLayerCompatibilityId = data.DOVIBLCompatID;
+    this.dolbyVisionBaseLayerPresent =
+      data.DOVIBLPresent === undefined ? undefined : parsePlexBoolean(data.DOVIBLPresent);
+    this.dolbyVisionEnhancementLayerPresent =
+      data.DOVIELPresent === undefined ? undefined : parsePlexBoolean(data.DOVIELPresent);
+    this.dolbyVisionLevel = data.DOVILevel;
+    this.dolbyVisionPresent =
+      data.DOVIPresent === undefined ? undefined : parsePlexBoolean(data.DOVIPresent);
+    this.dolbyVisionProfile = data.DOVIProfile;
+    this.dolbyVisionRpuPresent =
+      data.DOVIRPUPresent === undefined ? undefined : parsePlexBoolean(data.DOVIRPUPresent);
+    this.dolbyVisionVersion = data.DOVIVersion;
+    this.duration = data.duration;
+    this.frameRate = data.frameRate;
+    this.frameRateMode = data.frameRateMode;
+    this.hasScalingMatrix =
+      data.hasScalingMatrix === undefined ? undefined : parsePlexBoolean(data.hasScalingMatrix);
+    this.height = data.height;
+    this.level = data.level;
+    this.pixelAspectRatio = data.pixelAspectRatio;
+    this.pixelFormat = data.pixelFormat;
+    this.profile = data.profile;
+    this.refFrames = data.refFrames;
+    this.scanType = data.scanType;
+    this.streamIdentifier = data.streamIdentifier
+      ? Number.parseInt(data.streamIdentifier, 10)
+      : undefined;
+    this.width = data.width;
   }
 }
 
@@ -815,6 +917,9 @@ export class AudioStream extends MediaPartStream {
 }
 
 function createMediaPartStream(parent: MediaPart, data: MediaPartStreamData): MediaPartStream {
+  if (data.streamType === VideoStream.STREAMTYPE) {
+    return new VideoStream(parent.server, data, undefined, parent);
+  }
   if (data.streamType === AudioStream.STREAMTYPE) {
     return new AudioStream(parent.server, data, undefined, parent);
   }
