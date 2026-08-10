@@ -79,79 +79,73 @@ export type PlexSessionItem = (Clip | Episode | Movie | Photo | Track) & {
 };
 
 export interface PlexSessionUserData {
-  readonly id: string;
-  readonly title: string;
-  readonly thumb?: string;
+  id: string;
+  title: string;
+  thumb?: string;
 }
 
 export interface PlexSessionPlayerData {
-  readonly machineIdentifier: string;
-  readonly state: string;
-  readonly title: string;
-  readonly address?: string;
-  readonly device?: string;
-  readonly model?: string;
-  readonly platform?: string;
-  readonly platformVersion?: string;
-  readonly product?: string;
-  readonly profile?: string;
-  readonly remotePublicAddress?: string;
-  readonly version?: string;
-  readonly local?: PlexBoolean;
-  readonly relayed?: PlexBoolean;
-  readonly secure?: PlexBoolean;
-  readonly userID?: number;
-}
-
-export interface PlexPlaybackSessionData {
-  readonly id: string;
-  readonly bandwidth: number;
-  readonly location: string;
+  machineIdentifier: string;
+  state: string;
+  title: string;
+  address?: string;
+  device?: string;
+  model?: string;
+  platform?: string;
+  platformVersion?: string;
+  product?: string;
+  profile?: string;
+  remotePublicAddress?: string;
+  version?: string;
+  local?: PlexBoolean;
+  relayed?: PlexBoolean;
+  secure?: PlexBoolean;
+  userID?: number;
 }
 
 export interface PlexTranscodeSessionData {
-  readonly key: string;
-  readonly complete: PlexBoolean;
-  readonly context: string;
-  readonly error: PlexBoolean;
-  readonly progress: number;
-  readonly size: number;
-  readonly speed: number;
-  readonly throttled: PlexBoolean;
-  readonly audioChannels?: number;
-  readonly audioCodec?: string;
-  readonly audioDecision?: string;
-  readonly container?: string;
-  readonly duration?: number;
-  readonly height?: number;
-  readonly maxOffsetAvailable?: number;
-  readonly minOffsetAvailable?: number;
-  readonly protocol?: string;
-  readonly remaining?: number;
-  readonly sourceAudioCodec?: string;
-  readonly sourceVideoCodec?: string;
-  readonly subtitleDecision?: string;
-  readonly timeStamp?: number;
-  readonly transcodeHwDecoding?: string;
-  readonly transcodeHwDecodingTitle?: string;
-  readonly transcodeHwEncoding?: string;
-  readonly transcodeHwEncodingTitle?: string;
-  readonly transcodeHwFullPipeline?: PlexBoolean;
-  readonly transcodeHwRequested?: PlexBoolean;
-  readonly videoCodec?: string;
-  readonly videoDecision?: string;
-  readonly width?: number;
+  key: string;
+  complete: PlexBoolean;
+  context: string;
+  error: PlexBoolean;
+  progress: number;
+  size: number;
+  speed: number;
+  throttled: PlexBoolean;
+  audioChannels?: number;
+  audioCodec?: string;
+  audioDecision?: string;
+  container?: string;
+  duration?: number;
+  height?: number;
+  maxOffsetAvailable?: number;
+  minOffsetAvailable?: number;
+  protocol?: string;
+  remaining?: number;
+  sourceAudioCodec?: string;
+  sourceVideoCodec?: string;
+  subtitleDecision?: string;
+  timeStamp?: number;
+  transcodeHwDecoding?: string;
+  transcodeHwDecodingTitle?: string;
+  transcodeHwEncoding?: string;
+  transcodeHwEncodingTitle?: string;
+  transcodeHwFullPipeline?: PlexBoolean;
+  transcodeHwRequested?: PlexBoolean;
+  videoCodec?: string;
+  videoDecision?: string;
+  width?: number;
 }
 
-export interface PlexSessionMetadataData {
-  readonly key: string;
-  readonly ratingKey: string;
-  readonly sessionKey: string;
-  readonly title: string;
-  readonly type: 'clip' | 'episode' | 'movie' | 'photo' | 'track';
-  readonly live?: PlexBoolean;
-  readonly Player: PlexSessionPlayerData;
-  readonly Session?: PlexPlaybackSessionData;
-  readonly TranscodeSession?: PlexTranscodeSessionData;
-  readonly User: PlexSessionUserData;
+export interface PlexSessionItemData {
+  key: string;
+  ratingKey: string;
+  sessionKey: string;
+  title: string;
+  type: 'clip' | 'episode' | 'movie' | 'photo' | 'track';
+  live?: PlexBoolean;
+  Player: PlexSessionPlayerData;
+  Session?: PlexPlaybackSession;
+  TranscodeSession?: PlexTranscodeSessionData;
+  User: PlexSessionUserData;
 }

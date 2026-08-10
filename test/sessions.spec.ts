@@ -49,21 +49,15 @@ afterAll(async () => {
 
 it('hydrates active playback sessions as playable media', async () => {
   const sessions = await plex.sessions();
-  const session = sessions.find(item => item.player?.machineIdentifier === clientIdentifier);
+  const session = sessions.find(item => item.player.machineIdentifier === clientIdentifier);
 
   expect(session).toBeInstanceOf(Movie);
-  expect(session).toMatchObject({
-    live: false,
-    player: {
-      machineIdentifier: clientIdentifier,
-      state: 'playing',
-      title: 'Plex TypeScript Session Test',
-    },
-    ratingKey: movie.ratingKey,
-    sessionKey: expect.any(Number),
-    user: {
-      id: expect.any(Number),
-      title: expect.any(String),
-    },
-  });
+  expect(session?.live).toBe(false);
+  expect(session?.player.machineIdentifier).toBe(clientIdentifier);
+  expect(session?.player.state).toBe('playing');
+  expect(session?.player.title).toBe('Plex TypeScript Session Test');
+  expect(session?.ratingKey).toBe(movie.ratingKey);
+  expect(typeof session?.sessionKey).toBe('number');
+  expect(typeof session?.user.id).toBe('number');
+  expect(typeof session?.user.title).toBe('string');
 });

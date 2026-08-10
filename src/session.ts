@@ -1,11 +1,10 @@
 import { Track } from './audio.ts';
 import { createPlexItem, type HydratedPlexItem } from './itemFactory.ts';
 import { Photo } from './photo.ts';
+import type { PlexServer } from './server.ts';
 import type {
-  PlexPlaybackSession,
-  PlexPlaybackSessionData,
   PlexSessionItem,
-  PlexSessionMetadataData,
+  PlexSessionItemData,
   PlexSessionPlayer,
   PlexSessionPlayerData,
   PlexSessionUser,
@@ -16,7 +15,6 @@ import type {
 import { parsePlexBoolean, type PlexBoolean } from './util.ts';
 import { Clip, Episode, Movie } from './video.ts';
 
-type SessionServer = Parameters<typeof createPlexItem>[0];
 type SessionMedia = Clip | Episode | Movie | Photo | Track;
 
 function isSessionMedia(item: HydratedPlexItem): item is SessionMedia {
@@ -70,14 +68,6 @@ function createSessionPlayer(data: PlexSessionPlayerData): PlexSessionPlayer {
   };
 }
 
-function createPlaybackSession(data: PlexPlaybackSessionData): PlexPlaybackSession {
-  return {
-    bandwidth: data.bandwidth,
-    id: data.id,
-    location: data.location,
-  };
-}
-
 export function createPlexTranscodeSession(data: PlexTranscodeSessionData): PlexTranscodeSession {
   return {
     audioChannels: data.audioChannels,
@@ -115,8 +105,8 @@ export function createPlexTranscodeSession(data: PlexTranscodeSessionData): Plex
 }
 
 export function createPlexSessionItem(
-  server: SessionServer,
-  data: PlexSessionMetadataData,
+  server: PlexServer,
+  data: PlexSessionItemData,
 ): PlexSessionItem {
   const item = createPlexItem(server, data);
   if (!isSessionMedia(item)) {
@@ -126,7 +116,7 @@ export function createPlexSessionItem(
   return Object.assign(item, {
     live: parsePlexBoolean(data.live),
     player: createSessionPlayer(data.Player),
-    session: data.Session ? createPlaybackSession(data.Session) : undefined,
+    session: data.Session,
     sessionKey: sessionInteger(data.sessionKey, 'session key'),
     transcodeSession: data.TranscodeSession
       ? createPlexTranscodeSession(data.TranscodeSession)

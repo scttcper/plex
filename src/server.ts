@@ -48,7 +48,7 @@ import type { ButlerTaskData, ServerFileData, ServerPathData } from './serverMod
 import { createPlexSessionItem, createPlexTranscodeSession } from './session.ts';
 import type {
   PlexSessionItem,
-  PlexSessionMetadataData,
+  PlexSessionItemData,
   PlexTranscodeSession,
   PlexTranscodeSessionData,
 } from './session.types.ts';
@@ -464,7 +464,7 @@ export class PlexServer {
   /** Returns a list of all active session (currently playing) media objects. */
   async sessions(): Promise<PlexSessionItem[]> {
     const key = '/status/sessions';
-    const data = await this.query<MediaContainer<{ Metadata?: PlexSessionMetadataData[] }>>({
+    const data = await this.query<MediaContainer<{ Metadata?: PlexSessionItemData[] }>>({
       path: key,
     });
     return (data.MediaContainer.Metadata ?? []).map(item => createPlexSessionItem(this, item));
