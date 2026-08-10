@@ -280,6 +280,63 @@ export interface WatchlistResponse {
   };
 }
 
+interface DiscoverGenreData {
+  filter: string;
+  id: string;
+  key: string;
+  ratingKey: string;
+  slug: string;
+  tag: string;
+  type: 'hub';
+  context: 'tag.genre';
+}
+
+interface DiscoverItemData {
+  addedAt?: number;
+  art?: string;
+  duration?: number;
+  guid: string;
+  key: string;
+  originallyAvailableAt?: string;
+  ratingKey: string;
+  slug: string;
+  source?: string;
+  subtype?: string;
+  thumb?: string;
+  title: string;
+  year?: number;
+  Genre?: DiscoverGenreData[];
+}
+
+export interface DiscoverMovieData extends DiscoverItemData {
+  type: 'movie';
+}
+
+export interface DiscoverShowData extends DiscoverItemData {
+  type: 'show';
+  childCount?: number;
+  leafCount?: number;
+  skipChildren?: boolean;
+}
+
+export interface DiscoverSearchResultData {
+  Metadata: DiscoverMovieData | DiscoverShowData;
+  score: number;
+}
+
+export interface DiscoverSearchResponse {
+  MediaContainer: {
+    identifier: 'tv.plex.provider.discover';
+    size: number;
+    suggestedTerms?: string[];
+    SearchResults?: Array<{
+      id: string;
+      size: number;
+      SearchResult?: DiscoverSearchResultData[];
+    }>;
+  };
+}
+
 export interface UserStateData {
   ratingKey: string;
   type: string;
