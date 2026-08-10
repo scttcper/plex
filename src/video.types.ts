@@ -471,12 +471,17 @@ export interface MediaPartStreamData {
   index?: number;
   key?: string;
   bitrate?: number;
+  default?: PlexBoolean;
+  decision?: string;
   height?: number;
+  location?: string;
+  requiredBandwidths?: string;
+  streamIdentifier?: `${number}`;
   width?: number;
   displayTitle: string;
   extendedDisplayTitle?: string;
   title?: string;
-  selected?: boolean;
+  selected?: PlexBoolean;
   channels?: number;
   language?: string;
   languageTag?: string;
@@ -493,6 +498,40 @@ export interface MediaPartStreamData {
   sourceKey?: string;
   transient?: string;
   userID?: number | string;
+}
+
+export interface VideoStreamData extends MediaPartStreamData {
+  streamType: 1;
+  anamorphic?: string;
+  bitDepth?: number;
+  cabac?: number;
+  chromaLocation?: string;
+  chromaSubsampling?: string;
+  codecID?: string;
+  codedHeight?: number;
+  codedWidth?: number;
+  colorPrimaries?: string;
+  colorRange?: string;
+  colorSpace?: string;
+  colorTrc?: string;
+  DOVIBLCompatID?: number;
+  DOVIBLPresent?: PlexBoolean;
+  DOVIELPresent?: PlexBoolean;
+  DOVILevel?: number;
+  DOVIPresent?: PlexBoolean;
+  DOVIProfile?: number;
+  DOVIRPUPresent?: PlexBoolean;
+  DOVIVersion?: number;
+  duration?: number;
+  frameRate?: number;
+  frameRateMode?: string;
+  hasScalingMatrix?: PlexBoolean;
+  level?: number;
+  pixelAspectRatio?: string;
+  pixelFormat?: string;
+  profile?: string;
+  refFrames?: number;
+  scanType?: string;
 }
 
 export interface SubtitleSearchResponse {

@@ -1,6 +1,12 @@
 import { URLSearchParams } from 'node:url';
 
-import type { AudioStream, Media, MediaPart, MediaPartStream, SubtitleStream } from '../media.ts';
+import {
+  type AudioStream,
+  Media,
+  type MediaPart,
+  type SubtitleStream,
+  type VideoStream,
+} from '../media.ts';
 import type { PlayQueue } from '../playqueue.ts';
 import type { CreatePlayQueueOptions } from '../playqueue.types.ts';
 
@@ -72,8 +78,14 @@ export abstract class Playable extends PartialPlexObject {
    * Returns all MediaPart objects across all Media entries.
    */
   iterParts(): MediaPart[] {
-    const media: Media[] = (this as any).media ?? [];
-    return media.flatMap(m => m.parts ?? []);
+    const media: unknown = 'media' in this ? this.media : undefined;
+    if (!Array.isArray(media)) {
+      return [];
+    }
+
+    return media
+      .filter((item: unknown): item is Media => item instanceof Media)
+      .flatMap(item => item.parts);
   }
 
   /**
@@ -90,19 +102,9 @@ export abstract class Playable extends PartialPlexObject {
     return this.iterParts().flatMap(part => part.subtitleStreams());
   }
 
-  /**
-   * Returns all video streams from all media (first part of each).
-   */
-  videoStreams(): MediaPartStream[] {
-    const media: Media[] = (this as any).media ?? [];
-    return media.flatMap(m => {
-      const firstPart = m.parts?.[0];
-      if (!firstPart) {
-        return [];
-      }
-
-      return firstPart.streams.filter(s => s.streamType === 1);
-    });
+  /** Returns all video streams from every media part. */
+  videoStreams(): VideoStream[] {
+    return this.iterParts().flatMap(part => part.videoStreams());
   }
 
   /**

@@ -6,6 +6,7 @@ import {
   type MovieSection,
   type PlexServer,
   MediaPart,
+  VideoStream,
 } from '../src/index.ts';
 
 import { createClient } from './test-client.ts';
@@ -46,11 +47,16 @@ it('should have audio streams accessible from media parts', () => {
   expect(audioStreams[0].codec).toBeDefined();
 });
 
-it('should return video streams with streamType 1 from videoStreams', () => {
-  const videoStreams = movie.videoStreams();
-  expect(videoStreams.length).toBeGreaterThan(0);
-  // Video streams have streamType 1
-  for (const stream of videoStreams) {
-    expect(stream.streamType).toBe(1);
-  }
+it('should return strongly typed video streams', () => {
+  const [stream] = movie.videoStreams();
+
+  expect(stream).toBeInstanceOf(VideoStream);
+  expect(stream.streamType).toBe(1);
+  expect(stream.codec).toBe('h264');
+  expect(stream.bitDepth).toBe(8);
+  expect(stream.frameRate).toBe(30);
+  expect(stream.height).toBe(1080);
+  expect(stream.hasScalingMatrix).toBe(false);
+  expect(stream.streamIdentifier).toBe(1);
+  expect(stream.width).toBe(1920);
 });
