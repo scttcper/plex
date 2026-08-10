@@ -8,8 +8,6 @@ import type {
   PlexJwtClaims,
   PlexJwtCredentials,
   PlexJwtPrivateKey,
-  PlexJwtPublicKey,
-  PlexJwtScope,
   RefreshPlexJwtOptions,
   RegisterPlexJwtOptions,
   VerifyPlexJwtOptions,
@@ -48,6 +46,17 @@ interface PlexJwtKeysResponse {
   readonly keys: PlexJwtPublicKey[];
 }
 
+interface PlexJwtPublicKey {
+  readonly kty: 'OKP';
+  readonly crv: 'Ed25519';
+  readonly x: string;
+  readonly use: 'sig';
+  readonly alg: 'EdDSA';
+  readonly kid: string;
+}
+
+type PlexJwtClient = Omit<PlexJwtCredentials, 'token'>;
+
 function requestHeaders(clientIdentifier: string, token?: string): Headers {
   const headers = new Headers(BASE_HEADERS);
   headers.set('Accept', 'application/json');
@@ -59,35 +68,9 @@ function requestHeaders(clientIdentifier: string, token?: string): Headers {
   return headers;
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new BadRequest(`${name} must be a non-empty string.`);
-  }
-}
-
-function validateScopes(scopes: readonly PlexJwtScope[]): void {
-  if (scopes.length === 0) {
-    throw new BadRequest('At least one Plex JWT scope is required.');
-  }
-  for (const scope of scopes) {
-    assertNonEmptyString(scope, 'Plex JWT scope');
-  }
-}
-
-function decodeKeyPart(value: string, name: string): Uint8Array {
-  if (!/^[\w-]+$/.test(value)) {
-    throw new BadRequest(`${name} must be base64url encoded.`);
-  }
-  const bytes = decodeBase64Url(value);
-  if (bytes.length !== 32) {
-    throw new BadRequest(`${name} must contain a 32-byte Ed25519 key.`);
-  }
-  return bytes;
-}
-
 async function keyId(privateKey: PlexJwtPrivateKey): Promise<string> {
-  const privateBytes = decodeKeyPart(privateKey.d, 'privateKey.d');
-  const publicBytes = decodeKeyPart(privateKey.x, 'privateKey.x');
+  const privateBytes = decodeBase64Url(privateKey.d);
+  const publicBytes = decodeBase64Url(privateKey.x);
   const keyMaterial = new Uint8Array(privateBytes.length + publicBytes.length);
   keyMaterial.set(privateBytes);
   keyMaterial.set(publicBytes, privateBytes.length);
@@ -95,31 +78,14 @@ async function keyId(privateKey: PlexJwtPrivateKey): Promise<string> {
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function validatePrivateKey(privateKey: PlexJwtPrivateKey): Promise<void> {
-  if (
-    privateKey.kty !== 'OKP' ||
-    privateKey.crv !== 'Ed25519' ||
-    privateKey.use !== 'sig' ||
-    privateKey.alg !== 'EdDSA'
-  ) {
-    throw new BadRequest('privateKey must be an Ed25519 signing JWK.');
-  }
-  assertNonEmptyString(privateKey.kid, 'privateKey.kid');
-  decodeKeyPart(privateKey.x, 'privateKey.x');
-  const derivedKeyId = await keyId(privateKey);
-  if (derivedKeyId !== privateKey.kid) {
-    throw new BadRequest('The Plex JWT key ID does not match its key material.');
-  }
-}
-
-function toPublicKey(privateKey: PlexJwtPrivateKey): PlexJwtPublicKey {
+async function toPublicKey(privateKey: PlexJwtPrivateKey): Promise<PlexJwtPublicKey> {
   return {
     kty: privateKey.kty,
     crv: privateKey.crv,
     x: privateKey.x,
-    use: privateKey.use,
-    alg: privateKey.alg,
-    kid: privateKey.kid,
+    use: 'sig',
+    alg: 'EdDSA',
+    kid: await keyId(privateKey),
   };
 }
 
@@ -129,19 +95,15 @@ async function createPrivateKey(): Promise<PlexJwtPrivateKey> {
     throw new BadRequest('Unable to generate an Ed25519 key pair.');
   }
   const privateJwk = await crypto.subtle.exportKey('jwk', generated.privateKey);
-  assertNonEmptyString(privateJwk.d, 'generated private key');
-  assertNonEmptyString(privateJwk.x, 'generated public key');
-
-  const provisionalPrivateKey: PlexJwtPrivateKey = {
+  if (!privateJwk.d || !privateJwk.x) {
+    throw new Error('Web Crypto returned an incomplete Ed25519 private key.');
+  }
+  return {
     kty: 'OKP',
     crv: 'Ed25519',
     x: privateJwk.x,
-    use: 'sig',
-    alg: 'EdDSA',
-    kid: 'pending',
     d: privateJwk.d,
   };
-  return { ...provisionalPrivateKey, kid: await keyId(provisionalPrivateKey) };
 }
 
 function decodeJson<T>(encoded: string, name: string): T {
@@ -170,17 +132,13 @@ async function fetchNonce(clientIdentifier: string, timeout: number): Promise<st
     timeout,
     retry: 0,
   });
-  assertNonEmptyString(response?.nonce, 'Plex nonce');
   return response.nonce;
 }
 
-async function clientJwt(
-  credentials: Pick<PlexJwtCredentials, 'clientIdentifier' | 'privateKey' | 'scopes'>,
-  timeout: number,
-): Promise<string> {
+async function clientJwt(client: PlexJwtClient, timeout: number): Promise<string> {
   const privateKey = await crypto.subtle.importKey(
     'jwk',
-    { ...credentials.privateKey, ext: true, key_ops: ['sign'] },
+    { ...client.privateKey, ext: true, key_ops: ['sign'] },
     'Ed25519',
     false,
     ['sign'],
@@ -189,13 +147,13 @@ async function clientJwt(
   const header: PlexJwtHeader = {
     alg: 'EdDSA',
     typ: 'JWT',
-    kid: credentials.privateKey.kid,
+    kid: await keyId(client.privateKey),
   };
   const payload = {
-    nonce: await fetchNonce(credentials.clientIdentifier, timeout),
-    scope: credentials.scopes.join(','),
+    nonce: await fetchNonce(client.clientIdentifier, timeout),
+    scope: client.scopes.join(','),
     aud: 'plex.tv',
-    iss: credentials.clientIdentifier,
+    iss: client.clientIdentifier,
     iat: now,
     exp: now + clientTokenLifetimeSeconds,
   };
@@ -204,18 +162,14 @@ async function clientJwt(
   return `${signingInput}.${encodeBase64Url(new Uint8Array(signature))}`;
 }
 
-async function exchange(
-  credentials: Pick<PlexJwtCredentials, 'clientIdentifier' | 'privateKey' | 'scopes'>,
-  timeout: number,
-): Promise<string> {
+async function exchange(client: PlexJwtClient, timeout: number): Promise<string> {
   const response = await ofetch<PlexJwtTokenResponse>(`${AUTH_URL}/token`, {
     method: 'POST',
-    headers: requestHeaders(credentials.clientIdentifier),
-    body: { jwt: await clientJwt(credentials, timeout) },
+    headers: requestHeaders(client.clientIdentifier),
+    body: { jwt: await clientJwt(client, timeout) },
     timeout,
     retry: 0,
   });
-  assertNonEmptyString(response?.auth_token, 'Plex JWT exchange token');
   return response.auth_token;
 }
 
@@ -227,21 +181,16 @@ export async function registerPlexJwt({
   privateKey: suppliedPrivateKey,
   timeout = TIMEOUT,
 }: RegisterPlexJwtOptions): Promise<PlexJwtCredentials> {
-  assertNonEmptyString(token, 'Plex token');
-  assertNonEmptyString(clientIdentifier, 'Plex client identifier');
-  validateScopes(scopes);
   const privateKey = suppliedPrivateKey ?? (await createPrivateKey());
-  await validatePrivateKey(privateKey);
   await ofetch(`${AUTH_URL}/jwk`, {
     method: 'POST',
     headers: requestHeaders(clientIdentifier, token),
-    body: { jwk: toPublicKey(privateKey) },
+    body: { jwk: await toPublicKey(privateKey) },
     timeout,
     retry: 0,
   });
-  const tokenlessCredentials = { clientIdentifier, privateKey, scopes: [...scopes] };
-  const jwtToken = await exchange(tokenlessCredentials, timeout);
-  const credentials: PlexJwtCredentials = { ...tokenlessCredentials, token: jwtToken };
+  const client: PlexJwtClient = { clientIdentifier, privateKey, scopes: [...scopes] };
+  const credentials: PlexJwtCredentials = { ...client, token: await exchange(client, timeout) };
   await verifyPlexJwt({ credentials, refreshWithinSeconds: 0, timeout });
   return credentials;
 }
@@ -252,13 +201,14 @@ export async function refreshPlexJwt({
   scopes = credentials.scopes,
   timeout = TIMEOUT,
 }: RefreshPlexJwtOptions): Promise<PlexJwtCredentials> {
-  assertNonEmptyString(credentials.clientIdentifier, 'Plex client identifier');
-  validateScopes(scopes);
-  await validatePrivateKey(credentials.privateKey);
-  const refreshedCredentials: PlexJwtCredentials = {
-    ...credentials,
+  const client: PlexJwtClient = {
+    clientIdentifier: credentials.clientIdentifier,
+    privateKey: credentials.privateKey,
     scopes: [...scopes],
-    token: await exchange({ ...credentials, scopes }, timeout),
+  };
+  const refreshedCredentials: PlexJwtCredentials = {
+    ...client,
+    token: await exchange(client, timeout),
   };
   await verifyPlexJwt({ credentials: refreshedCredentials, refreshWithinSeconds: 0, timeout });
   return refreshedCredentials;
@@ -270,27 +220,21 @@ export async function verifyPlexJwt({
   refreshWithinSeconds = defaultRefreshWindowSeconds,
   timeout = TIMEOUT,
 }: VerifyPlexJwtOptions): Promise<PlexJwtClaims> {
-  assertNonEmptyString(credentials.clientIdentifier, 'Plex client identifier');
-  assertNonEmptyString(credentials.token, 'Plex JWT');
   if (!Number.isFinite(refreshWithinSeconds) || refreshWithinSeconds < 0) {
     throw new BadRequest('refreshWithinSeconds must be a non-negative number.');
   }
-  await validatePrivateKey(credentials.privateKey);
 
   const parts = credentials.token.split('.');
   if (parts.length !== 3 || parts.some(part => part.length === 0)) {
     throw new Unauthorized('Plex JWT must contain three encoded segments.');
   }
-  const [encodedHeader, encodedClaims, encodedSignature] = parts as [string, string, string];
+  const [encodedHeader, encodedClaims, encodedSignature] = parts;
   const header = parseHeader(encodedHeader);
   const keyResponse = await ofetch<PlexJwtKeysResponse>(`${AUTH_URL}/keys`, {
     headers: requestHeaders(credentials.clientIdentifier),
     timeout,
     retry: 0,
   });
-  if (!Array.isArray(keyResponse?.keys)) {
-    throw new Unauthorized('Plex JWT key response is invalid.');
-  }
   const signingKey = keyResponse.keys.find(key => key.kid === header.kid);
   if (!signingKey) {
     throw new Unauthorized(`Plex JWT signing key ${header.kid} is not published by Plex.`);
@@ -316,7 +260,7 @@ export async function verifyPlexJwt({
   if (claims.iss !== 'plex.tv') {
     throw new Unauthorized('Plex JWT issuer is invalid.');
   }
-  if (claims.thumbprint !== credentials.privateKey.kid) {
+  if (claims.thumbprint !== (await keyId(credentials.privateKey))) {
     throw new Unauthorized('Plex JWT was issued for a different key pair.');
   }
   if (!claims.aud.includes('plex.tv') || !claims.aud.includes(credentials.clientIdentifier)) {

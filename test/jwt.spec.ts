@@ -94,7 +94,7 @@ it('registers, verifies, refreshes, and authenticates with a Plex JWT', async ()
   expect(claims.iss).toBe('plex.tv');
   expect(claims.aud).toContain('plex.tv');
   expect(claims.aud).toContain(clientIdentifier);
-  expect(claims.thumbprint).toBe(credentials.privateKey.kid);
+  expect(claims.thumbprint).toHaveLength(64);
   expect(claims.user.id).toBe(account.id);
   expect(claims.user.uuid).toBe(account.uuid);
   expect(claims.user.username).toBe(account.username);

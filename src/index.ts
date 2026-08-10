@@ -14,11 +14,9 @@ export * from './exceptions.ts';
 export * from './library.ts';
 export * from './jwt.ts';
 export type {
-  KnownPlexJwtScope,
   PlexJwtClaims,
   PlexJwtCredentials,
   PlexJwtPrivateKey,
-  PlexJwtPublicKey,
   PlexJwtScope,
   PlexJwtUserClaims,
   RefreshPlexJwtOptions,

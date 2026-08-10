@@ -11,18 +11,11 @@ export type KnownPlexJwtScope =
 /** Known Plex JWT scopes, with support for scopes added by Plex later. */
 export type PlexJwtScope = LiteralUnion<KnownPlexJwtScope, string>;
 
-/** An Ed25519 public key in the JWK shape accepted by Plex. */
-export interface PlexJwtPublicKey {
+/** An Ed25519 private JWK used to refresh a Plex JWT. */
+export interface PlexJwtPrivateKey {
   readonly kty: 'OKP';
   readonly crv: 'Ed25519';
   readonly x: string;
-  readonly use: 'sig';
-  readonly alg: 'EdDSA';
-  readonly kid: string;
-}
-
-/** An Ed25519 private key in the JWK shape used to refresh a Plex JWT. */
-export interface PlexJwtPrivateKey extends PlexJwtPublicKey {
   readonly d: string;
 }
 
