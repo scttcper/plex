@@ -10,7 +10,6 @@ import type {
   PlexJwtPrivateKey,
   PlexJwtPublicKey,
   PlexJwtScope,
-  PlexJwtUserClaims,
   RefreshPlexJwtOptions,
   RegisterPlexJwtOptions,
   VerifyPlexJwtOptions,
@@ -145,76 +144,24 @@ async function createPrivateKey(): Promise<PlexJwtPrivateKey> {
   return { ...provisionalPrivateKey, kid: await keyId(provisionalPrivateKey) };
 }
 
-function decodeJson(encoded: string, name: string): unknown {
+function decodeJson<T>(encoded: string, name: string): T {
   try {
-    return JSON.parse(decoder.decode(decodeBase64Url(encoded))) as unknown;
+    return JSON.parse(decoder.decode(decodeBase64Url(encoded))) as T;
   } catch {
     throw new Unauthorized(`Plex JWT ${name} is not valid base64url JSON.`);
   }
 }
 
-function isPlexJwtHeader(value: unknown): value is PlexJwtHeader {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const header = value as Partial<PlexJwtHeader>;
-  return (
-    header.alg === 'EdDSA' &&
-    typeof header.kid === 'string' &&
-    (header.typ === undefined || header.typ === 'JWT')
-  );
-}
-
-function isPlexJwtUserClaims(value: unknown): value is PlexJwtUserClaims {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const user = value as Partial<PlexJwtUserClaims>;
-  return (
-    Number.isSafeInteger(user.id) &&
-    typeof user.uuid === 'string' &&
-    (user.username === undefined || typeof user.username === 'string') &&
-    (user.email === undefined || typeof user.email === 'string') &&
-    (user.friendly_name === undefined ||
-      user.friendly_name === null ||
-      typeof user.friendly_name === 'string') &&
-    (user.restricted === undefined || typeof user.restricted === 'boolean') &&
-    (user.anonymous === undefined || typeof user.anonymous === 'boolean') &&
-    (user.joinedAt === undefined || Number.isSafeInteger(user.joinedAt))
-  );
-}
-
-function isPlexJwtClaims(value: unknown): value is PlexJwtClaims {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const claims = value as Partial<PlexJwtClaims>;
-  return (
-    typeof claims.nonce === 'string' &&
-    typeof claims.thumbprint === 'string' &&
-    claims.iss === 'plex.tv' &&
-    Array.isArray(claims.aud) &&
-    claims.aud.every(audience => typeof audience === 'string') &&
-    Number.isSafeInteger(claims.iat) &&
-    Number.isSafeInteger(claims.exp) &&
-    isPlexJwtUserClaims(claims.user)
-  );
-}
-
 function parseHeader(encoded: string): PlexJwtHeader {
-  const header = decodeJson(encoded, 'header');
-  if (!isPlexJwtHeader(header)) {
+  const header = decodeJson<PlexJwtHeader>(encoded, 'header');
+  if (
+    header.alg !== 'EdDSA' ||
+    typeof header.kid !== 'string' ||
+    (header.typ !== undefined && header.typ !== 'JWT')
+  ) {
     throw new Unauthorized('Plex JWT header is invalid.');
   }
   return header;
-}
-
-function parseClaims(encoded: string): PlexJwtClaims {
-  const claims = decodeJson(encoded, 'payload');
-  if (!isPlexJwtClaims(claims)) {
-    throw new Unauthorized('Plex JWT claims are invalid.');
-  }
-  return claims;
 }
 
 async function fetchNonce(clientIdentifier: string, timeout: number): Promise<string> {
@@ -365,7 +312,10 @@ export async function verifyPlexJwt({
     throw new Unauthorized('Plex JWT signature is invalid.');
   }
 
-  const claims = parseClaims(encodedClaims);
+  const claims = decodeJson<PlexJwtClaims>(encodedClaims, 'payload');
+  if (claims.iss !== 'plex.tv') {
+    throw new Unauthorized('Plex JWT issuer is invalid.');
+  }
   if (claims.thumbprint !== credentials.privateKey.kid) {
     throw new Unauthorized('Plex JWT was issued for a different key pair.');
   }
