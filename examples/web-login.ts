@@ -1,6 +1,6 @@
 import { MyPlexAccount, MyPlexPinLogin } from '../src/index.ts';
 
-async function listLibraries(account: MyPlexAccount) {
+async function listLibraries(account: MyPlexAccount): Promise<void> {
   const resource = await account.resource('zeus');
   const plex = await resource.connect();
   const library = await plex.library();

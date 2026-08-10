@@ -27,10 +27,10 @@ export * from './media.ts';
 export * from './myplex.ts';
 export * from './pin.ts';
 export type {
-  LinkPlexPinOptions,
+  CheckPlexPinOptions,
   CreatePlexPinLoginOptions,
+  LinkPlexPinOptions,
   PlexPinAuthentication,
-  PlexPinLocation,
   PlexPinLoginMode,
   PlexPinOAuthUrlOptions,
   ResumePlexPinLoginOptions,

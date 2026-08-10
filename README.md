@@ -47,7 +47,7 @@ stays stable across logins.
 ```ts
 import { MyPlexAccount, MyPlexPinLogin } from '@ctrl/plex';
 
-const clientIdentifier = crypto.randomUUID();
+const clientIdentifier = 'replace-with-a-persisted-client-identifier';
 const login = await MyPlexPinLogin.create({ clientIdentifier, mode: 'oauth' });
 
 console.log(`Open ${login.oauthUrl()} to sign in`);

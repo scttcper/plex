@@ -5,9 +5,9 @@ import { ofetch } from 'ofetch';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_IDENTIFIER, X_PLEX_PRODUCT } from './config.ts';
 import { BadRequest } from './exceptions.ts';
 import type {
+  CheckPlexPinOptions,
   CreatePlexPinLoginOptions,
   PlexPinAuthentication,
-  PlexPinLocation,
   PlexPinLoginMode,
   PlexPinOAuthUrlOptions,
   ResumePlexPinLoginOptions,
@@ -57,22 +57,6 @@ function requestHeaders(clientIdentifier: string, product: string): Headers {
   return headers;
 }
 
-function pinLocation(data: PlexPinLocationData): PlexPinLocation {
-  return {
-    countryCode: data.code,
-    continentCode: data.continent_code,
-    country: data.country,
-    europeanUnionMember: data.european_union_member,
-    timeZone: data.time_zone,
-    inPrivacyRestrictedCountry: data.in_privacy_restricted_country,
-    inPrivacyRestrictedRegion: data.in_privacy_restricted_region,
-    city: data.city,
-    postalCode: data.postal_code,
-    subdivisions: data.subdivisions,
-    coordinates: data.coordinates,
-  };
-}
-
 function pinAuthentication(data: PlexPinData): PlexPinAuthentication | null {
   return data.authToken === null
     ? null
@@ -83,80 +67,69 @@ function pinAuthentication(data: PlexPinData): PlexPinAuthentication | null {
 export class MyPlexPinLogin {
   readonly id: number;
   readonly code: string;
-  readonly product: string;
-  readonly trusted: boolean;
-  readonly qrCodeUrl: string;
   readonly clientIdentifier: string;
-  readonly location: PlexPinLocation;
-  readonly createdAt: Date;
+  readonly expiresAt: Date;
   readonly mode: PlexPinLoginMode;
-  expiresAt: Date;
-  expiresInSeconds: number;
   #authentication: PlexPinAuthentication | null;
-  readonly #timeout: number;
+  readonly #product: string;
+  readonly #requestTimeout: number;
 
   private constructor(
     data: PlexPinData,
-    { mode = 'link', timeout = TIMEOUT }: CreatePlexPinLoginOptions,
+    {
+      mode = 'pin',
+      requestTimeout = TIMEOUT,
+    }: Pick<CreatePlexPinLoginOptions, 'mode' | 'requestTimeout'>,
   ) {
     this.id = data.id;
     this.code = data.code;
-    this.product = data.product;
-    this.trusted = data.trusted;
-    this.qrCodeUrl = data.qr;
     this.clientIdentifier = data.clientIdentifier;
-    this.location = pinLocation(data.location);
-    this.createdAt = new Date(data.createdAt);
-    this.mode = mode;
     this.expiresAt = new Date(data.expiresAt);
-    this.expiresInSeconds = data.expiresIn;
+    this.mode = mode;
     this.#authentication = pinAuthentication(data);
-    this.#timeout = timeout;
+    this.#product = data.product;
+    this.#requestTimeout = requestTimeout;
   }
 
   /** Request a new Plex PIN. */
   static async create({
     clientIdentifier = X_PLEX_IDENTIFIER,
-    mode = 'link',
+    mode = 'pin',
     product = X_PLEX_PRODUCT,
-    timeout = TIMEOUT,
+    requestTimeout = TIMEOUT,
+    signal,
   }: CreatePlexPinLoginOptions = {}): Promise<MyPlexPinLogin> {
     const data = await ofetch<PlexPinData>(PINS_URL, {
       method: 'POST',
       headers: requestHeaders(clientIdentifier, product),
       query: mode === 'oauth' ? { strong: true } : undefined,
-      timeout,
+      signal,
+      timeout: requestTimeout,
       retry: 0,
     });
-    return new MyPlexPinLogin(data, { mode, timeout });
+    return new MyPlexPinLogin(data, { mode, requestTimeout });
   }
 
   /** Resume a PIN login using its Plex identifier. */
   static async resume({
     id,
     clientIdentifier = X_PLEX_IDENTIFIER,
-    mode = 'link',
+    mode = 'pin',
     product = X_PLEX_PRODUCT,
-    timeout = TIMEOUT,
+    requestTimeout = TIMEOUT,
+    signal,
   }: ResumePlexPinLoginOptions): Promise<MyPlexPinLogin> {
     const data = await ofetch<PlexPinData>(`${PINS_URL}/${id}`, {
       headers: requestHeaders(clientIdentifier, product),
-      timeout,
+      signal,
+      timeout: requestTimeout,
       retry: 0,
     });
-    return new MyPlexPinLogin(data, { mode, timeout });
-  }
-
-  get authenticated(): boolean {
-    return this.#authentication !== null;
+    return new MyPlexPinLogin(data, { mode, requestTimeout });
   }
 
   get token(): string | null {
     return this.#authentication?.token ?? null;
-  }
-
-  get newRegistration(): boolean | null {
-    return this.#authentication?.newRegistration ?? null;
   }
 
   /** Build the Plex web authentication URL for an OAuth PIN. */
@@ -168,7 +141,7 @@ export class MyPlexPinLogin {
     const params = new URLSearchParams({
       clientID: this.clientIdentifier,
       code: this.code,
-      'context[device][product]': this.product,
+      'context[device][product]': this.#product,
       'context[device][version]': BASE_HEADERS['X-Plex-Version'],
       'context[device][platform]': BASE_HEADERS['X-Plex-Platform'],
       'context[device][platformVersion]': BASE_HEADERS['X-Plex-Platform-Version'],
@@ -181,18 +154,23 @@ export class MyPlexPinLogin {
     return `https://app.plex.tv/auth#?${params.toString()}`;
   }
 
-  /** Fetch the current authentication state from Plex. */
-  async check({ signal }: { signal?: AbortSignal } = {}): Promise<PlexPinAuthentication | null> {
+  async #check({
+    requestTimeout,
+    signal,
+  }: CheckPlexPinOptions & { requestTimeout: number }): Promise<PlexPinAuthentication | null> {
     const data = await ofetch<PlexPinData>(`${PINS_URL}/${this.id}`, {
-      headers: requestHeaders(this.clientIdentifier, this.product),
+      headers: requestHeaders(this.clientIdentifier, this.#product),
       signal,
-      timeout: this.#timeout,
+      timeout: requestTimeout,
       retry: 0,
     });
-    this.expiresAt = new Date(data.expiresAt);
-    this.expiresInSeconds = data.expiresIn;
     this.#authentication = pinAuthentication(data);
     return this.#authentication;
+  }
+
+  /** Fetch the current authentication state from Plex. */
+  check({ signal }: CheckPlexPinOptions = {}): Promise<PlexPinAuthentication | null> {
+    return this.#check({ requestTimeout: this.#requestTimeout, signal });
   }
 
   /** Poll Plex until the PIN is authenticated, expires, times out, or is aborted. */
@@ -214,7 +192,11 @@ export class MyPlexPinLogin {
     const deadline = Math.min(Date.now() + timeout, this.expiresAt.getTime());
     while (Date.now() < deadline) {
       signal?.throwIfAborted();
-      const authentication = await this.check({ signal });
+      const requestTimeout = Math.min(this.#requestTimeout, deadline - Date.now());
+      if (requestTimeout <= 0) {
+        break;
+      }
+      const authentication = await this.#check({ requestTimeout, signal });
       if (authentication !== null) {
         return authentication;
       }

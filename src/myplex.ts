@@ -50,7 +50,7 @@ export class MyPlexAccount {
     return {
       id: pin.id,
       code: pin.code,
-      uri: pin.oauthUrl({ forwardUrl }),
+      uri: forwardUrl ? pin.oauthUrl({ forwardUrl }) : pin.oauthUrl(),
     };
   }
 
@@ -440,16 +440,12 @@ export class MyPlexAccount {
   }
 
   /** Link a pending client PIN to this Plex account. */
-  async linkPin({
-    code,
-    clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'],
-  }: LinkPlexPinOptions): Promise<void> {
-    await this.query({
+  async linkPin({ code }: LinkPlexPinOptions): Promise<void> {
+    await this.query<void>({
       url: 'https://plex.tv/api/v2/pins/link',
       method: 'put',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'X-Plex-Client-Identifier': clientIdentifier,
         'X-Plex-Product': 'Plex SSO',
       },
       body: new URLSearchParams({ code }),

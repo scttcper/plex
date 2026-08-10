@@ -54,20 +54,11 @@ it('creates, resumes, links, and authenticates an OAuth PIN', async () => {
   const authenticatedAccount = await new MyPlexAccount({ token: authentication.token }).connect();
 
   expect(login.clientIdentifier).toBe(clientIdentifier);
-  expect(login.product).toBe(product);
-  expect(typeof login.code).toBe('string');
-  expect(typeof login.qrCodeUrl).toBe('string');
-  expect(typeof login.trusted).toBe('boolean');
-  expect(typeof login.location.countryCode).toBe('string');
-  expect(login.createdAt).toBeInstanceOf(Date);
-  expect(login.expiresAt).toBeInstanceOf(Date);
   expect(pending).toBeNull();
   expect(oauthUrl).toContain(`clientID=${encodeURIComponent(clientIdentifier)}`);
   expect(oauthUrl).toContain(`code=${encodeURIComponent(login.code)}`);
   expect(oauthUrl).toContain('forwardUrl=https%3A%2F%2Fexample.com%2Fauthenticated');
-  expect(typeof authentication.newRegistration).toBe('boolean');
-  expect(typeof authentication.token).toBe('string');
+  expect(authentication.newRegistration).toBe(false);
   expect(authenticatedAccount.id).toBe(account.id);
-  expect(resumed.authenticated).toBe(true);
   expect(resumed.token).toBe(authentication.token);
 }, 10_000);
