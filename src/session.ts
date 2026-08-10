@@ -3,7 +3,7 @@ import { createPlexItem, type HydratedPlexItem } from './itemFactory.ts';
 import { Photo } from './photo.ts';
 import type { PlexServer } from './server.ts';
 import type {
-  PlexPlaybackSession,
+  PlexSessionFields,
   PlexSessionItem,
   PlexSessionItemData,
   PlexSessionPlayer,
@@ -38,6 +38,10 @@ function sessionInteger(value: string, field: string): number {
 
 function optionalPlexBoolean(value: PlexBoolean | undefined): boolean | undefined {
   return value === undefined ? undefined : parsePlexBoolean(value);
+}
+
+function optionalTuple<T>(value: T | undefined): [] | [T] {
+  return value === undefined ? [] : [value];
 }
 
 function createSessionUser(data: PlexSessionUserData): PlexSessionUser {
@@ -120,21 +124,19 @@ export function createPlexSessionItem(
     ? createPlexTranscodeSession(data.TranscodeSession)
     : undefined;
   const user = createSessionUser(data.User);
-  const players: [PlexSessionPlayer] = [player];
-  const sessions: [] | [PlexPlaybackSession] = session ? [session] : [];
-  const transcodeSessions: [] | [PlexTranscodeSession] = transcodeSession ? [transcodeSession] : [];
-  const usernames: [] | [string] = user.title ? [user.title] : [];
 
-  return Object.assign(item, {
+  const sessionFields = {
     live: parsePlexBoolean(data.live),
     player,
-    players,
+    players: [player],
     session,
-    sessions,
+    sessions: optionalTuple(session),
     sessionKey: sessionInteger(data.sessionKey, 'session key'),
     transcodeSession,
-    transcodeSessions,
+    transcodeSessions: optionalTuple(transcodeSession),
     user,
-    usernames,
-  });
+    usernames: user.title === '' ? [] : [user.title],
+  } satisfies PlexSessionFields;
+
+  return Object.assign(item, sessionFields);
 }

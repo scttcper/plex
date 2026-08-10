@@ -69,18 +69,20 @@ export interface PlexTranscodeSession {
   readonly width?: number;
 }
 
-export type PlexSessionItem = (Clip | Episode | Movie | Photo | Track) & {
+export interface PlexSessionFields {
   live: boolean;
   player: PlexSessionPlayer;
   players: [PlexSessionPlayer];
-  sessions: [] | [PlexPlaybackSession];
+  session?: PlexPlaybackSession;
   sessionKey: number;
+  sessions: [] | [PlexPlaybackSession];
+  transcodeSession?: PlexTranscodeSession;
   transcodeSessions: [] | [PlexTranscodeSession];
   user: PlexSessionUser;
   usernames: [] | [string];
-  session?: PlexPlaybackSession;
-  transcodeSession?: PlexTranscodeSession;
-};
+}
+
+export type PlexSessionItem = (Clip | Episode | Movie | Photo | Track) & PlexSessionFields;
 
 export interface PlexSessionUserData {
   id: string;
