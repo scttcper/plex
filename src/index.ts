@@ -50,6 +50,13 @@ export * from './photo.ts';
 export type { PhotoalbumData, PhotoData, PhotoMediaData, PhotoPartData } from './photo.types.ts';
 export * from './server.ts';
 export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.ts';
+export type {
+  PlexPlaybackSession,
+  PlexSessionItem,
+  PlexSessionPlayer,
+  PlexSessionUser,
+  PlexTranscodeSession,
+} from './session.types.ts';
 export * from './serverModels.ts';
 export { Setting, Settings } from './settings.ts';
 export type { SettingEnumValues, SettingType, SettingValue } from './settings.ts';

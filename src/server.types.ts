@@ -72,10 +72,6 @@ export interface HistoryMediaContainer {
   Metadata?: Array<HistoryResult | null | undefined>;
 }
 
-export type SessionData = Record<string, unknown>;
-
-export type TranscodeSessionData = Record<string, unknown>;
-
 export type ContinueWatchingItemData = Record<string, unknown>;
 
 export interface HistoryResult {

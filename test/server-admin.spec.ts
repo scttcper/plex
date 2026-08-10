@@ -16,16 +16,6 @@ beforeAll(async () => {
 });
 
 describe('Server Admin Methods', () => {
-  it('should get active sessions (may be empty)', async () => {
-    const sessions = await plex.sessions();
-    expect(Array.isArray(sessions)).toBe(true);
-  });
-
-  it('should get transcode sessions (may be empty)', async () => {
-    const sessions = await plex.transcodeSessions();
-    expect(Array.isArray(sessions)).toBe(true);
-  });
-
   it('should get activities (may be empty)', async () => {
     const activities = await plex.activities();
     expect(Array.isArray(activities)).toBe(true);

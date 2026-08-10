@@ -9,6 +9,12 @@ import {
 } from '../media.ts';
 import type { PlayQueue } from '../playqueue.ts';
 import type { CreatePlayQueueOptions } from '../playqueue.types.ts';
+import type {
+  PlexPlaybackSession,
+  PlexSessionPlayer,
+  PlexSessionUser,
+  PlexTranscodeSession,
+} from '../session.types.ts';
 
 import { PartialPlexObject } from './partialPlexObject.ts';
 
@@ -18,18 +24,20 @@ import { PartialPlexObject } from './partialPlexObject.ts';
  * Albums which are all not playable.
  */
 export abstract class Playable extends PartialPlexObject {
-  /** (int): Active session key. */
-  declare sessionKey: any;
-  /** (str): Username of the person playing this item (for active sessions). */
-  declare usernames: any;
-  /** (:class:`~plexapi.client.PlexClient`): Client objects playing this item (for active sessions). */
-  declare players: any;
-  /** (:class:`~plexapi.media.Session`): Session object, for a playing media file. */
-  declare session: any;
-  /** (:class:`~plexapi.media.TranscodeSession`): Transcode Session object if item is being transcoded (None otherwise). */
-  declare transcodeSessions: any;
-  /** (datetime): Datetime item was last viewed (history). */
-  declare viewedAt: any;
+  /** Whether the active session is live TV. */
+  declare live?: boolean;
+  /** Server-local key for an active playback session. */
+  declare sessionKey?: number;
+  /** Account currently playing this item. */
+  declare user?: PlexSessionUser;
+  /** Client currently playing this item. */
+  declare player?: PlexSessionPlayer;
+  /** Bandwidth allocation for the active playback, when one exists. */
+  declare session?: PlexPlaybackSession;
+  /** Active transcode associated with this playback, when Plex includes it. */
+  declare transcodeSession?: PlexTranscodeSession;
+  /** Datetime item was last viewed (history). */
+  declare viewedAt?: Date;
   /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
   declare playlistItemID?: number;
   /** Queue-local item ID (only populated for PlayQueue items). */
