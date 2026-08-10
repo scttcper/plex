@@ -1,3 +1,5 @@
+import { stringToBase64 } from 'uint8array-extras';
+
 import type { Section } from './library.ts';
 
 export interface MediaContainer<T> {
@@ -81,13 +83,5 @@ export function lowerFirst(str: string): string {
 }
 
 export function encodeBase64(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  const chunkSize = 32_768;
-  let binary = '';
-
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-
-  return globalThis.btoa(binary);
+  return stringToBase64(value);
 }

@@ -12,6 +12,17 @@ export type {
 } from './client.types.ts';
 export * from './exceptions.ts';
 export * from './library.ts';
+export * from './jwt.ts';
+export type {
+  PlexJwtClaims,
+  PlexJwtCredentials,
+  PlexJwtPrivateKey,
+  PlexJwtScope,
+  PlexJwtUserClaims,
+  RefreshPlexJwtOptions,
+  RegisterPlexJwtOptions,
+  VerifyPlexJwtOptions,
+} from './jwt.types.ts';
 export * from './media.ts';
 export * from './myplex.ts';
 export { Optimized, TranscodeJob } from './optimized.ts';

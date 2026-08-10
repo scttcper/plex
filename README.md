@@ -41,6 +41,22 @@ const library = await plex.library();
 const sections = await library.sections();
 ```
 
+Create and refresh a signed Plex JWT. The bootstrap token must have been issued for the same
+client identifier. Store the returned credentials securely; they contain the private signing key.
+
+```ts
+import { MyPlexAccount, refreshPlexJwt, registerPlexJwt, X_PLEX_IDENTIFIER } from '@ctrl/plex';
+
+let credentials = await registerPlexJwt({
+  token: account.authenticationToken!,
+  clientIdentifier: X_PLEX_IDENTIFIER,
+  scopes: ['username', 'email', 'friendly_name'],
+});
+
+credentials = await refreshPlexJwt({ credentials });
+const jwtAccount = await new MyPlexAccount({ token: credentials.token }).connect();
+```
+
 ###### Example 1: List all unwatched movies.
 
 ```ts

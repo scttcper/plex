@@ -33,8 +33,10 @@
   },
   "dependencies": {
     "@ctrl/mac-address": "^3.2.1",
+    "jose": "^6.2.8",
     "ofetch": "^1.5.1",
     "type-fest": "^5.8.0",
+    "uint8array-extras": "^1.5.0",
     "ws": "^8.21.0",
     "xml2js": "^0.6.2"
   },
