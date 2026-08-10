@@ -42,20 +42,26 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   expect(Array.isArray(webhooks)).toBe(true);
   expect(userState).toBeInstanceOf(PlexUserState);
   expect(typeof userState.ratingKey).toBe('string');
+  expect(typeof userState.isPlayed).toBe('boolean');
   expect(typeof userState.viewCount).toBe('number');
   expect(typeof userState.viewOffset).toBe('number');
 }, 20_000);
 
-it('searches Plex Discover with discriminated movie and show results', async () => {
-  const results = await account.searchDiscover({ query: 'Dune', limit: 10 });
-  const movie = results.find(result => result.type === 'movie');
-  const show = results.find(result => result.type === 'show');
+it('searches Plex Discover and reads account watch state', async () => {
+  const [movie] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'movie' });
+  const [show] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'show' });
+  const syncState = await account.viewStateSync();
+  const isPlayed = await movie.isPlayed();
 
   expect(movie).toBeInstanceOf(DiscoverMovie);
   expect(show).toBeInstanceOf(DiscoverShow);
-  expect(movie?.guid).toContain('plex://movie/');
-  expect(show?.guid).toContain('plex://show/');
-  expect(typeof movie?.score).toBe('number');
-  expect(typeof movie?.genres[0]).toBe('string');
-  expect(typeof show?.leafCount).toBe('number');
+  expect(movie.guid).toContain('plex://movie/');
+  expect(show.guid).toContain('plex://show/');
+  expect(typeof movie.score).toBe('number');
+  expect(typeof movie.genres[0]).toBe('string');
+  expect(typeof show.leafCount).toBe('number');
+  expect(typeof isPlayed).toBe('boolean');
+  expect(typeof syncState.enabled).toBe('boolean');
+  expect(syncState.updatedAt).toBeInstanceOf(Date);
+  expect(Number.isNaN(syncState.updatedAt.getTime())).toBe(false);
 }, 10_000);
