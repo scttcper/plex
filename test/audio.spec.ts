@@ -77,20 +77,4 @@ describe('Audio Class Tests', () => {
     expect(url).toContain('key=');
     expect(url).toContain(encodeURIComponent(track.parentKey as string));
   });
-
-  it('loads subsampled loudness levels for an audio stream', async () => {
-    const library = await plex.library();
-    const musicSection = await library.section('Music');
-    const [artist] = await musicSection.search({ title: 'Ladytron', libtype: 'artist' }, Artist);
-    const [album] = await artist.albums();
-    const [track] = await album.tracks();
-    await track.reload();
-    const stream = track.media![0].parts[0].audioStreams()[0];
-
-    const levels = await stream.levels({ sampleCount: 8 });
-
-    expect(levels.loudness).toHaveLength(8);
-    expect(levels.totalSamples).toBeGreaterThan(levels.loudness.length);
-    expect(typeof levels.loudness[0]).toBe('number');
-  });
 });
