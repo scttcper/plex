@@ -25,6 +25,17 @@ export type {
 } from './jwt.types.ts';
 export * from './media.ts';
 export * from './myplex.ts';
+export * from './pin.ts';
+export type {
+  LinkPlexPinOptions,
+  CreatePlexPinLoginOptions,
+  PlexPinAuthentication,
+  PlexPinLocation,
+  PlexPinLoginMode,
+  PlexPinOAuthUrlOptions,
+  ResumePlexPinLoginOptions,
+  WaitForPlexPinOptions,
+} from './pin.types.ts';
 export { Optimized, TranscodeJob } from './optimized.ts';
 export type { OptimizedMediaItem } from './optimized.ts';
 export type {

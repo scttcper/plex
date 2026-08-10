@@ -1,4 +1,4 @@
-import { MyPlexAccount } from '../src/index.ts';
+import { MyPlexAccount, MyPlexPinLogin } from '../src/index.ts';
 
 async function listLibraries(account: MyPlexAccount) {
   const resource = await account.resource('zeus');
@@ -11,9 +11,9 @@ async function listLibraries(account: MyPlexAccount) {
   }
 }
 
-MyPlexAccount.getWebLogin().then(webLogin => {
-  console.log('Got to', webLogin.uri);
-  MyPlexAccount.webLoginCheck(webLogin).then(account =>
-    listLibraries(account).then(() => console.log('done')),
-  );
-});
+const login = await MyPlexPinLogin.create({ mode: 'oauth' });
+console.log('Go to', login.oauthUrl());
+
+const authentication = await login.wait();
+const account = await new MyPlexAccount({ token: authentication.token }).connect();
+await listLibraries(account);
