@@ -1,21 +1,19 @@
 import { beforeAll, expect, it } from 'vitest';
 
 import type { MovieSection } from '../src/library.ts';
-import { MyPlexAccount, PlexUserState } from '../src/myplex.ts';
-import type { PlexServer } from '../src/server.ts';
+import { DiscoverMovie, DiscoverShow, MyPlexAccount, PlexUserState } from '../src/myplex.ts';
 import type { Movie } from '../src/video.ts';
 
 import { createAccount, createClient } from './test-client.ts';
 
 let account: MyPlexAccount;
-let plex: PlexServer;
 
 beforeAll(async () => {
   account = await createAccount();
-  plex = await createClient();
 });
 
 it('reads account users and pending invites from Plex XML endpoints', async () => {
+  const plex = await createClient();
   const users = await account.users();
   const sentInvites = await account.pendingInvites({ includeReceived: false });
   const receivedInvites = await account.pendingInvites({ includeSent: false });
@@ -47,3 +45,17 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   expect(typeof userState.viewCount).toBe('number');
   expect(typeof userState.viewOffset).toBe('number');
 }, 20_000);
+
+it('searches Plex Discover with discriminated movie and show results', async () => {
+  const results = await account.searchDiscover({ query: 'Dune', limit: 10 });
+  const movie = results.find(result => result.type === 'movie');
+  const show = results.find(result => result.type === 'show');
+
+  expect(movie).toBeInstanceOf(DiscoverMovie);
+  expect(show).toBeInstanceOf(DiscoverShow);
+  expect(movie?.guid).toContain('plex://movie/');
+  expect(show?.guid).toContain('plex://show/');
+  expect(typeof movie?.score).toBe('number');
+  expect(typeof movie?.genres[0]).toBe('string');
+  expect(typeof show?.leafCount).toBe('number');
+}, 10_000);

@@ -10,6 +10,10 @@ import type { LibrarySection } from './library.ts';
 import type {
   Connection,
   Device,
+  DiscoverMovieData,
+  DiscoverSearchResultData,
+  DiscoverSearchResponse,
+  DiscoverShowData,
   MyPlexInviteData,
   MyPlexInvitesResponse,
   MyPlexServerShareData,
@@ -522,6 +526,51 @@ export class MyPlexAccount {
     return (data.MediaContainer.Metadata ?? []).map(item => new WatchlistItem(this, item));
   }
 
+  async searchDiscover(
+    options: DiscoverSearchOptions & { type: 'movie' },
+  ): Promise<DiscoverMovie[]>;
+  async searchDiscover(options: DiscoverSearchOptions & { type: 'show' }): Promise<DiscoverShow[]>;
+  async searchDiscover(options: DiscoverSearchOptions): Promise<DiscoverSearchItem[]>;
+  /** Search Plex Discover for movies and shows. */
+  async searchDiscover({
+    query,
+    limit = 30,
+    providers = ['discover'],
+    type,
+  }: DiscoverSearchOptions): Promise<DiscoverSearchItem[]> {
+    const normalizedQuery = query.trim();
+    if (normalizedQuery === '') {
+      throw new BadRequest('Discover search query cannot be empty.');
+    }
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new BadRequest('Discover search limit must be a positive integer.');
+    }
+    const searchProviders = providers.map(provider => provider.trim());
+    if (searchProviders.length === 0 || searchProviders.includes('')) {
+      throw new BadRequest('Discover search requires at least one provider.');
+    }
+
+    const searchTypes = type === 'movie' ? 'movies' : type === 'show' ? 'tv' : 'movies,tv';
+    const params = new URLSearchParams({
+      query: normalizedQuery,
+      limit: limit.toString(),
+      searchTypes,
+      searchProviders: searchProviders.join(','),
+      includeMetadata: '1',
+    });
+    const data = await this.query<DiscoverSearchResponse>({
+      url: `${this.DISCOVER}/library/search?${params.toString()}`,
+    });
+    const externalResults = data.MediaContainer.SearchResults?.find(
+      result => result.id === 'external',
+    )?.SearchResult;
+
+    return (externalResults ?? [])
+      .filter(result => type === undefined || result.Metadata.type === type)
+      .map(result => createDiscoverItem(this, result))
+      .slice(0, limit);
+  }
+
   /** Return Plex Discover user state for a movie or show. */
   async userState(item: WatchlistTarget): Promise<PlexUserState> {
     const ratingKey = discoverRatingKey(item);
@@ -979,6 +1028,24 @@ export interface WatchlistTarget {
   title?: string;
 }
 
+export type DiscoverMediaType = 'movie' | 'show';
+
+export interface DiscoverSearchOptions {
+  /** Search text sent to Plex Discover. */
+  query: string;
+  /** Maximum number of results to return. Defaults to 30. */
+  limit?: number;
+  /** Only return movies or shows. Omit to return both. */
+  type?: DiscoverMediaType;
+  /**
+   * Plex search providers. Common values include `discover`, `PLEXAVOD`, and `PLEXTVOD`.
+   * Defaults to `discover`.
+   */
+  providers?: readonly string[];
+}
+
+export type DiscoverSearchItem = DiscoverMovie | DiscoverShow;
+
 export interface UpdateFriendOptions extends InviteFriendOptions {
   /** Remove this server's library share. Supersedes `sections`. */
   removeSections?: boolean;
@@ -1008,8 +1075,29 @@ export class PlexUserState {
   }
 }
 
-export class WatchlistItem implements WatchlistTarget {
+abstract class WatchlistEntry implements WatchlistTarget {
   readonly account: MyPlexAccount;
+  abstract readonly guid: string;
+  abstract readonly title: string;
+
+  protected constructor(account: MyPlexAccount) {
+    this.account = account;
+  }
+
+  async onWatchlist(): Promise<boolean> {
+    return this.account.onWatchlist(this);
+  }
+
+  async addToWatchlist(): Promise<void> {
+    await this.account.addToWatchlist(this);
+  }
+
+  async removeFromWatchlist(): Promise<void> {
+    await this.account.removeFromWatchlist(this);
+  }
+}
+
+export class WatchlistItem extends WatchlistEntry {
   readonly ratingKey: string;
   readonly key: string;
   readonly guid: string;
@@ -1028,7 +1116,7 @@ export class WatchlistItem implements WatchlistTarget {
   readonly year?: number;
 
   constructor(account: MyPlexAccount, data: WatchlistItemData) {
-    this.account = account;
+    super(account);
     this.ratingKey = data.ratingKey;
     this.key = data.key;
     this.guid = data.guid;
@@ -1046,17 +1134,69 @@ export class WatchlistItem implements WatchlistTarget {
     this.watchlistedAt = timestampDate(data.watchlistedAt);
     this.year = data.year;
   }
+}
 
-  async onWatchlist(): Promise<boolean> {
-    return this.account.onWatchlist(this);
+abstract class DiscoverItem extends WatchlistEntry {
+  abstract readonly type: DiscoverMediaType;
+  readonly addedAt?: Date;
+  readonly art?: string;
+  readonly duration?: number;
+  readonly genres: readonly string[];
+  readonly guid: string;
+  readonly key: string;
+  readonly originallyAvailableAt?: string;
+  readonly ratingKey: string;
+  readonly score: number;
+  readonly slug: string;
+  readonly source?: string;
+  readonly subtype?: string;
+  readonly thumb?: string;
+  readonly title: string;
+  readonly year?: number;
+
+  protected constructor(
+    account: MyPlexAccount,
+    data: DiscoverMovieData | DiscoverShowData,
+    score: number,
+  ) {
+    super(account);
+    this.addedAt = timestampDate(data.addedAt);
+    this.art = data.art;
+    this.duration = data.duration;
+    this.genres = (data.Genre ?? []).map(genre => genre.tag);
+    this.guid = data.guid;
+    this.key = data.key;
+    this.originallyAvailableAt = data.originallyAvailableAt;
+    this.ratingKey = data.ratingKey;
+    this.score = score;
+    this.slug = data.slug;
+    this.source = data.source;
+    this.subtype = data.subtype;
+    this.thumb = data.thumb;
+    this.title = data.title;
+    this.year = data.year;
   }
+}
 
-  async addToWatchlist(): Promise<void> {
-    await this.account.addToWatchlist(this);
+export class DiscoverMovie extends DiscoverItem {
+  readonly type = 'movie' as const;
+
+  constructor(account: MyPlexAccount, data: DiscoverMovieData, score: number) {
+    super(account, data, score);
   }
+}
 
-  async removeFromWatchlist(): Promise<void> {
-    await this.account.removeFromWatchlist(this);
+export class DiscoverShow extends DiscoverItem {
+  readonly type = 'show' as const;
+  readonly childCount?: number;
+  readonly leafCount?: number;
+  readonly skipChildren: boolean;
+
+  constructor(account: MyPlexAccount, data: DiscoverShowData, score: number) {
+    super(account, data, score);
+    this.childCount = data.childCount;
+    this.leafCount = data.leafCount;
+    this.skipChildren = data.skipChildren ?? false;
   }
 }
 
@@ -1331,6 +1471,15 @@ function normalizeWatchlistTargets(
 
 function timestampDate(value: number | undefined): Date | undefined {
   return value === undefined ? undefined : new Date(value * 1000);
+}
+
+function createDiscoverItem(
+  account: MyPlexAccount,
+  { Metadata: item, score }: DiscoverSearchResultData,
+): DiscoverSearchItem {
+  return item.type === 'movie'
+    ? new DiscoverMovie(account, item, score)
+    : new DiscoverShow(account, item, score);
 }
 
 function webhookUrls(response: WebhookResponse): string[] {
