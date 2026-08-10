@@ -26,6 +26,8 @@ import {
 } from './media.ts';
 import type { CommonSenseMediaData } from './media.types.ts';
 import type { MyPlexAccount } from './myplex.ts';
+import type { Optimized } from './optimized.ts';
+import type { OptimizeOptions, OptimizationState } from './optimized.types.ts';
 import type {
   ChapterSource,
   EpisodeMetadata,
@@ -66,9 +68,10 @@ type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
   artBlurHash?: string;
   thumbBlurHash?: string;
   editionTitle?: string;
+  processingState?: OptimizationState;
 };
 
-abstract class Video extends Playable {
+export abstract class Video extends Playable {
   /** Datetime this item was added to the library. */
   declare addedAt: Date;
   /** Datetime item was last accessed. */
@@ -105,6 +108,8 @@ abstract class Video extends Playable {
    * BlurHash string for thumbnail image.
    */
   declare thumbBlurHash?: string;
+  /** Current state while this item is being processed for an optimized-media group. */
+  declare processingState?: OptimizationState;
 
   /**
    * Returns True if this video is watched.
@@ -169,6 +174,11 @@ abstract class Video extends Playable {
     const key = `/:/rate?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&rating=${rate}`;
     await this.server.query({ path: key });
     await this.reload();
+  }
+
+  /** Create an optimized version using a built-in preset or explicit custom profile. */
+  async optimize(options: OptimizeOptions): Promise<Optimized> {
+    return this.server.createOptimizedVersion({ item: this, ...options });
   }
 
   /** Search Plex's on-demand subtitle providers for this video. */
@@ -312,6 +322,7 @@ abstract class Video extends Playable {
     this.titleSort = (data as MovieData).titleSort ?? this.title;
     this.playlistItemID = videoData.playlistItemID;
     this.editionTitle = videoData.editionTitle;
+    this.processingState = videoData.processingState;
     // todo: update one of them with this property
     this.artBlurHash = videoData.artBlurHash;
     this.thumbBlurHash = videoData.thumbBlurHash;

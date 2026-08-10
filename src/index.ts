@@ -14,6 +14,14 @@ export * from './exceptions.ts';
 export * from './library.ts';
 export * from './media.ts';
 export * from './myplex.ts';
+export { Optimized, TranscodeJob } from './optimized.ts';
+export type { OptimizedMediaItem } from './optimized.ts';
+export type {
+  CustomOptimizationTarget,
+  OptimizeOptions,
+  OptimizationPreset,
+  OptimizationState,
+} from './optimized.types.ts';
 export * from './playlist.ts';
 export * from './playqueue.ts';
 export * from './photo.ts';
