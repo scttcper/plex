@@ -1,4 +1,5 @@
 import { PlexObject } from './base/plexObject.ts';
+import { BadRequest } from './exceptions.ts';
 import type {
   AgeRatingData,
   ArtworkResourceData,
@@ -739,6 +740,23 @@ export class Theme extends BaseResource {
   static override TAG = 'Theme';
 }
 
+export interface AudioLevelsOptions {
+  /** Number of evenly distributed loudness samples to request. Defaults to 128. */
+  sampleCount?: number;
+}
+
+export interface AudioLevels {
+  /** Subsampled loudness values. */
+  loudness: number[];
+  /** Total number of loudness samples available before subsampling. */
+  totalSamples: number;
+}
+
+interface AudioLevelsData {
+  Level?: Array<{ v: number }>;
+  totalSamples: `${number}`;
+}
+
 /**
  * Represents a single Audio stream within a {@link MediaPart}.
  */
@@ -783,6 +801,26 @@ export class AudioStream extends MediaPartStream {
   peak?: number;
   /** The start ramp for the track. */
   startRamp?: string;
+
+  /**
+   * Returns evenly distributed loudness samples for this audio stream.
+   */
+  async levels({ sampleCount = 128 }: AudioLevelsOptions = {}): Promise<AudioLevels> {
+    if (!Number.isInteger(sampleCount) || sampleCount < 1) {
+      throw new BadRequest('Audio level sampleCount must be a positive integer.');
+    }
+
+    const params = new URLSearchParams({ subsample: sampleCount.toString() });
+    const data = await this.server.query<MediaContainer<AudioLevelsData>>({
+      path: `/library/streams/${this.id}/levels?${params.toString()}`,
+    });
+    const { Level = [], totalSamples } = data.MediaContainer;
+
+    return {
+      loudness: Level.map(level => level.v),
+      totalSamples: Number.parseInt(totalSamples, 10),
+    };
+  }
 
   /**
    * Sets this audio stream as the selected audio stream.
