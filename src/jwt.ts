@@ -1,6 +1,14 @@
 import { ofetch } from 'ofetch';
+import {
+  base64ToString,
+  base64ToUint8Array,
+  concatUint8Arrays,
+  stringToBase64,
+  stringToUint8Array,
+  uint8ArrayToBase64,
+  uint8ArrayToHex,
+} from 'uint8array-extras';
 
-import { decodeBase64Url, encodeBase64Url } from './base64.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import { BadRequest, Unauthorized } from './exceptions.ts';
 import type {
@@ -14,8 +22,6 @@ import type {
 } from './jwt.types.ts';
 
 const AUTH_URL = 'https://clients.plex.tv/api/v2/auth';
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 const clientTokenLifetimeSeconds = 5 * 60;
 const defaultRefreshWindowSeconds = 24 * 60 * 60;
 
@@ -69,13 +75,12 @@ function requestHeaders(clientIdentifier: string, token?: string): Headers {
 }
 
 async function keyId(privateKey: PlexJwtPrivateKey): Promise<string> {
-  const privateBytes = decodeBase64Url(privateKey.d);
-  const publicBytes = decodeBase64Url(privateKey.x);
-  const keyMaterial = new Uint8Array(privateBytes.length + publicBytes.length);
-  keyMaterial.set(privateBytes);
-  keyMaterial.set(publicBytes, privateBytes.length);
+  const keyMaterial = concatUint8Arrays([
+    base64ToUint8Array(privateKey.d),
+    base64ToUint8Array(privateKey.x),
+  ]);
   const digest = await crypto.subtle.digest('SHA-256', keyMaterial);
-  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  return uint8ArrayToHex(new Uint8Array(digest));
 }
 
 async function toPublicKey(privateKey: PlexJwtPrivateKey): Promise<PlexJwtPublicKey> {
@@ -108,7 +113,7 @@ async function createPrivateKey(): Promise<PlexJwtPrivateKey> {
 
 function decodeJson<T>(encoded: string, name: string): T {
   try {
-    return JSON.parse(decoder.decode(decodeBase64Url(encoded))) as T;
+    return JSON.parse(base64ToString(encoded)) as T;
   } catch {
     throw new Unauthorized(`Plex JWT ${name} is not valid base64url JSON.`);
   }
@@ -157,9 +162,13 @@ async function clientJwt(client: PlexJwtClient, timeout: number): Promise<string
     iat: now,
     exp: now + clientTokenLifetimeSeconds,
   };
-  const signingInput = `${encodeBase64Url(encoder.encode(JSON.stringify(header)))}.${encodeBase64Url(encoder.encode(JSON.stringify(payload)))}`;
-  const signature = await crypto.subtle.sign('Ed25519', privateKey, encoder.encode(signingInput));
-  return `${signingInput}.${encodeBase64Url(new Uint8Array(signature))}`;
+  const signingInput = `${stringToBase64(JSON.stringify(header), { urlSafe: true })}.${stringToBase64(JSON.stringify(payload), { urlSafe: true })}`;
+  const signature = await crypto.subtle.sign(
+    'Ed25519',
+    privateKey,
+    stringToUint8Array(signingInput),
+  );
+  return `${signingInput}.${uint8ArrayToBase64(new Uint8Array(signature), { urlSafe: true })}`;
 }
 
 async function exchange(client: PlexJwtClient, timeout: number): Promise<string> {
@@ -249,8 +258,8 @@ export async function verifyPlexJwt({
   const validSignature = await crypto.subtle.verify(
     'Ed25519',
     verificationKey,
-    decodeBase64Url(encodedSignature),
-    encoder.encode(`${encodedHeader}.${encodedClaims}`),
+    base64ToUint8Array(encodedSignature),
+    stringToUint8Array(`${encodedHeader}.${encodedClaims}`),
   );
   if (!validSignature) {
     throw new Unauthorized('Plex JWT signature is invalid.');

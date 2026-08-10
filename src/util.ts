@@ -1,4 +1,5 @@
-import { encodeBase64Bytes } from './base64.ts';
+import { stringToBase64 } from 'uint8array-extras';
+
 import type { Section } from './library.ts';
 
 export interface MediaContainer<T> {
@@ -82,5 +83,5 @@ export function lowerFirst(str: string): string {
 }
 
 export function encodeBase64(value: string): string {
-  return encodeBase64Bytes(new TextEncoder().encode(value));
+  return stringToBase64(value);
 }
