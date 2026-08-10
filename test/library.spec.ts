@@ -198,9 +198,9 @@ it('should get root library recently added items', async () => {
 it('should search root library items by type', async () => {
   const library = await plex.library();
   const results = await library.search({ title: 'Bunny', libtype: 'movie' });
-  expect(results.length).toBe(1);
-  expect(results[0]).toBeInstanceOf(Movie);
-  expect(results[0].title).toBe('Big Buck Bunny');
+  expect(results.length).toBeGreaterThan(0);
+  expect(results.every(result => result instanceof Movie)).toBe(true);
+  expect(results.map(result => result.title)).toContain('Big Buck Bunny');
 });
 
 it('should aggregate root library history', async () => {

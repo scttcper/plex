@@ -344,7 +344,7 @@ export interface UserStateData {
   viewCount: number;
   viewedLeafCount?: number;
   viewOffset: number;
-  viewState?: string;
+  viewState?: 'complete';
   watchlistedAt?: number;
 }
 
@@ -354,6 +354,12 @@ export interface UserStateResponse {
     size: number;
     UserState?: UserStateData;
   };
+}
+
+export interface ViewStateSyncResponse {
+  consent: boolean;
+  updatedAt: string;
+  deletionRequestedAt: string | null;
 }
 
 export type WebhookResponse = Array<string | { url: string }>;

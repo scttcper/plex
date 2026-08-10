@@ -24,6 +24,7 @@ import type {
   UserStateData,
   UserStateResponse,
   UserResponse,
+  ViewStateSyncResponse,
   WatchlistItemData,
   WatchlistResponse,
   WebhookResponse,
@@ -136,6 +137,7 @@ export class MyPlexAccount {
   REQUESTS = 'https://plex.tv/api/invites/requests'; // get
   SIGNIN = 'https://plex.tv/users/sign_in.json'; // get with auth
   WEBHOOKS = 'https://plex.tv/api/v2/user/webhooks'; // get, post with data
+  VIEWSTATESYNC = 'https://plex.tv/api/v2/user/view_state_sync';
   DISCOVER = 'https://discover.provider.plex.tv';
   METADATA = 'https://metadata.provider.plex.tv';
 
@@ -584,6 +586,43 @@ export class MyPlexAccount {
     return new PlexUserState(state);
   }
 
+  /** Return whether an item is marked as played in Plex Discover. */
+  async isPlayed(item: WatchlistTarget): Promise<boolean> {
+    return (await this.userState(item)).isPlayed;
+  }
+
+  /** Mark an item as played in Plex Discover. */
+  async markPlayed(item: WatchlistTarget): Promise<this> {
+    return this._setPlayed(item, true);
+  }
+
+  /** Mark an item as unplayed in Plex Discover. */
+  async markUnplayed(item: WatchlistTarget): Promise<this> {
+    return this._setPlayed(item, false);
+  }
+
+  /** Return this account's watch-state and ratings sync status. */
+  async viewStateSync(): Promise<ViewStateSyncStatus> {
+    const data = await this.query<ViewStateSyncResponse>({ url: this.VIEWSTATESYNC });
+    return {
+      enabled: data.consent,
+      updatedAt: new Date(data.updatedAt),
+      deletionRequestedAt: data.deletionRequestedAt
+        ? new Date(data.deletionRequestedAt)
+        : undefined,
+    };
+  }
+
+  /** Enable or disable account-wide watch-state and ratings sync. */
+  async setViewStateSync({ enabled }: SetViewStateSyncOptions): Promise<ViewStateSyncStatus> {
+    const params = new URLSearchParams({ consent: enabled.toString() });
+    await this.query<void>({
+      url: `${this.VIEWSTATESYNC}?${params.toString()}`,
+      method: 'put',
+    });
+    return this.viewStateSync();
+  }
+
   /** Return whether a movie or show is currently on this account's watchlist. */
   async onWatchlist(item: WatchlistTarget): Promise<boolean> {
     return (await this.userState(item)).watchlistedAt !== undefined;
@@ -795,7 +834,7 @@ export class MyPlexAccount {
       requestHeaders.accept = 'application/json';
     }
 
-    const responseBody = await ofetch<string>(url, {
+    const responseBody = await ofetch<string | undefined>(url, {
       method,
       headers: requestHeaders,
       body: requestBody,
@@ -805,18 +844,31 @@ export class MyPlexAccount {
       // Can't seem to pass responseType
     });
 
+    if (responseBody === undefined || responseBody.trimStart() === '') {
+      return undefined as T;
+    }
+
     const trimmedBody = responseBody.trimStart();
     if (url.includes('xml') || trimmedBody.startsWith('<')) {
       const xml = await parseStringPromise(responseBody);
       return xml;
     }
 
-    if (trimmedBody === '') {
-      return undefined as T;
-    }
-
     const res = JSON.parse(responseBody);
     return res;
+  }
+
+  private async _setPlayed(item: WatchlistTarget, played: boolean): Promise<this> {
+    const ratingKey = discoverRatingKey(item);
+    const action = played ? 'scrobble' : 'unscrobble';
+    const params = new URLSearchParams({
+      key: ratingKey,
+      identifier: 'com.plexapp.plugins.library',
+    });
+    await this.query<MediaContainer<{ size: 0 }>>({
+      url: `${this.METADATA}/actions/${action}?${params.toString()}`,
+    });
+    return this;
   }
 
   private async _pendingInvites(
@@ -1028,6 +1080,17 @@ export interface WatchlistTarget {
   title?: string;
 }
 
+export interface SetViewStateSyncOptions {
+  /** Whether Plex should sync watch state and ratings across participating servers. */
+  enabled: boolean;
+}
+
+export interface ViewStateSyncStatus {
+  readonly enabled: boolean;
+  readonly updatedAt: Date;
+  readonly deletionRequestedAt?: Date;
+}
+
 export type DiscoverMediaType = 'movie' | 'show';
 
 export interface DiscoverSearchOptions {
@@ -1056,6 +1119,7 @@ export type MyPlexInviteDirection = 'received' | 'sent';
 export class PlexUserState {
   readonly ratingKey: string;
   readonly type: string;
+  readonly isPlayed: boolean;
   readonly lastViewedAt?: Date;
   readonly viewCount: number;
   readonly viewedLeafCount?: number;
@@ -1066,6 +1130,7 @@ export class PlexUserState {
   constructor(data: UserStateData) {
     this.ratingKey = data.ratingKey;
     this.type = data.type;
+    this.isPlayed = data.viewCount > 0;
     this.lastViewedAt = timestampDate(data.lastViewedAt);
     this.viewCount = data.viewCount;
     this.viewedLeafCount = data.viewedLeafCount;
@@ -1075,7 +1140,7 @@ export class PlexUserState {
   }
 }
 
-abstract class WatchlistEntry implements WatchlistTarget {
+abstract class DiscoverMetadataItem implements WatchlistTarget {
   readonly account: MyPlexAccount;
   abstract readonly guid: string;
   abstract readonly title: string;
@@ -1095,9 +1160,21 @@ abstract class WatchlistEntry implements WatchlistTarget {
   async removeFromWatchlist(): Promise<void> {
     await this.account.removeFromWatchlist(this);
   }
+
+  async isPlayed(): Promise<boolean> {
+    return this.account.isPlayed(this);
+  }
+
+  async markPlayed(): Promise<void> {
+    await this.account.markPlayed(this);
+  }
+
+  async markUnplayed(): Promise<void> {
+    await this.account.markUnplayed(this);
+  }
 }
 
-export class WatchlistItem extends WatchlistEntry {
+export class WatchlistItem extends DiscoverMetadataItem {
   readonly ratingKey: string;
   readonly key: string;
   readonly guid: string;
@@ -1136,7 +1213,7 @@ export class WatchlistItem extends WatchlistEntry {
   }
 }
 
-abstract class DiscoverItem extends WatchlistEntry {
+abstract class DiscoverItem extends DiscoverMetadataItem {
   abstract readonly type: DiscoverMediaType;
   readonly addedAt?: Date;
   readonly art?: string;
