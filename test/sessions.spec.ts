@@ -56,8 +56,12 @@ it('hydrates active playback sessions as playable media', async () => {
   expect(session?.player.machineIdentifier).toBe(clientIdentifier);
   expect(session?.player.state).toBe('playing');
   expect(session?.player.title).toBe('Plex TypeScript Session Test');
+  expect(session?.players).toEqual([session?.player]);
+  expect(session?.sessions).toEqual([]);
   expect(session?.ratingKey).toBe(movie.ratingKey);
   expect(typeof session?.sessionKey).toBe('number');
+  expect(session?.transcodeSessions).toEqual([]);
   expect(typeof session?.user.id).toBe('number');
   expect(typeof session?.user.title).toBe('string');
+  expect(session?.usernames).toEqual([session?.user.title]);
 });

@@ -72,8 +72,12 @@ export interface PlexTranscodeSession {
 export type PlexSessionItem = (Clip | Episode | Movie | Photo | Track) & {
   live: boolean;
   player: PlexSessionPlayer;
+  players: [PlexSessionPlayer];
+  sessions: [] | [PlexPlaybackSession];
   sessionKey: number;
+  transcodeSessions: [] | [PlexTranscodeSession];
   user: PlexSessionUser;
+  usernames: [] | [string];
   session?: PlexPlaybackSession;
   transcodeSession?: PlexTranscodeSession;
 };

@@ -28,6 +28,14 @@ export abstract class Playable extends PartialPlexObject {
   declare live?: boolean;
   /** Server-local key for an active playback session. */
   declare sessionKey?: number;
+  /** Usernames associated with this active playback. */
+  usernames: string[] = [];
+  /** Clients associated with this active playback. */
+  players: PlexSessionPlayer[] = [];
+  /** Bandwidth allocations associated with this active playback. */
+  sessions: PlexPlaybackSession[] = [];
+  /** Transcodes associated with this active playback. */
+  transcodeSessions: PlexTranscodeSession[] = [];
   /** Account currently playing this item. */
   declare user?: PlexSessionUser;
   /** Client currently playing this item. */

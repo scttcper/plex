@@ -3,6 +3,7 @@ import { createPlexItem, type HydratedPlexItem } from './itemFactory.ts';
 import { Photo } from './photo.ts';
 import type { PlexServer } from './server.ts';
 import type {
+  PlexPlaybackSession,
   PlexSessionItem,
   PlexSessionItemData,
   PlexSessionPlayer,
@@ -113,14 +114,27 @@ export function createPlexSessionItem(
     throw new Error(`Unsupported Plex session type: ${data.type}`);
   }
 
+  const player = createSessionPlayer(data.Player);
+  const session = data.Session;
+  const transcodeSession = data.TranscodeSession
+    ? createPlexTranscodeSession(data.TranscodeSession)
+    : undefined;
+  const user = createSessionUser(data.User);
+  const players: [PlexSessionPlayer] = [player];
+  const sessions: [] | [PlexPlaybackSession] = session ? [session] : [];
+  const transcodeSessions: [] | [PlexTranscodeSession] = transcodeSession ? [transcodeSession] : [];
+  const usernames: [] | [string] = user.title ? [user.title] : [];
+
   return Object.assign(item, {
     live: parsePlexBoolean(data.live),
-    player: createSessionPlayer(data.Player),
-    session: data.Session,
+    player,
+    players,
+    session,
+    sessions,
     sessionKey: sessionInteger(data.sessionKey, 'session key'),
-    transcodeSession: data.TranscodeSession
-      ? createPlexTranscodeSession(data.TranscodeSession)
-      : undefined,
-    user: createSessionUser(data.User),
+    transcodeSession,
+    transcodeSessions,
+    user,
+    usernames,
   });
 }
