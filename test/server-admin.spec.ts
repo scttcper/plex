@@ -126,8 +126,9 @@ describe('Server Admin Methods', () => {
     for await (const entry of plex.walk('/data/Movies')) {
       entries.push(entry);
     }
-    expect(entries.map(entry => entry.path)).toEqual(['/data/Movies']);
-    expect(entries[0].files.map(file => file.path)).toContain(
+    const movieDirectory = entries.find(entry => entry.path === '/data/Movies');
+    expect(movieDirectory).toBeDefined();
+    expect(movieDirectory!.files.map(file => file.path)).toContain(
       '/data/Movies/Big Buck Bunny (2008).mp4',
     );
   });

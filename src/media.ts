@@ -447,53 +447,6 @@ export class Tag extends MediaTag {
   FILTER = 'tag' as const;
 }
 
-export class Optimized extends PlexObject {
-  static override TAG = 'Item';
-  declare id: string;
-  declare composite: any;
-  declare title: any;
-  declare type: any;
-  declare target: any;
-  declare targetTagID: any;
-
-  // TODO: Implement items()
-
-  /**
-   * Remove this Optimized item.
-   */
-  async remove(): Promise<void> {
-    const key = `${this.key}/${this.id}`;
-    await this.server.query({ path: key, method: 'delete' });
-  }
-
-  /**
-   * Rename this Optimized item.
-   * @param title New title for the item.
-   */
-  async rename(title: string): Promise<void> {
-    const key = `${this.key}/${this.id}?Item[title]=${encodeURIComponent(title)}`;
-    await this.server.query({ path: key, method: 'put' });
-  }
-
-  /**
-   * Reprocess a removed Conversion item that is still a listed Optimize item.
-   * @param ratingKey The rating key of the item to reprocess.
-   */
-  async reprocess(ratingKey: string | number): Promise<void> {
-    const key = `${this.key}/${this.id}/${ratingKey}/enable`;
-    await this.server.query({ path: key, method: 'put' });
-  }
-
-  protected _loadData(data: any) {
-    this.id = data.id;
-    this.composite = data.composite;
-    this.title = data.title;
-    this.type = data.type;
-    this.target = data.target;
-    this.targetTagID = data.targetTagID;
-  }
-}
-
 /**
  * Base class for guid tags used only for Guids, as they contain only a string identifier
  */

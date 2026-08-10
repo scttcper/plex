@@ -3,14 +3,20 @@ import { URL, URLSearchParams } from 'node:url';
 import { ofetch } from 'ofetch';
 
 import { Playable } from './base/playable.ts';
-import { fetchItemData, fetchItems } from './baseFunctionality.ts';
+import { fetchItems } from './baseFunctionality.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
 import { NotFound } from './exceptions.ts';
 import { Hub, Library } from './library.ts';
 import type { LibraryRootResponse } from './library.types.ts';
-import { Optimized } from './media.ts';
 import { MyPlexAccount } from './myplex.ts';
+import {
+  createOptimizedVersion,
+  fetchOptimizedItems,
+  Optimized,
+  TranscodeJob,
+  type CreateOptimizedVersionOptions,
+} from './optimized.ts';
 import { Playlist, type CreatePlaylistOptions, type PlaylistContentType } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
 import type { CreatePlayQueueOptions } from './playqueue.types.ts';
@@ -680,15 +686,17 @@ export class PlexServer {
 
   /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
-    const backgroundProcessing = await fetchItemData<{ key: string }>(this, '/playlists?type=42');
-    const items = await fetchItems<Optimized>(
-      this,
-      backgroundProcessing.key,
-      undefined,
-      Optimized,
-      this,
-    );
-    return items;
+    return fetchOptimizedItems(this);
+  }
+
+  /** Create a Plex optimized-media group for a movie, show, season, episode, or clip. */
+  async createOptimizedVersion(options: CreateOptimizedVersionOptions): Promise<Optimized> {
+    return createOptimizedVersion(this, options);
+  }
+
+  /** Return currently active background transcoding jobs. */
+  async backgroundTranscodeJobs(): Promise<TranscodeJob[]> {
+    return fetchItems(this, '/status/sessions/background', undefined, TranscodeJob, this);
   }
 
   /**
