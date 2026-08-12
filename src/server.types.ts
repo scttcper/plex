@@ -1,3 +1,5 @@
+import type { PlexSessionItem, PlexTranscodeSession } from './session.types.ts';
+
 /**
  * returned from the root of a server
  */
@@ -71,6 +73,10 @@ export interface HistoryMediaContainer {
   offset: number;
   Metadata?: Array<HistoryResult | null | undefined>;
 }
+
+export type SessionData = PlexSessionItem;
+
+export type TranscodeSessionData = PlexTranscodeSession;
 
 export type ContinueWatchingItemData = Record<string, unknown>;
 

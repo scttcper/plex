@@ -52,6 +52,7 @@ export * from './server.ts';
 export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.ts';
 export type {
   PlexPlaybackSession,
+  PlexSessionFields,
   PlexSessionItem,
   PlexSessionPlayer,
   PlexSessionUser,
