@@ -16,18 +16,8 @@ export interface AgentData {
   primary?: boolean;
   name?: string;
   id?: number;
-  MediaType?: {
-    name: string;
-    mediaType: number;
-    Language?: {
-      code: string;
-      title?: string;
-    };
-  };
-  Language?: {
-    code: string;
-    title?: string;
-  };
+  MediaType?: AgentMediaTypeData | AgentMediaTypeData[];
+  Language?: AgentLanguageData | AgentLanguageData[];
 }
 
 export interface SearchResultContainer {
@@ -178,4 +168,15 @@ export interface Part {
   optimizedForStreaming?: boolean;
   videoProfile: string;
   audioProfile?: string;
+}
+
+export interface AgentLanguageData {
+  code: string;
+  title?: string;
+}
+
+export interface AgentMediaTypeData {
+  name?: string;
+  mediaType?: number;
+  Language?: AgentLanguageData | AgentLanguageData[];
 }

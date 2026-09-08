@@ -2,6 +2,7 @@ import type { ArtistData } from './audio.types.ts';
 import type { PlexBoolean } from './util.ts';
 
 export interface PlaylistResponse {
+  Field?: Array<{ name: string; locked?: boolean | number | string }>;
   ratingKey: string;
   key: string;
   guid: string;

@@ -185,6 +185,14 @@ export class StatisticsBandwidth extends PlexObject {
   declare lan: boolean;
   declare timespan: number;
 
+  async account(): Promise<SystemAccount> {
+    return this.server.systemAccount(this.accountID);
+  }
+
+  async device(): Promise<SystemDevice> {
+    return this.server.systemDevice(this.deviceID);
+  }
+
   protected _loadData(data: StatisticsBandwidthData): void {
     this.key = '';
     this.accountID = data.accountID;

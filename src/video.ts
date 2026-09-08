@@ -1,11 +1,14 @@
 import type { URL } from 'node:url';
 
 import { Playable } from './base/playable.ts';
-import { fetchItem, fetchItems, findItems } from './baseFunctionality.ts';
+import { fetchItem, fetchItems } from './baseFunctionality.ts';
 import { BadRequest } from './exceptions.ts';
 import type { Libtype } from './library.ts';
 import type { ExtrasData, FullShowData, MovieData, ShowData } from './library.types.ts';
 import {
+  Label,
+  Field,
+  Review,
   Chapter,
   Collection,
   CommonSenseMedia,
@@ -24,11 +27,17 @@ import {
   SubtitleStream,
   Writer,
 } from './media.ts';
-import type { CommonSenseMediaData } from './media.types.ts';
+import type {
+  StreamingAvailability,
+  ReviewData,
+  UltraBlurColorsData,
+  CommonSenseMediaData,
+} from './media.types.ts';
 import type { MyPlexAccount } from './myplex.ts';
 import type { Optimized } from './optimized.ts';
 import type { OptimizeOptions, OptimizationState } from './optimized.types.ts';
 import type {
+  MediaTagData,
   ChapterSource,
   EpisodeMetadata,
   FullMovieResponse,
@@ -62,6 +71,17 @@ export type RemoveSubtitleOptions =
 
 type VideoMetadataData = (MovieData | ShowData | EpisodeMetadata) & {
   CommonSenseMedia?: CommonSenseMediaData[];
+  UltraBlurColors?: UltraBlurColorsData;
+  parentGuid?: string;
+  grandparentGuid?: string;
+  Field?: Array<{ name: string; locked: boolean }>;
+  Label?: MediaTagData[];
+  Collection?: MediaTagData[];
+  Rating?: MediaTagData[];
+  Similar?: MediaTagData[];
+  Role?: MediaTagData[];
+  Producer?: MediaTagData[];
+
   Guid?: Array<{ id: string }>;
   Image?: Array<{ alt?: string; type?: string; url?: string }>;
   playlistItemID?: number;
@@ -103,6 +123,16 @@ export abstract class Video extends Playable {
   /**
    * BlurHash string for artwork image.
    */
+  declare parentGuid?: string;
+  declare grandparentGuid?: string;
+  declare fields: Field[];
+  declare labels: Label[];
+  declare collections: Collection[];
+  declare ratings: Rating[];
+  declare similar: Similar[];
+  declare roles: Role[];
+  declare producers: Producer[];
+  declare ultraBlurColors?: UltraBlurColorsData;
   declare artBlurHash?: string;
   /**
    * BlurHash string for thumbnail image.
@@ -170,10 +200,8 @@ export abstract class Video extends Playable {
     await this.reload();
   }
 
-  async rate(rate: number): Promise<void> {
-    const key = `/:/rate?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&rating=${rate}`;
-    await this.server.query({ path: key });
-    await this.reload();
+  override get isPlayed(): boolean {
+    return this.isWatched;
   }
 
   /** Create an optimized version using a built-in preset or explicit custom profile. */
@@ -248,17 +276,6 @@ export abstract class Video extends Playable {
     return this;
   }
 
-  async extras(): Promise<Extra[]> {
-    const data = await this.server.query({ path: this._detailsKey });
-    return findItems(
-      data.MediaContainer.Metadata[0].Extras?.Metadata,
-      undefined,
-      Extra,
-      this.server,
-      this,
-    );
-  }
-
   /**
    * Returns list of available Poster objects.
    */
@@ -324,6 +341,26 @@ export abstract class Video extends Playable {
     this.editionTitle = videoData.editionTitle;
     this.processingState = videoData.processingState;
     // todo: update one of them with this property
+    this.parentGuid = videoData.parentGuid;
+    this.grandparentGuid = videoData.grandparentGuid;
+    this.fields = (videoData.Field ?? []).map(
+      field => new Field(this.server, field, undefined, this),
+    );
+    this.ultraBlurColors = videoData.UltraBlurColors;
+    this.labels = (videoData.Label ?? []).map(tag => new Label(this.server, tag, undefined, this));
+    this.collections = (videoData.Collection ?? []).map(
+      tag => new Collection(this.server, tag, undefined, this),
+    );
+    this.ratings = (videoData.Rating ?? []).map(
+      tag => new Rating(this.server, tag, undefined, this),
+    );
+    this.similar = (videoData.Similar ?? []).map(
+      tag => new Similar(this.server, tag, undefined, this),
+    );
+    this.roles = (videoData.Role ?? []).map(tag => new Role(this.server, tag, undefined, this));
+    this.producers = (videoData.Producer ?? []).map(
+      tag => new Producer(this.server, tag, undefined, this),
+    );
     this.artBlurHash = videoData.artBlurHash;
     this.thumbBlurHash = videoData.thumbBlurHash;
     this.guids = videoData.Guid?.map(d => new Guid(this.server, d, undefined, this)) ?? [];
@@ -396,10 +433,27 @@ export class Movie extends Video {
   declare media: Media[];
   declare guids: Guid[];
   declare markers: Marker[];
-  declare ratings?: Rating[];
+  declare ratings: Rating[];
+
+  async reviews(): Promise<Review[]> {
+    const data = await this.server.query<{
+      MediaContainer: { Metadata?: Array<{ Review?: ReviewData[] }> };
+    }>({
+      path: this._buildQueryKey(this.key, { includeReviews: 1 }),
+    });
+    return (data.MediaContainer.Metadata?.[0]?.Review ?? []).map(
+      review => new Review(this.server, review, undefined, this),
+    );
+  }
 
   get actors() {
     return this.roles;
+  }
+
+  async streamingServices(
+    account: MyPlexAccount = this.server.myPlexAccount(),
+  ): Promise<StreamingAvailability[]> {
+    return account.streamingServices(this);
   }
 
   async onWatchlist(account: MyPlexAccount): Promise<boolean> {
@@ -420,7 +474,9 @@ export class Movie extends Video {
     }
 
     const parts = (this.media?.map(media => media.parts) ?? []).flat();
-    return parts.map(part => part.file);
+    return parts
+      .map(part => part.file)
+      .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
   /**
@@ -437,6 +493,14 @@ export class Movie extends Video {
   /**
    * Returns True if this movie has a credits marker
    */
+  async removeFromContinueWatching(): Promise<void> {
+    const params = new URLSearchParams({ ratingKey: this.ratingKey });
+    await this.server.query({
+      path: `/actions/removeFromContinueWatching?${params}`,
+      method: 'put',
+    });
+  }
+
   async hasCreditsMarker(): Promise<boolean> {
     if (!this.isFullObject) {
       await this.reload();
@@ -501,6 +565,7 @@ export class Show extends Video {
   METADATA_TYPE = 'episode';
 
   /** Key to banner artwork (/library/metadata/<ratingkey>/art/<artid>) */
+  declare locations: string[];
   declare banner: string;
   /** Unknown. */
   declare childCount: number;
@@ -540,6 +605,12 @@ export class Show extends Video {
     return this.roles;
   }
 
+  async streamingServices(
+    account: MyPlexAccount = this.server.myPlexAccount(),
+  ): Promise<StreamingAvailability[]> {
+    return account.streamingServices(this);
+  }
+
   async onWatchlist(account: MyPlexAccount): Promise<boolean> {
     return account.onWatchlist(this);
   }
@@ -556,18 +627,6 @@ export class Show extends Video {
   override get isWatched(): boolean {
     return this.viewedLeafCount === this.leafCount;
   }
-
-  // async preferences(): Promise<Preferences[]> {
-  //   const data = await this.server.query<MediaContainer<ShowPreferences>>(this._detailsKey as string);
-  //   // return data.MediaContainer;
-  //   // for (item in data.iter('Preferences')) {
-  //   //   for (elem in item) {
-  //   //     items.append(settings.Preferences(data = elem, server = self._server));
-  //   //   }
-  //   // }
-
-  //   // return items;
-  // }
 
   async season(titleOrIndex: string | number): Promise<Season> {
     const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`, {
@@ -624,6 +683,7 @@ export class Show extends Video {
     super._loadData(data);
     this.key = (data.key ?? '').replace('/children', '');
     this.art = data.art;
+    this.locations = (data.Location ?? []).map(location => location.path);
     this.banner = data.banner;
     this.childCount = data.childCount;
     this.contentRating = data.contentRating;
@@ -784,6 +844,14 @@ export class Episode extends Video {
   declare chapters: Chapter[];
   declare markers: Marker[];
 
+  get actors(): Role[] {
+    return this.roles;
+  }
+
+  get episodeNumber(): number {
+    return this.index;
+  }
+
   /**
    * Returns this episodes season number.
    */
@@ -814,12 +882,21 @@ export class Episode extends Video {
 
   locations(): string[] {
     const parts = (this.media?.map(media => media.parts) ?? []).flat();
-    return parts.map(part => part.file);
+    return parts
+      .map(part => part.file)
+      .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
   /**
    * Returns True if this episode has an intro marker
    */
+  async hasCommercialMarker(): Promise<boolean> {
+    if (!this.isFullObject) {
+      await this.reload();
+    }
+    return this.markers.some(marker => marker.type === 'commercial');
+  }
+
   async hasIntroMarker(): Promise<boolean> {
     if (!this.isFullObject) {
       await this.reload();
@@ -831,6 +908,14 @@ export class Episode extends Video {
   /**
    * Returns True if this episode has a credits marker
    */
+  async removeFromContinueWatching(): Promise<void> {
+    const params = new URLSearchParams({ ratingKey: this.ratingKey });
+    await this.server.query({
+      path: `/actions/removeFromContinueWatching?${params}`,
+      method: 'put',
+    });
+  }
+
   async hasCreditsMarker(): Promise<boolean> {
     if (!this.isFullObject) {
       await this.reload();
@@ -884,8 +969,20 @@ export class Clip extends Video {
   TYPE = 'clip';
   METADATA_TYPE = 'clip';
 
+  declare media: Media[];
+
+  locations(): string[] {
+    return this.iterParts()
+      .map(part => part.file)
+      .filter((file): file is string => typeof file === 'string' && file.length > 0);
+  }
+
   protected override _loadData(data: any): void {
     super._loadData(data);
+    this.media = (data.Media ?? []).map(
+      (media: import('./video.types.ts').MediaData) =>
+        new Media(this.server, media, undefined, this),
+    );
   }
 
   protected _loadFullData(data: any): void {

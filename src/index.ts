@@ -36,7 +36,7 @@ export type {
   ResumePlexPinLoginOptions,
   WaitForPlexPinOptions,
 } from './pin.types.ts';
-export { Optimized, TranscodeJob } from './optimized.ts';
+export { Conversion, Optimized, TranscodeJob } from './optimized.ts';
 export type { OptimizedMediaItem } from './optimized.ts';
 export type {
   CustomOptimizationTarget,
@@ -64,4 +64,28 @@ export type { SettingEnumValues, SettingType, SettingValue } from './settings.ts
 export * from './video.ts';
 export * from './audio.ts';
 export { X_PLEX_IDENTIFIER } from './config.ts';
-export { SearchResult, Agent, SEARCHTYPES } from './search.ts';
+export { SearchResult, Agent, AgentMediaType, SEARCHTYPES } from './search.ts';
+
+export type { ServerIdentity, ServerAccount, ServerRelease } from './server.types.ts';
+export { AccountOptOut, GeoLocation } from './account-settings.ts';
+export type { OnlineMediaSourceVisibility } from './account-settings.ts';
+export type {
+  MetadataFields,
+  MetadataFieldUpdates,
+  MetadataEditOptions,
+  MetadataTagEditOptions,
+} from './metadata.ts';
+export type { StreamUrlOptions } from './base/playable.ts';
+export { discover } from './discovery.ts';
+export type { DiscoveryEntry, DiscoveryOptions } from './discovery.ts';
+export type { DownloadOptions, MediaDownload } from './download.ts';
+export { PlexSonosClient } from './sonos.ts';
+export type { SonosPlayerData } from './sonos.ts';
+export { fetchItem, fetchItems, findItems, buildQueryKey } from './baseFunctionality.ts';
+export type {
+  FetchItemsOptions,
+  ItemFilterValue,
+  PlexItemConstructor,
+  QueryParamValue,
+} from './baseFunctionality.ts';
+export type { StreamingAvailability, UltraBlurColorsData } from './media.types.ts';

@@ -9,11 +9,14 @@ import type {
   AdvancedSearchFilters,
   LibrarySection,
   Libtype,
+  MusicSection,
   SearchArgs,
   SearchClassForLibtype,
   SearchFilterValue,
   Section,
 } from './library.ts';
+import { Field } from './media.ts';
+import type { MyPlexUser } from './myplex.ts';
 import { Photo, Photoalbum } from './photo.ts';
 import type {
   PlaylistContainerResponse,
@@ -22,6 +25,7 @@ import type {
 } from './playlist.types.ts';
 import { searchType } from './search.ts';
 import type { PlexServer } from './server.ts';
+import { smartFilterParams } from './smart-filter.ts';
 import { parsePlexBoolean } from './util.ts';
 import { Episode, Movie, Season, Show } from './video.ts';
 
@@ -136,6 +140,26 @@ export class Playlist extends Playable {
     return this._create(server, title, options.items);
   }
 
+  /** Import an M3U file already accessible on the Plex server's filesystem. */
+  static async fromM3U(
+    server: PlexServer,
+    { title, section, path }: { title: string; section: MusicSection; path: string },
+  ): Promise<Playlist> {
+    const params = new URLSearchParams({ sectionID: section.key, path });
+    await server.query({ path: `/playlists/upload?${params}`, method: 'post' });
+    const matches = await server.playlists({
+      sectionId: section.key,
+      filters: { guid__endswith: path },
+    });
+    const playlist = matches[0];
+    if (!playlist) {
+      throw new NotFound('Plex did not return the imported playlist.');
+    }
+    await Playlist.update(server, playlist.ratingKey, { title });
+    await playlist.reload();
+    return playlist;
+  }
+
   /**
    * Update a playlist's metadata by ratingKey without fetching the full playlist first.
    *
@@ -156,15 +180,15 @@ export class Playlist extends Playable {
     ratingKey: string,
     options: UpdatePlaylistOptions,
   ): Promise<void> {
-    if (!options.title && !options.summary) {
+    if (options.title === undefined && options.summary === undefined) {
       return;
     }
 
     const params = new URLSearchParams();
-    if (options.title) {
+    if (options.title !== undefined) {
       params.set('title', options.title);
     }
-    if (options.summary) {
+    if (options.summary !== undefined) {
       params.set('summary', options.summary);
     }
 
@@ -172,7 +196,20 @@ export class Playlist extends Playable {
     await server.query({ path: key, method: 'put' });
   }
 
-  /** Create a smart playlist. */
+  /** Update playlist metadata directly; playlists do not use section-wide edit endpoints. */
+  override async edit(changes: Record<string, string | number>): Promise<void> {
+    const params = new URLSearchParams(
+      Object.entries(changes).map(([key, value]) => [key, String(value)]),
+    );
+    await this.server.query({ path: `${this.key}?${params}`, method: 'put' });
+  }
+
+  /** Copy the current playlist contents into another user's account on this server. */
+  async copyToUser(user: MyPlexUser | string | number): Promise<Playlist> {
+    const server = await this.server.switchUser(user);
+    return Playlist.create(server, this.title, { items: await this.items() });
+  }
+
   private static async _createSmart(
     server: PlexServer,
     title: string,
@@ -245,6 +282,7 @@ export class Playlist extends Playable {
   declare updatedAt: Date;
   declare composite: string;
   declare guid: string;
+  declare fields: Field[];
   declare leafCount: number;
   declare playlistType: string;
   declare smart: boolean;
@@ -272,6 +310,23 @@ export class Playlist extends Playable {
 
   get isPhoto(): boolean {
     return this.playlistType === 'photo';
+  }
+
+  /** Ordered query parameters defining this smart collection or playlist. */
+  filters(): URLSearchParams | undefined {
+    return this.smart && this.content ? smartFilterParams(this.content) : undefined;
+  }
+
+  get thumb(): string {
+    return this.composite;
+  }
+
+  override getWebURL({ base }: { base?: string } = {}): string {
+    return this.server._buildWebURL({
+      base,
+      endpoint: 'playlist',
+      params: new URLSearchParams({ key: this.key }),
+    });
   }
 
   get metadataType(): PlaylistMetadataType {
@@ -312,10 +367,6 @@ export class Playlist extends Playable {
     const searchparams = new URLSearchParams(args);
     const key = `${this.key}?${searchparams.toString()}`;
     await this.server.query({ path: key, method: 'put' });
-  }
-
-  override async edit(changeObj: { title?: string; summary?: string }) {
-    await this._edit(changeObj);
   }
 
   /**
@@ -443,6 +494,7 @@ export class Playlist extends Playable {
     this.updatedAt = new Date(data.updatedAt);
     this.composite = data.composite;
     this.guid = data.guid;
+    this.fields = (data.Field ?? []).map(field => new Field(this.server, field, undefined, this));
     this.playlistType = data.playlistType;
     this.summary = data.summary;
     this.smart = parsePlexBoolean(data.smart);

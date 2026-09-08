@@ -122,7 +122,9 @@ export interface ChapterData extends MediaTagData {
 }
 
 export interface MarkerData extends MediaTagData {
-  type: 'intro' | 'credits';
+  final?: PlexBoolean;
+  Attributes?: { version?: number };
+  type: string;
   startTimeOffset: number;
   endTimeOffset: number;
 }
@@ -427,6 +429,7 @@ export interface EpisodeMetadata {
 }
 
 export interface MediaData {
+  proxyType?: number;
   id: number;
   duration: number;
   title?: string;
@@ -449,12 +452,13 @@ export interface MediaData {
 }
 
 export interface MediaPartData {
+  indexes?: string;
   id: number;
   key: string;
   audioProfile?: string;
   container: string;
   duration: number;
-  file: string;
+  file?: string;
   has64bitOffsets?: boolean;
   hasThumbnail?: boolean;
   optimizedForStreaming?: boolean;

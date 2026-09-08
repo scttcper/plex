@@ -1,11 +1,23 @@
+import { createHash } from 'node:crypto';
 import { URLSearchParams } from 'node:url';
 
 import { ArtworkManager } from '../artwork.ts';
-import type { Section } from '../library.ts';
+import { fetchItems } from '../baseFunctionality.ts';
+import { downloadMedia, type DownloadOptions, type MediaDownload } from '../download.ts';
+import { BadRequest, NotFound } from '../exceptions.ts';
+import type { Hub, Section } from '../library.ts';
+import {
+  metadataFieldChanges,
+  type MetadataFieldUpdates,
+  type MetadataEditOptions,
+  type MetadataTagEditOptions,
+} from '../metadata.ts';
 import { SearchResult, searchType } from '../search.ts';
 import type { MatchSearchResult } from '../search.types.ts';
 import type { HistoryOptions } from '../server.types.ts';
+import { Preferences, type SettingResponse, type SettingValue } from '../settings.ts';
 import { getAgentIdentifier, ltrim, type MediaContainer, tagHelper } from '../util.ts';
+import type { Extra } from '../video.ts';
 
 import { PlexObject } from './plexObject.ts';
 
@@ -38,12 +50,194 @@ export abstract class PartialPlexObject extends PlexObject {
   declare year?: number;
   declare librarySectionID?: number;
 
+  /** Set a personal rating from 0 to 10, or clear it with null. */
+  async rate(rating: number | null): Promise<void> {
+    if (!this.ratingKey) {
+      throw new BadRequest('Rating requires a metadata rating key.');
+    }
+    if (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10)) {
+      throw new BadRequest('Rating must be between 0 and 10, or null.');
+    }
+    const params = new URLSearchParams({
+      key: String(this.ratingKey),
+      identifier: 'com.plexapp.plugins.library',
+      rating: String(rating ?? -1),
+    });
+    await this.server.query({ path: `/:/rate?${params}`, method: 'put' });
+    await this.reload();
+  }
+
   /** Typed poster, background, logo, and square-art management. */
   get artwork(): ArtworkManager {
     return new ArtworkManager(this);
   }
 
   protected override _detailsKey = this._buildDetailsKey();
+
+  async hubs(): Promise<Hub[]> {
+    const { Hub } = await import('../library.ts');
+    return fetchItems(
+      this.server,
+      this._buildQueryKey(`${this.key}/related`),
+      undefined,
+      Hub,
+      this,
+    );
+  }
+
+  async extras(): Promise<Extra[]> {
+    const { Extra } = await import('../video.ts');
+    return fetchItems(
+      this.server,
+      this._buildQueryKey(`${this.key}/extras`),
+      undefined,
+      Extra,
+      this,
+    );
+  }
+
+  /** Stream original media files; consume each body before advancing the iterator. */
+  download(options: DownloadOptions = {}): AsyncGenerator<MediaDownload, void> {
+    return downloadMedia(this, options);
+  }
+
+  /** Path relative to the Plex server data directory, using server-independent separators. */
+  get metadataDirectory(): string | undefined {
+    const directories: Record<string, string> = {
+      movie: 'Movies',
+      clip: 'Movies',
+      show: 'TV Shows',
+      season: 'TV Shows',
+      episode: 'TV Shows',
+      artist: 'Artists',
+      album: 'Albums',
+      track: 'Albums',
+      photo: 'Photos',
+      photoalbum: 'Photos',
+      playlist: 'Playlists',
+      collection: 'Collections',
+    };
+    const directory = directories[this.type];
+    const field =
+      this.type === 'episode'
+        ? 'grandparentGuid'
+        : ['season', 'track', 'photo'].includes(this.type)
+          ? 'parentGuid'
+          : 'guid';
+    const guid: unknown =
+      Reflect.get(this, field) ?? (this.type === 'photo' ? Reflect.get(this, 'guid') : undefined);
+    if (!directory || typeof guid !== 'string' || !guid) {
+      return undefined;
+    }
+    const hash = createHash('sha1').update(guid).digest('hex');
+    return `Metadata/${directory}/${hash[0]}/${hash.slice(1)}.bundle`;
+  }
+
+  /** Edit a server-defined tag, such as genre, collection, country, director, or mood. */
+  async editTags({
+    tag,
+    items,
+    locked = true,
+    remove = false,
+  }: MetadataTagEditOptions): Promise<void> {
+    let existing: string[] = [];
+    if (!remove) {
+      // Use the latest payload, including plugin tags that models do not hydrate.
+      const data = await this.server.query<
+        MediaContainer<{ Metadata?: Array<Record<string, unknown>> }>
+      >({
+        path: this._buildQueryKey(this.key),
+      });
+      const metadata = data.MediaContainer.Metadata?.[0];
+      if (!metadata) {
+        throw new BadRequest('Cannot preserve tags without the current metadata.');
+      }
+      const current = metadata[tag.charAt(0).toUpperCase() + tag.slice(1)];
+      if (current !== undefined) {
+        if (!Array.isArray(current) || !current.every(isMetadataTag)) {
+          throw new BadRequest(`Invalid metadata for tag ${tag}.`);
+        }
+        existing = current.map(value => value.tag);
+      }
+    }
+    const values = remove ? [...items] : [...new Set([...existing, ...items])];
+    await this.edit(tagHelper(tag, values, { locked, remove }));
+    await this.reload();
+  }
+
+  /** Edit several typed metadata fields in one request. */
+  async editFields(fields: MetadataFieldUpdates, options: MetadataEditOptions = {}): Promise<void> {
+    const changes = metadataFieldChanges(fields, options);
+    if (Object.keys(changes).length > 0) {
+      await this.edit(changes);
+    }
+  }
+
+  /** Whether a loaded field is locked against metadata refreshes. */
+  isLocked(name: string): boolean {
+    const fields: unknown = 'fields' in this ? this.fields : undefined;
+    return (
+      Array.isArray(fields) && fields.some(field => field.name === name && field.locked === true)
+    );
+  }
+
+  async preferences(): Promise<Preferences[]> {
+    const data = await this.server.query<
+      MediaContainer<{ Metadata?: Array<{ Preferences?: { Setting?: SettingResponse[] } }> }>
+    >({
+      path: this._buildQueryKey(this.key, { includePreferences: 1 }),
+    });
+    return (data.MediaContainer.Metadata?.[0]?.Preferences?.Setting ?? []).map(
+      setting => new Preferences(this.server, setting, undefined, this),
+    );
+  }
+
+  async preference(id: string): Promise<Preferences> {
+    const preference = (await this.preferences()).find(setting => setting.id === id);
+    if (!preference) {
+      throw new NotFound(`Unknown preference: ${id}`);
+    }
+    return preference;
+  }
+
+  /** Validate values against Plex's advertised preferences before submitting them. */
+  async editAdvanced(values: Record<string, SettingValue>): Promise<void> {
+    const preferences = await this.preferences();
+    const params = new URLSearchParams();
+    for (const [id, value] of Object.entries(values)) {
+      const preference = preferences.find(setting => setting.id === id);
+      if (!preference) {
+        throw new NotFound(`Unknown preference: ${id}`);
+      }
+      preference.set(value);
+      params.set(id, preference.toQueryValue());
+    }
+    if (params.size > 0) {
+      await this.server.query({ path: `${this.key}/prefs?${params}`, method: 'put' });
+    }
+  }
+
+  async defaultAdvanced(): Promise<void> {
+    const preferences = await this.preferences();
+    const params = new URLSearchParams(
+      preferences.map(setting => [setting.id, setting.toQueryValue(setting.default)]),
+    );
+    if (params.size > 0) {
+      await this.server.query({ path: `${this.key}/prefs?${params}`, method: 'put' });
+    }
+  }
+
+  async split(): Promise<void> {
+    await this.server.query({ path: `${this.key}/split`, method: 'put' });
+  }
+
+  async merge(ratingKeys: ReadonlyArray<string | number>): Promise<void> {
+    if (ratingKeys.length === 0) {
+      throw new BadRequest('At least one rating key is required to merge.');
+    }
+    const params = new URLSearchParams({ ids: ratingKeys.join(',') });
+    await this.server.query({ path: `${this.key}/merge?${params}`, method: 'put' });
+  }
 
   /**
    * Tell Plex Media Server to performs analysis on it this item to gather
@@ -283,7 +477,8 @@ export abstract class PartialPlexObject extends PlexObject {
    *  'collection[0].tag.tag': 'Super',
    *  'collection.locked': 0}
    */
-  async edit(changeObj: Record<string, string | number>) {
+  async edit(changes: Readonly<Record<string, string | number>>): Promise<void> {
+    const changeObj = { ...changes };
     if (this.librarySectionID === undefined) {
       await this.reload();
       if (this.librarySectionID === undefined) {
@@ -308,7 +503,6 @@ export abstract class PartialPlexObject extends PlexObject {
     );
     const params = new URLSearchParams(strObj);
     const url = this.server.url(`/library/sections/${this.librarySectionID}/all`, {
-      includeToken: true,
       params,
     });
     await this.server.query({ path: url.toString(), method: 'put' });
@@ -367,10 +561,12 @@ export abstract class PartialPlexObject extends PlexObject {
     items: string[],
     { locked = true, remove = false }: { locked?: boolean; remove?: boolean } = {},
   ) {
-    const value = (this as any)[`${tag}s`];
-    const existingCols = value?.filter((x: any) => x && remove).map((x: any) => x.tag) ?? [];
-    const d = tagHelper(tag, [...existingCols, ...items], { locked, remove });
-    await this.edit(d);
-    await this.reload();
+    await this.editTags({ tag, items, locked, remove });
   }
+}
+
+function isMetadataTag(value: unknown): value is { tag: string } {
+  return (
+    value !== null && typeof value === 'object' && 'tag' in value && typeof value.tag === 'string'
+  );
 }

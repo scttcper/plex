@@ -175,3 +175,36 @@ export interface TranscodeImageOptions {
   /** Opacity (0-100). */
   opacity?: number;
 }
+
+/** Basic server identity, available without fetching the full library root. */
+export interface ServerIdentity {
+  machineIdentifier?: string;
+  version?: string;
+  claimed?: boolean;
+}
+
+/** Locally cached Plex account status; fields depend on the server's claim state. */
+export interface ServerAccount {
+  username?: string;
+  mappingState?: string;
+  mappingError?: string;
+  mappingErrorMessage?: string;
+  signInState?: string;
+  publicAddress?: string;
+  publicPort?: number | string;
+  privateAddress?: string;
+  privatePort?: number | string;
+  subscriptionFeatures?: string;
+  subscriptionActive?: boolean;
+  subscriptionState?: string;
+}
+
+export interface ServerRelease {
+  key?: string;
+  version?: string;
+  added?: string;
+  fixed?: string;
+  downloadURL?: string;
+  /** Server-defined update state. */
+  state?: string;
+}

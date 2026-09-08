@@ -369,6 +369,7 @@ export interface FullShowData {
 }
 
 export interface ShowData {
+  Location?: Array<{ path: string }>;
   ratingKey: string;
   key: string;
   guid: string;
@@ -413,6 +414,10 @@ export interface ShowData {
 }
 
 export interface CollectionData {
+  Field?: Array<{ name: string; locked?: boolean | number | string }>;
+  Image?: ImageData[];
+  Label?: Array<{ tag: string }>;
+  UltraBlurColors?: UltraBlurColorsData;
   ratingKey: string;
   key: string;
   guid: string;

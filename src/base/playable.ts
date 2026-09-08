@@ -1,7 +1,10 @@
 import { URLSearchParams } from 'node:url';
 
+import type { PlexClient } from '../client.ts';
+import type { PlayMediaOptions } from '../client.types.ts';
 import {
   type AudioStream,
+  type LyricStream,
   Media,
   type MediaPart,
   type SubtitleStream,
@@ -17,6 +20,21 @@ import type {
 } from '../session.types.ts';
 
 import { PartialPlexObject } from './partialPlexObject.ts';
+
+/** Common transcoder parameters; Plex and plugins can accept additional parameters. */
+export interface StreamUrlOptions {
+  /** Common values include hls and dash. Defaults to hls. */
+  protocol?: string;
+  mediaIndex?: number | string;
+  partIndex?: number | string;
+  /** Playback offset in seconds. */
+  offset?: number | string;
+  maxVideoBitrate?: number | string;
+  videoResolution?: string;
+  directPlay?: boolean | number | string;
+  directStream?: boolean | number | string;
+  [parameter: string]: string | number | boolean | undefined;
+}
 
 /**
  * This is a general place to store functions specific to media that is Playable.
@@ -51,6 +69,28 @@ export abstract class Playable extends PartialPlexObject {
   /** Queue-local item ID (only populated for PlayQueue items). */
   declare playQueueItemID?: number;
 
+  get isPlayed(): boolean {
+    return 'viewCount' in this && typeof this.viewCount === 'number' && this.viewCount > 0;
+  }
+
+  async markPlayed(): Promise<void> {
+    await this.server.query({
+      path: `/:/scrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`,
+    });
+    await this.reload();
+  }
+
+  async markUnplayed(): Promise<void> {
+    await this.server.query({
+      path: `/:/unscrobble?key=${this.ratingKey}&identifier=com.plexapp.plugins.library`,
+    });
+    await this.reload();
+  }
+
+  async play(client: PlexClient, options: PlayMediaOptions = {}): Promise<void> {
+    await client.playMedia(this, options);
+  }
+
   /**
    * Returns a new PlayQueue from this media item.
    *
@@ -65,8 +105,8 @@ export abstract class Playable extends PartialPlexObject {
    * Returns a stream URL that can be used for playback.
    * @param params Additional URL parameters for transcoding options.
    */
-  getStreamURL(params: Record<string, string> = {}): string {
-    const finalParams: Record<string, string> = {
+  getStreamURL(params: Readonly<StreamUrlOptions> = {}): string {
+    const finalParams: StreamUrlOptions = {
       path: `/library/metadata/${this.ratingKey}`,
       mediaIndex: '0',
       partIndex: '0',
@@ -81,12 +121,20 @@ export abstract class Playable extends PartialPlexObject {
       audioBoost: '100',
       ...params,
     };
-    const searchParams = new URLSearchParams(finalParams);
+    const searchParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(finalParams)) {
+      if (value !== undefined) {
+        searchParams.set(key, String(typeof value === 'boolean' ? Number(value) : value));
+      }
+    }
     return this.server
-      .url('/video/:/transcode/universal/start.m3u8', {
-        includeToken: true,
-        params: searchParams,
-      })
+      .url(
+        `/${this.type === 'track' ? 'audio' : 'video'}/:/transcode/universal/start.${finalParams.protocol === 'dash' ? 'mpd' : 'm3u8'}`,
+        {
+          includeToken: true,
+          params: searchParams,
+        },
+      )
       .toString();
   }
 
@@ -121,6 +169,21 @@ export abstract class Playable extends PartialPlexObject {
   /** Returns all video streams from every media part. */
   videoStreams(): VideoStream[] {
     return this.iterParts().flatMap(part => part.videoStreams());
+  }
+
+  lyricStreams(): LyricStream[] {
+    return this.iterParts().flatMap(part => part.lyricStreams());
+  }
+
+  get hasPreviewThumbnails(): boolean {
+    return this.iterParts().some(part => part.hasPreviewThumbnails);
+  }
+
+  get hasVoiceActivity(): boolean {
+    const media: unknown = 'media' in this ? this.media : undefined;
+    return (
+      Array.isArray(media) && media.some(item => item instanceof Media && item.hasVoiceActivity)
+    );
   }
 
   /**

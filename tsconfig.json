@@ -10,5 +10,6 @@
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true
-  }
+  },
+  "exclude": ["dist", "node_modules", "test/types"]
 }

@@ -20,6 +20,9 @@ import {
   Style,
   Subformat,
 } from './media.ts';
+import type { UltraBlurColorsData } from './media.types.ts';
+import { Playlist } from './playlist.ts';
+import type { PlaylistResponse } from './playlist.types.ts';
 
 type MusicSectionLike = {
   sonicAdventure: (start: any, end: any) => Promise<any[]>;
@@ -71,6 +74,7 @@ export class Audio extends Playable {
 
   /** List of field objects. */
   declare fields?: Field[];
+  declare ultraBlurColors?: UltraBlurColorsData;
   /** List of image objects. */
   declare images?: Image[];
   /** List of mood objects. */
@@ -207,6 +211,7 @@ export class Audio extends Playable {
     this.viewCount = Number.isNaN(viewCountInt) ? 0 : viewCountInt;
 
     // Map tag arrays like video.ts does
+    this.ultraBlurColors = data.UltraBlurColors;
     this.fields = data.Field?.map((d: unknown) => new Field(this.server, d, undefined, this)) ?? [];
     this.images = data.Image?.map((d: unknown) => new Image(this.server, d, undefined, this)) ?? [];
     this.moods = data.Mood?.map((d: unknown) => new Mood(this.server, d, undefined, this)) ?? [];
@@ -471,6 +476,21 @@ export class Artist extends Audio {
    * Returns a list of Album objects by the artist.
    * @param options Additional search options.
    */
+  /** Return the artist radio station when the server provides one. */
+  async station(): Promise<Playlist | undefined> {
+    const data = await this.server.query<{
+      MediaContainer: {
+        Metadata?: Array<{
+          Stations?: { Metadata?: PlaylistResponse[] };
+        }>;
+      };
+    }>({
+      path: this._buildQueryKey(this.key, { includeStations: 1 }),
+    });
+    const station = data.MediaContainer.Metadata?.[0]?.Stations?.Metadata?.[0];
+    return station ? new Playlist(this.server, station, undefined, this) : undefined;
+  }
+
   async albums(options: Record<string, unknown> = {}): Promise<Album[]> {
     if (!this.librarySectionID) {
       await this.reload();
@@ -583,40 +603,6 @@ export class Artist extends Audio {
   // /**
   //  * Returns the artist radio station Playlist or undefined.
   //  */
-  // async station(): Promise<Playlist | undefined> {
-  //   const key = `${this.key}?includeStations=1`;
-  //   try {
-  //     const stations = await fetchItems(
-  //       this.server,
-  //       key,
-  //       undefined,
-  //       PlexObject as any,
-  //       this,
-  //       'Stations',
-  //     );
-  //     return stations[0]; // fetchItems with rtag extracts the items under that tag
-  //   } catch (e) {
-  //     console.error('Failed to fetch artist station', e);
-  //     return undefined;
-  //   }
-  // }
-
-  // // Known Linter Issue: Signature mismatch / override requirement incorrectly reported.
-  // section(): LibrarySection | undefined {
-  //   // Known Linter Issue: Linter incorrectly flags _parent access.
-  //   let parent = this._parent;
-  //   while (parent) {
-  //     if (parent instanceof PlexObject && parent.key?.startsWith('/library/sections/')) {
-  //       return parent as LibrarySection;
-  //     }
-  //     if (!('_parent' in parent) || !parent._parent) {
-  //       break;
-  //     }
-  //     parent = parent._parent as PlexObject | undefined;
-  //   }
-  //   return undefined;
-  // }
-
   /**
    * Load attribute values from Plex XML response.
    * @protected
@@ -694,35 +680,25 @@ export class Album extends Audio {
   declare subformats?: Subformat[];
   declare viewedLeafCount?: number;
 
-  // TODO: not sure why this isn't working yet
-  // /**
-  //  * Returns the Track that matches the specified criteria.
-  //  * @param titleOrIndex Title of the track (string) or track number (number).
-  //  * @param track Track number (optional, only used if titleOrIndex is not a number).
-  //  */
-  // async track(titleOrIndex: string | number, track?: number): Promise<Track | undefined> {
-  //   const key = `${this.key}/children`;
-  //   let query: Record<string, any> = {};
-
-  //   if (typeof titleOrIndex === 'string') {
-  //     query = { title__iexact: titleOrIndex };
-  //     // Allow specifying track number even with title, though less common
-  //     if (track !== undefined) {
-  //       query.index = track;
-  //     }
-  //   } else if (typeof titleOrIndex === 'number') {
-  //     query = { index: titleOrIndex };
-  //   } else {
-  //     throw new Error('Missing argument: title or track number is required');
-  //   }
-
-  //   return fetchItem(this.server, key, query, Track);
-  // }
-
   /**
    * Returns a list of Track objects in the album.
    * @param options Additional fetch options.
    */
+  /** Find a track by title or its track and optional disc number. */
+  async track(options: { title: string } | { track: number; disc?: number }): Promise<Track> {
+    const tracks = await this.tracks();
+    const track = tracks.find(candidate =>
+      'title' in options
+        ? candidate.title?.toLowerCase() === options.title.toLowerCase()
+        : candidate.index === options.track &&
+          (options.disc === undefined || candidate.parentIndex === options.disc),
+    );
+    if (!track) {
+      throw new NotFound('Track not found in album.');
+    }
+    return track;
+  }
+
   async tracks(options: Record<string, string | number> = {}): Promise<Track[]> {
     const key = this._buildQueryKey(`${this.key}/children`);
     return fetchItems(this.server, key, options, Track, this);

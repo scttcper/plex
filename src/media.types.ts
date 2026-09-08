@@ -59,3 +59,28 @@ export interface ParentalAdvisoryTopicData {
   rating?: number | string;
   tag?: string;
 }
+
+export interface ReviewData {
+  filter?: string;
+  id?: number;
+  image?: string;
+  link?: string;
+  source?: string;
+  tag?: string;
+  text?: string;
+}
+
+/** Availability reported by Plex Discover; offerings and providers are server-defined. */
+export interface StreamingAvailability {
+  country?: string;
+  offerType?: string;
+  platform?: string;
+  platformColorThumb?: string;
+  platformInfo?: string;
+  platformUrl?: string;
+  price?: number;
+  priceDescription?: string;
+  quality?: string;
+  title?: string;
+  url?: string;
+}
