@@ -77,9 +77,9 @@ export const OPERATORS = {
     String(value).toLowerCase().startsWith(String(query).toLowerCase()),
   endswith: (value, query) => String(value).endsWith(String(query)),
   iendswith: (value, query) => String(value).toLowerCase().endsWith(String(query).toLowerCase()),
-  // 'exists': (v: string, q) => v is not None if q else v is None,
-  // 'regex': (v: string, q) => re.match(q, v),
-  // 'iregex': (v: string, q) => re.match(q, v, flags=re.IGNORECASE),
+  exists: (value, query) => (value !== undefined && value !== null) === query,
+  regex: (value, query) => typeof value === 'string' && new RegExp(String(query)).test(value),
+  iregex: (value, query) => typeof value === 'string' && new RegExp(String(query), 'i').test(value),
 } satisfies Record<string, ItemOperator>;
 
 /**
@@ -248,9 +248,12 @@ export function findItems<T = PlexItemData>(
 function checkAttrs(elem: unknown, obj: Record<string, ItemFilterValue> = {}): boolean {
   const attrsFound: Record<string, boolean> = {};
   for (const [attr, query] of Object.entries(obj)) {
-    const [path, , operator] = getAttrOperator(attr);
+    const [path, operation, operator] = getAttrOperator(attr);
     const values = nestedValues(elem, path);
-    attrsFound[attr] = values.some(value => operator(value, query));
+    attrsFound[attr] =
+      operation === 'exists'
+        ? values.some(value => value !== undefined && value !== null) === query
+        : values.some(value => operator(value, query));
   }
 
   return Object.values(attrsFound).every(x => x);

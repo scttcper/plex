@@ -38,3 +38,10 @@ export const NotFound = NotFoundError;
 export const UnknownType = UnknownTypeError;
 export const Unsupported = UnsupportedError;
 export const Unauthorized = UnauthorizedError;
+
+export class TwoFactorRequiredError extends UnauthorizedError {
+  constructor() {
+    super('A two-factor verification code is required to sign in.');
+    this.name = 'TwoFactorRequiredError';
+  }
+}

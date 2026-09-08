@@ -1,12 +1,17 @@
 import { PlexObject } from './base/plexObject.ts';
+import { fetchItems } from './baseFunctionality.ts';
 import { BadRequest } from './exceptions.ts';
+import type { HydratedPlexItem } from './itemFactory.ts';
+import type { Collections } from './library.ts';
 import type {
+  ReviewData,
   AgeRatingData,
   ArtworkResourceData,
   CommonSenseMediaData,
   ParentalAdvisoryTopicData,
   TalkingPointData,
 } from './media.types.ts';
+import { searchType } from './search.ts';
 import { type MediaContainer, parsePlexBoolean } from './util.ts';
 import type {
   ChapterData,
@@ -39,13 +44,17 @@ export abstract class MediaTag extends PlexObject {
   declare tagType?: number;
   abstract FILTER: string;
 
-  // async items(): Promise<any[]> {
-  //   if (!this.key) {
-  //     throw new Error(`Key is not defined for this tag: ${this.tag}`);
-  //   }
-
-  //   return fetchItems(this.server, this.key);
-  // }
+  async items(): Promise<HydratedPlexItem[]> {
+    if (!this.key) {
+      throw new BadRequest(`No query key for tag ${this.tag}; reload its parent metadata.`);
+    }
+    const { createPlexItem } = await import('./itemFactory.ts');
+    const data = await fetchItems<Record<string, unknown>>(
+      this.server,
+      this._buildQueryKey(this.key),
+    );
+    return data.map(item => createPlexItem(this.server, item, this.key, this));
+  }
 
   protected _loadData(data: any): void {
     this.key = data.key;
@@ -54,6 +63,10 @@ export abstract class MediaTag extends PlexObject {
     this.role = data.role;
     this.tag = data.tag;
     this.tagType = data.tagType;
+    const parent: { librarySectionID?: number; type?: string } | undefined = this.parent?.deref();
+    if (!this.key && this.filter && parent?.librarySectionID !== undefined && parent.type) {
+      this.key = `/library/sections/${parent.librarySectionID}/all?${this.filter}&type=${searchType(parent.type)}`;
+    }
   }
 }
 
@@ -96,8 +109,25 @@ export class Media extends PlexObject {
   /** Width of the video in pixels */
   declare width: number;
   declare parts: MediaPart[];
+  declare proxyType?: number;
+  declare hasVoiceActivity?: boolean;
+
+  get isOptimizedVersion(): boolean {
+    return this.proxyType === 42;
+  }
+
+  /** Delete this media version, leaving the other versions of the item intact. */
+  async delete(): Promise<void> {
+    const parent: unknown = this.parent?.deref();
+    if (!(parent instanceof PlexObject) || !parent.key) {
+      throw new BadRequest('Deleting a media version requires its parent metadata item.');
+    }
+    await this.server.query({ path: `${parent.key}/media/${this.id}`, method: 'delete' });
+  }
 
   protected _loadData(data: MediaData) {
+    this.proxyType = data.proxyType;
+    this.hasVoiceActivity = data.hasVoiceActivity;
     this.aspectRatio = data.aspectRatio;
     this.audioChannels = data.audioChannels;
     this.audioCodec = data.audioCodec;
@@ -123,7 +153,7 @@ export class MediaPart extends PlexObject {
   declare duration: number;
   declare file: string;
   declare id: number;
-  declare indexes: string;
+  declare indexes?: string;
   declare size: number;
   declare optimizedForStreaming: boolean;
   declare syncItemId: string;
@@ -131,6 +161,10 @@ export class MediaPart extends PlexObject {
   declare videoProfile: string;
   declare streams: MediaPartStream[];
   declare exists?: boolean;
+
+  get hasPreviewThumbnails(): boolean {
+    return this.indexes === 'sd';
+  }
 
   /**
    * Set the selected {@link AudioStream} for this MediaPart.
@@ -206,6 +240,7 @@ export class MediaPart extends PlexObject {
   }
 
   protected _loadData(data: MediaPartData) {
+    this.indexes = data.indexes;
     this.container = data.container;
     this.duration = data.duration;
     this.file = data.file;
@@ -483,11 +518,28 @@ export class Marker extends MediaTag {
   static override TAG = 'Marker' as const;
   FILTER = 'marker' as const;
 
-  declare type: 'intro' | 'credits';
+  declare type: string;
   declare startTimeOffset: number;
   declare endTimeOffset: number;
+  declare final?: boolean;
+  declare version?: number;
+
+  get first(): boolean | undefined {
+    if (this.type !== 'credits') {
+      return undefined;
+    }
+    const parent: { markers?: Marker[] } | undefined = this.parent?.deref();
+    const credits = parent?.markers?.filter(marker => marker.type === 'credits') ?? [];
+    return (
+      credits.length > 0 &&
+      this.startTimeOffset === Math.min(...credits.map(marker => marker.startTimeOffset))
+    );
+  }
 
   protected override _loadData(data: MarkerData) {
+    this.id = data.id;
+    this.final = data.final === undefined ? undefined : parsePlexBoolean(data.final);
+    this.version = data.Attributes?.version;
     this.type = data.type;
     this.startTimeOffset = data.startTimeOffset;
     this.endTimeOffset = data.endTimeOffset;
@@ -518,6 +570,15 @@ export class Chapter extends MediaTag {
 export class Collection extends MediaTag {
   static override TAG = 'Collection' as const;
   FILTER = 'collection' as const;
+  async collection(): Promise<Collections> {
+    const parent: { librarySectionID?: number } | undefined = this.parent?.deref();
+    if (parent?.librarySectionID === undefined) {
+      throw new BadRequest('Collection tag is missing its library section.');
+    }
+    const library = await this.server.library();
+    const section = await library.sectionByID(parent.librarySectionID);
+    return section.collection(this.tag);
+  }
 }
 
 /** Represents a single Label media tag. */
@@ -970,4 +1031,26 @@ export class Field extends PlexObject {
 export class Mood extends MediaTag {
   static override TAG = 'Mood' as const;
   override FILTER = 'mood' as const;
+}
+
+/** A critic review supplied by the movie's metadata provider. */
+export class Review extends PlexObject {
+  static override TAG = 'Review';
+  declare filter?: string;
+  declare id?: number;
+  declare image?: string;
+  declare link?: string;
+  declare source?: string;
+  declare tag?: string;
+  declare text?: string;
+
+  protected _loadData(data: ReviewData): void {
+    this.filter = data.filter;
+    this.id = data.id;
+    this.image = data.image;
+    this.link = data.link;
+    this.source = data.source;
+    this.tag = data.tag;
+    this.text = data.text;
+  }
 }

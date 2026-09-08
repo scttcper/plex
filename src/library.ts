@@ -46,6 +46,7 @@ import {
   Collection,
   Country,
   Director,
+  Image,
   Field,
   Format,
   Genre,
@@ -63,6 +64,12 @@ import {
   Tag,
   Writer,
 } from './media.ts';
+import type { UltraBlurColorsData } from './media.types.ts';
+import {
+  metadataFieldChanges,
+  type MetadataFieldUpdates,
+  type MetadataEditOptions,
+} from './metadata.ts';
 import { Photo, Photoalbum } from './photo.ts';
 import {
   Playlist,
@@ -76,6 +83,7 @@ import type { SearchResultContainer } from './search.types.ts';
 import type { PlexServer } from './server.ts';
 import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { Setting, type SettingResponse, type SettingValue } from './settings.ts';
+import { smartFilterParams } from './smart-filter.ts';
 import { type MediaContainer, parsePlexBoolean } from './util.ts';
 import { Clip, Episode, Movie, Season, Show } from './video.ts';
 
@@ -2184,6 +2192,19 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /**
    * Edit multiple items at once using Plex field keys.
    */
+  /** Apply typed field edits to several items with one request. */
+  async editFields(
+    items: EditableLibraryItem | EditableLibraryItem[],
+    fields: MetadataFieldUpdates,
+    options: MetadataEditOptions = {},
+  ): Promise<this> {
+    const changes = metadataFieldChanges(fields, options);
+    if (Object.keys(changes).length === 0) {
+      return this;
+    }
+    return this.multiEdit(items, changes);
+  }
+
   async multiEdit(
     items: EditableLibraryItem | EditableLibraryItem[],
     changes: Record<string, string | number | boolean>,
@@ -3131,6 +3152,22 @@ export class ManagedHub extends PlexObject {
   declare recommendationsVisibility: string;
   declare title: string;
 
+  #promoted = true;
+
+  /** Construct the visibility settings for a collection not yet promoted to a hub. */
+  static forCollection(
+    collection: Pick<Collections, 'server' | 'librarySectionID' | 'ratingKey' | 'title'>,
+  ): ManagedHub {
+    const hub = new ManagedHub(collection.server, {
+      identifier: `custom.collection.${collection.librarySectionID}.${collection.ratingKey}`,
+      librarySectionID: collection.librarySectionID,
+      title: collection.title,
+      deletable: true,
+    });
+    hub.#promoted = false;
+    return hub;
+  }
+
   override async reload(): Promise<void> {
     const key = `/hubs/sections/${this.librarySectionID}/manage`;
     const data = await fetchItemData<ManagedHubData>(
@@ -3143,6 +3180,9 @@ export class ManagedHub extends PlexObject {
   }
 
   async move(after?: ManagedHub): Promise<void> {
+    if (!this.#promoted) {
+      throw new BadRequest('Promote the collection before moving its managed hub.');
+    }
     const params = new URLSearchParams();
     if (after) {
       params.set('after', after.identifier);
@@ -3156,12 +3196,19 @@ export class ManagedHub extends PlexObject {
   }
 
   async remove(): Promise<void> {
+    if (!this.#promoted) {
+      throw new BadRequest('Collection is not a managed hub.');
+    }
     if (!this.deletable) {
       throw new BadRequest(`${this.title} managed hub cannot be removed`);
     }
 
     const key = `/hubs/sections/${this.librarySectionID}/manage/${this.identifier}`;
     await this.server.query({ path: key, method: 'delete' });
+    this.#promoted = false;
+    this.promotedToOwnHome = false;
+    this.promotedToRecommended = false;
+    this.promotedToSharedHome = false;
   }
 
   /**
@@ -3179,10 +3226,13 @@ export class ManagedHub extends PlexObject {
       promotedToOwnHome: home ? '1' : '0',
       promotedToSharedHome: shared ? '1' : '0',
     });
-    const key = `/hubs/sections/${this.librarySectionID}/manage/${
-      this.identifier
-    }?${params.toString()}`;
-    await this.server.query({ path: key, method: 'put' });
+    const base = `/hubs/sections/${this.librarySectionID}/manage`;
+    if (!this.#promoted) {
+      params.set('metadataItemId', this.identifier.split('.').at(-1));
+    }
+    const path = this.#promoted ? `${base}/${this.identifier}` : base;
+    await this.server.query({ path: `${path}?${params}`, method: this.#promoted ? 'put' : 'post' });
+    this.#promoted = true;
     this.promotedToRecommended = recommended;
     this.promotedToOwnHome = home;
     this.promotedToSharedHome = shared;
@@ -3390,6 +3440,10 @@ export class Collections<
   declare maxYear: string;
   declare minYear: string;
   declare art?: string;
+  declare fields: Field[];
+  declare images: Image[];
+  declare labels: Label[];
+  declare ultraBlurColors?: UltraBlurColorsData;
 
   private readonly itemClass?: CollectionItemClass<CollectionVideoType>;
 
@@ -3404,9 +3458,34 @@ export class Collections<
     this.itemClass = itemClass ?? collectionItemClassFromParent(parent);
   }
 
+  async item(title: string): Promise<CollectionVideoType> {
+    const item = (await this.items()).find(
+      candidate =>
+        'title' in candidate &&
+        typeof candidate.title === 'string' &&
+        candidate.title.toLowerCase() === title.toLowerCase(),
+    );
+    if (!item) {
+      throw new NotFound(`Item ${title} not found in collection.`);
+    }
+    return item;
+  }
+
+  async visibility(): Promise<ManagedHub> {
+    const params = new URLSearchParams({ metadataItemId: this.ratingKey });
+    const key = `/hubs/sections/${this.librarySectionID}/manage?${params}`;
+    const hubs = await fetchItems(this.server, key, undefined, ManagedHub);
+    return hubs[0] ?? ManagedHub.forCollection(this);
+  }
+
   // Alias for childCount
   get size() {
     return this.childCount;
+  }
+
+  /** Ordered query parameters defining this smart collection or playlist. */
+  filters(): URLSearchParams | undefined {
+    return this.smart && this.content ? smartFilterParams(this.content) : undefined;
   }
 
   get metadataType(): Libtype {
@@ -3437,6 +3516,10 @@ export class Collections<
     }
 
     throw new Unsupported(`Unexpected collection subtype: ${this.subtype}`);
+  }
+
+  override async delete(): Promise<void> {
+    await this.server.query({ path: `/library/metadata/${this.ratingKey}`, method: 'delete' });
   }
 
   override async reload(): Promise<void> {
@@ -3528,6 +3611,14 @@ export class Collections<
    * Update the collection display mode.
    * @param mode Display mode: 'default' (-1), 'hide' (0), 'hideItems' (1), 'showItems' (2).
    */
+  /** Choose whose watched state is used when evaluating a smart collection. */
+  async filterUserUpdate(user: 'admin' | 'user'): Promise<void> {
+    if (!this.smart) {
+      throw new BadRequest('Only smart collections have a filtering user.');
+    }
+    await this.editAdvanced({ collectionFilterBasedOnUser: user === 'admin' ? 0 : 1 });
+  }
+
   async modeUpdate(mode: CollectionMode): Promise<void> {
     const modeValue = COLLECTION_MODE_VALUES[mode];
     if (modeValue === undefined) {
@@ -3670,7 +3761,7 @@ export class Collections<
   }
 
   protected _loadData(data: CollectionData) {
-    this.key = data.key;
+    this.key = data.key.replace(/\/children$/, '');
     this.title = data.title;
     this.titleSort = data.titleSort;
     this.ratingKey = data.ratingKey;
@@ -3678,6 +3769,10 @@ export class Collections<
     this.type = data.type;
     this.smart = parsePlexBoolean(data.smart);
     this.content = data.content;
+    this.fields = (data.Field ?? []).map(field => new Field(this.server, field, undefined, this));
+    this.images = (data.Image ?? []).map(image => new Image(this.server, image, undefined, this));
+    this.labels = (data.Label ?? []).map(label => new Label(this.server, label, undefined, this));
+    this.ultraBlurColors = data.UltraBlurColors;
     this.collectionMode = data.collectionMode;
     this.collectionSort = data.collectionSort;
     this.librarySectionTitle = data.librarySectionTitle;

@@ -22,7 +22,7 @@ export interface PlexOptions {
   /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */
   server?: PlexServer;
   /** (ElementTree): Response from PlexServer used to build this object (optional). */
-  data?: any;
+  data?: Partial<Player> & { name?: string };
   /** (str): Path used to generate data. */
   initpath?: string;
   /** (str): HTTP URL to connect dirrectly to this client. */
@@ -153,6 +153,9 @@ export class PlexClient {
     this._token = options.token ?? null;
     this._server = options.server ?? null;
     this.timeout = options.timeout ?? TIMEOUT;
+    if (options.data) {
+      this._loadData({ ...options.data, title: options.data.title ?? options.data.name });
+    }
   }
 
   /**
@@ -276,7 +279,11 @@ export class PlexClient {
       return this._server.query({ path, headers: proxyHeaders });
     }
 
-    return this.query(path, 'get');
+    return this.query(
+      path,
+      'get',
+      this.machineIdentifier ? { 'X-Plex-Target-Client-Identifier': this.machineIdentifier } : {},
+    );
   }
 
   // --------------- Navigation Commands ---------------
@@ -366,10 +373,32 @@ export class PlexClient {
     return this.sendCommand('playback/play', params);
   }
 
-  /**
-   * Pause playback.
-   * @param mtype Media type filter (video, music, photo).
-   */
+  /** Navigate to a metadata item on its owning server. */
+  async goToMedia(
+    media: { key: string; server: PlexServer },
+    params: SendCommandParams = {},
+  ): Promise<void> {
+    const url = new URL(media.server.baseurl);
+    const token = await media.server.createToken();
+    await this.sendCommand('mirror/details', {
+      machineIdentifier: media.server.machineIdentifier,
+      address: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? '443' : '80'),
+      protocol: url.protocol.slice(0, -1),
+      key: media.key,
+      ...params,
+      ...(token ? { token } : {}),
+    });
+  }
+
+  async refreshPlayQueue(
+    playQueueID: number,
+    { type = 'video' }: { type?: string } = {},
+  ): Promise<void> {
+    await this.sendCommand('playback/refreshPlayQueue', { playQueueID, type });
+  }
+
+  /** Pause playback, optionally filtering by media type (video, music, or photo). */
   async pause(mtype?: string): Promise<any> {
     const params: SendCommandParams = {};
     if (mtype) {
@@ -706,12 +735,12 @@ export class PlexClient {
     return false;
   }
 
-  protected _loadData(data: Player) {
+  protected _loadData(data: Partial<Player>) {
     this.deviceClass = data.deviceClass;
     this.machineIdentifier = data.machineIdentifier;
     this.product = data.product;
     this.protocol = data.protocol;
-    this.protocolCapabilities = data.protocolCapabilities.split(',');
+    this.protocolCapabilities = data.protocolCapabilities?.split(',') ?? [];
     this.protocolVersion = data.protocolVersion;
     this.platform = data.platform;
     this.platformVersion = data.platformVersion;

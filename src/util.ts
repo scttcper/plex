@@ -56,7 +56,7 @@ export function tagHelper(
   const data: Record<string, string | number> = {};
   if (remove) {
     const tagname = `${tag}[].tag.tag-`;
-    data[tagname] = items.join(',');
+    data[tagname] = items.map(item => encodeURIComponent(item)).join(',');
   } else {
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];

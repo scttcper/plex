@@ -2,15 +2,18 @@ import { URL, URLSearchParams } from 'node:url';
 
 import { ofetch } from 'ofetch';
 
+import { AlertListener, type AlertListenerOptions } from './alert.ts';
+import type { AlertTypes } from './alert.types.ts';
 import type { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
-import { NotFound } from './exceptions.ts';
-import { Hub, Library } from './library.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
+import { Collections, Hub, Library, type CreateCollectionOptions } from './library.ts';
 import type { LibraryRootResponse } from './library.types.ts';
-import { MyPlexAccount } from './myplex.ts';
+import { MyPlexAccount, MyPlexUser } from './myplex.ts';
 import {
+  Conversion,
   createOptimizedVersion,
   fetchOptimizedItems,
   Optimized,
@@ -22,6 +25,9 @@ import { PlayQueue } from './playqueue.ts';
 import type { CreatePlayQueueOptions } from './playqueue.types.ts';
 import { Agent, SEARCHTYPES } from './search.ts';
 import type {
+  ServerAccount,
+  ServerIdentity,
+  ServerRelease,
   BandwidthOptions,
   ConnectionInfo,
   ContinueWatchingItemData,
@@ -47,13 +53,14 @@ import {
 import type { ButlerTaskData, ServerFileData, ServerPathData } from './serverModels.types.ts';
 import { createPlexSessionItem, createPlexTranscodeSession } from './session.ts';
 import type {
+  PlexPlaybackSession,
   PlexSessionItem,
   PlexSessionItemData,
   PlexTranscodeSession,
   PlexTranscodeSessionData,
 } from './session.types.ts';
 import { type SettingResponse, Settings } from './settings.ts';
-import { encodeBase64, type MediaContainer } from './util.ts';
+import { parsePlexBoolean, encodeBase64, type MediaContainer } from './util.ts';
 
 export interface ServerBrowseOptions {
   /** Server-visible path or a ServerPath object returned by browse(). Omit to browse roots. */
@@ -225,6 +232,235 @@ export class PlexServer {
     this.timeout = timeout;
   }
 
+  /** Start receiving typed server notifications. Call stop() on the returned listener to disconnect. */
+  async startAlertListener(
+    callback: (data: AlertTypes) => void,
+    options: AlertListenerOptions = {},
+  ): Promise<AlertListener> {
+    const listener = new AlertListener(this, callback, options);
+    await listener.run();
+    return listener;
+  }
+
+  async createCollection<T extends { ratingKey?: string | number }>(
+    title: string,
+    options: CreateCollectionOptions<T>,
+  ): Promise<Collections<T>> {
+    return Collections.create(this, title, options);
+  }
+
+  getWebURL({
+    base,
+    playlistTab,
+  }: { base?: string; playlistTab?: PlaylistContentType } = {}): string {
+    const params = new URLSearchParams(
+      playlistTab
+        ? { source: 'playlists', pivot: `playlists.${playlistTab}` }
+        : { key: '/hubs', pageType: 'hub' },
+    );
+    return this._buildWebURL({ base, params });
+  }
+
+  /** Stop a playback session by its session ID. */
+  async stopSession(
+    session: string | PlexPlaybackSession,
+    { reason = '' }: { reason?: string } = {},
+  ): Promise<void> {
+    const sessionId = typeof session === 'string' ? session : session.id;
+    if (!sessionId) {
+      throw new BadRequest('A session ID is required.');
+    }
+    const params = new URLSearchParams({ sessionId, reason });
+    await this.query({ path: `/status/sessions/terminate?${params}` });
+  }
+
+  /** Delete a history entry without deleting its media. */
+  async deleteHistory(entry: Pick<HistoryResult, 'historyKey'>): Promise<void> {
+    if (!/^\/status\/sessions\/history\/\d+$/.test(entry.historyKey)) {
+      throw new BadRequest('Invalid history entry key.');
+    }
+    await this.query({ path: entry.historyKey, method: 'delete' });
+  }
+
+  /** Resolve a session or history entry back to its current library metadata. */
+  async source(item: {
+    ratingKey?: string | number;
+  }): Promise<import('./itemFactory.ts').HydratedPlexItem | undefined> {
+    if (item.ratingKey === undefined) {
+      return undefined;
+    }
+    const { createPlexItem } = await import('./itemFactory.ts');
+    const path = `/library/metadata/${encodeURIComponent(String(item.ratingKey))}`;
+    try {
+      const data = await this.query<MediaContainer<{ Metadata?: Array<{ type?: string }> }>>({
+        path,
+      });
+      const metadata = data.MediaContainer.Metadata?.[0];
+      return metadata ? createPlexItem(this, metadata, path) : undefined;
+    } catch (error) {
+      if (error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async identity(): Promise<ServerIdentity> {
+    const { MediaContainer: data } = await this.query<MediaContainer<ServerIdentity>>({
+      path: '/identity',
+    });
+    return {
+      ...data,
+      claimed: data.claimed === undefined ? undefined : parsePlexBoolean(data.claimed),
+    };
+  }
+
+  async account(): Promise<ServerAccount> {
+    const data = await this.query<{ MyPlex: ServerAccount }>({ path: '/myplex/account' });
+    return data.MyPlex;
+  }
+
+  async claim(account: MyPlexAccount): Promise<ServerAccount> {
+    const params = new URLSearchParams({ token: await account.claimToken() });
+    const data = await this.query<{ MyPlex: ServerAccount }>({
+      path: `/myplex/claim?${params}`,
+      method: 'post',
+    });
+    return data.MyPlex;
+  }
+
+  async unclaim(): Promise<ServerAccount> {
+    const data = await this.query<{ MyPlex: ServerAccount }>({
+      path: '/myplex/account',
+      method: 'delete',
+    });
+    return data.MyPlex;
+  }
+
+  /** Create a temporary delegation token. Unclaimed servers have no token. */
+  async createToken({
+    type = 'delegation',
+    scope = 'all',
+  }: { type?: string; scope?: string } = {}): Promise<string | undefined> {
+    if (!this.token) {
+      return undefined;
+    }
+    const params = new URLSearchParams({ type, scope });
+    const data = await this.query<MediaContainer<{ token?: string }>>({
+      path: `/security/token?${params}`,
+    });
+    return data.MediaContainer.token;
+  }
+
+  /** Connect as a user with access to this server without changing this connection. */
+  async switchUser(user: MyPlexUser | number | string): Promise<PlexServer> {
+    if (!this.machineIdentifier) {
+      throw new BadRequest('Connect the server before switching users.');
+    }
+    const accountUser = user instanceof MyPlexUser ? user : await this.myPlexAccount().user(user);
+    const token = await accountUser.getToken(this.machineIdentifier);
+    if (!token) {
+      throw new NotFound('The user has no access token for this server.');
+    }
+    const server = new PlexServer(this.baseurl, token, this.timeout);
+    await server.connect();
+    return server;
+  }
+
+  async systemAccount(id: number): Promise<SystemAccount> {
+    const account = (await this.systemAccounts()).find(item => item.accountID === id);
+    if (!account) {
+      throw new NotFound(`System account ${id} not found.`);
+    }
+    return account;
+  }
+
+  async systemDevice(id: number): Promise<SystemDevice> {
+    const device = (await this.systemDevices()).find(item => item.deviceID === id);
+    if (!device) {
+      throw new NotFound(`System device ${id} not found.`);
+    }
+    return device;
+  }
+
+  async client(name: string): Promise<PlexClient> {
+    const client = (await this.clients()).find(
+      item => item.title?.toLowerCase() === name.toLowerCase(),
+    );
+    if (!client) {
+      throw new NotFound(`Client ${name} not found.`);
+    }
+    return client;
+  }
+
+  async checkForUpdate({
+    force = true,
+    download = false,
+  }: { force?: boolean; download?: boolean } = {}): Promise<ServerRelease | undefined> {
+    if (force) {
+      await this.query({ path: `/updater/check?download=${Number(download)}`, method: 'put' });
+    }
+    const data = await this.query<MediaContainer<{ Release?: ServerRelease[] }>>({
+      path: '/updater/status',
+    });
+    return data.MediaContainer.Release?.[0];
+  }
+
+  async isLatest(): Promise<boolean> {
+    return (await this.checkForUpdate()) === undefined;
+  }
+
+  async canInstallUpdate(): Promise<boolean> {
+    const data = await this.query<MediaContainer<{ canInstall?: boolean }>>({
+      path: '/updater/status',
+    });
+    return parsePlexBoolean(data.MediaContainer.canInstall);
+  }
+
+  /** Download and apply an available update on platforms that support it. */
+  async installUpdate(): Promise<void> {
+    const release = await this.checkForUpdate({ download: true });
+    if (release?.version && release.version !== this.version) {
+      await this.query({ path: '/updater/apply', method: 'put' });
+    }
+  }
+
+  /** Open an authenticated response stream from this server. */
+  async stream(
+    path: string,
+    { signal }: { signal?: AbortSignal } = {},
+  ): Promise<ReadableStream<Uint8Array>> {
+    const url = this.url(path);
+    if (url.origin !== new URL(this.baseurl).origin) {
+      throw new BadRequest('Stream URL must belong to this server.');
+    }
+    return ofetch<ReadableStream<Uint8Array>, 'stream'>(url.toString(), {
+      headers: this._headers(),
+      timeout: this.timeout,
+      retry: 0,
+      responseType: 'stream',
+      signal,
+    });
+  }
+
+  /** Download a ZIP archive as a Blob; callers choose where and whether to save it. */
+  async downloadDatabases(): Promise<Blob> {
+    return this.downloadArchive('/diagnostics/databases');
+  }
+
+  async downloadLogs(): Promise<Blob> {
+    return this.downloadArchive('/diagnostics/logs');
+  }
+
+  private async downloadArchive(path: string): Promise<Blob> {
+    return ofetch<Blob, 'blob'>(this.url(path).toString(), {
+      headers: this._headers(),
+      timeout: this.timeout,
+      retry: 0,
+      responseType: 'blob',
+    });
+  }
+
   async agents(mediaType?: number | string) {
     let key = '/system/agents';
     if (mediaType) {
@@ -365,8 +601,10 @@ export class PlexServer {
     body,
     username,
     password,
+    signal,
   }: {
     path: string;
+    signal?: AbortSignal;
     method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
     headers?: Record<string, string>;
     body?: Uint8Array;
@@ -391,6 +629,7 @@ export class PlexServer {
       body,
       retry: 0,
       responseType: 'json',
+      signal,
     });
 
     return response;
@@ -701,6 +940,21 @@ export class PlexServer {
     return createOptimizedVersion(this, options);
   }
 
+  async conversions(): Promise<Conversion[]> {
+    return fetchItems(this, '/playQueues/1', undefined, Conversion, this);
+  }
+
+  async setConversionsPaused(paused: boolean): Promise<void> {
+    await this.query({
+      path: `/:/prefs?BackgroundQueueIdlePaused=${Number(paused)}`,
+      method: 'put',
+    });
+  }
+
+  async removeOptimizedItems(): Promise<void> {
+    await this.query({ path: '/playlists/generators?type=42', method: 'delete' });
+  }
+
   /** Return currently active background transcoding jobs. */
   async backgroundTranscodeJobs(): Promise<TranscodeJob[]> {
     return fetchItems(this, '/status/sessions/background', undefined, TranscodeJob, this);
@@ -881,7 +1135,9 @@ export class PlexServer {
 
     for (const device of devices) {
       if (device.connections?.length) {
-        ports[device.clientIdentifier] = new URL('http://172.17.0.2:32400').port;
+        const connection = new URL(device.connections[0]);
+        ports[device.clientIdentifier] =
+          connection.port || (connection.protocol === 'https:' ? '443' : '80');
       }
     }
 

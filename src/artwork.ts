@@ -1,16 +1,17 @@
 import type { PartialPlexObject } from './base/partialPlexObject.ts';
 import { fetchItems, type PlexItemConstructor } from './baseFunctionality.ts';
-import { Art, Logo, Poster, SquareArt } from './media.ts';
+import { Art, Logo, Poster, SquareArt, Theme } from './media.ts';
 
 export const ArtworkKind = {
   Art: 'art',
   Logo: 'logo',
   Poster: 'poster',
   SquareArt: 'squareArt',
+  Theme: 'theme',
 } as const;
 
 export type ArtworkKind = (typeof ArtworkKind)[keyof typeof ArtworkKind];
-export type ArtworkResource = Art | Logo | Poster | SquareArt;
+export type ArtworkResource = Art | Logo | Poster | SquareArt | Theme;
 
 export type UploadArtworkOptions =
   | { kind: ArtworkKind; data: Uint8Array; url?: never }
@@ -22,6 +23,7 @@ export interface SetArtworkLockedOptions {
 }
 
 const artworkPaths = {
+  theme: { collection: 'themes', field: 'theme', selected: 'theme' },
   art: { collection: 'arts', field: 'art', selected: 'art' },
   logo: { collection: 'clearLogos', field: 'clearLogo', selected: 'clearLogo' },
   poster: { collection: 'posters', field: 'thumb', selected: 'thumb' },
@@ -34,6 +36,10 @@ export class ArtworkManager {
 
   constructor(parent: PartialPlexObject) {
     this.parent = parent;
+  }
+
+  async themes(): Promise<Theme[]> {
+    return this.resources(ArtworkKind.Theme, Theme);
   }
 
   async arts(): Promise<Art[]> {

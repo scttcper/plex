@@ -386,3 +386,85 @@ function createOptimizedMediaItem(
     }
   }
 }
+
+/** An item queued for background optimization. Fields vary with the source media type. */
+export interface ConversionData {
+  key?: string;
+  ratingKey?: string;
+  title?: string;
+  type?: string;
+  playQueueItemID?: number;
+  playlistID?: number;
+  generatorID?: number;
+  generatorType?: number;
+  target?: string;
+  duration?: number;
+  thumb?: string;
+  art?: string;
+  summary?: string;
+  year?: number;
+  userID?: number;
+  username?: string;
+}
+
+export class Conversion extends PlexObject {
+  static override TAG = 'Video';
+  declare ratingKey?: string;
+  declare title?: string;
+  declare type?: string;
+  declare playQueueItemID?: number;
+  declare playlistID?: number;
+  declare generatorID?: number;
+  declare generatorType?: number;
+  declare target?: string;
+  declare duration?: number;
+  declare thumb?: string;
+  declare art?: string;
+  declare summary?: string;
+  declare year?: number;
+  declare userID?: number;
+  declare username?: string;
+
+  async remove(): Promise<void> {
+    if (this.playlistID === undefined || this.generatorID === undefined || !this.ratingKey) {
+      throw new BadRequest(
+        'Conversion is missing its playlist, generator, or metadata identifier.',
+      );
+    }
+    await this.server.query({
+      path: `/playlists/${this.playlistID}/items/${this.generatorID}/${this.ratingKey}/disable`,
+      method: 'put',
+    });
+  }
+
+  /** Move after another queue item; -1 places this item at the active position. */
+  async move({ after }: { after: number }): Promise<void> {
+    if (this.playQueueItemID === undefined) {
+      throw new BadRequest('Conversion is missing its queue item identifier.');
+    }
+    const params = new URLSearchParams({ after: String(after) });
+    await this.server.query({
+      path: `/playQueues/1/items/${this.playQueueItemID}/move?${params}`,
+      method: 'put',
+    });
+  }
+
+  protected _loadData(data: ConversionData): void {
+    this.key = data.key;
+    this.ratingKey = data.ratingKey;
+    this.title = data.title;
+    this.type = data.type;
+    this.playQueueItemID = data.playQueueItemID;
+    this.playlistID = data.playlistID;
+    this.generatorID = data.generatorID;
+    this.generatorType = data.generatorType;
+    this.target = data.target;
+    this.duration = data.duration;
+    this.thumb = data.thumb;
+    this.art = data.art;
+    this.summary = data.summary;
+    this.year = data.year;
+    this.userID = data.userID;
+    this.username = data.username;
+  }
+}

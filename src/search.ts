@@ -1,7 +1,9 @@
 import type { ValueOf } from 'type-fest';
 
 import { PlexObject } from './base/plexObject.ts';
-import type { AgentData, MatchSearchResult } from './search.types.ts';
+import { fetchItems } from './baseFunctionality.ts';
+import type { AgentMediaTypeData, AgentData, MatchSearchResult } from './search.types.ts';
+import { Setting } from './settings.ts';
 import { rsplit } from './util.ts';
 
 export class SearchResult extends PlexObject {
@@ -37,7 +39,18 @@ export class Agent extends PlexObject {
   declare id?: number;
   declare mediaType?: number;
   declare languageCode?: string;
-  // languageCode: any[] = [];
+  declare languageCodes: string[];
+  declare mediaTypes: AgentMediaType[];
+
+  async settings(): Promise<Setting[]> {
+    return fetchItems(
+      this.server,
+      `/:/plugins/${encodeURIComponent(this.identifier)}/prefs`,
+      undefined,
+      Setting,
+      this,
+    );
+  }
 
   protected _loadData(data: AgentData) {
     this.hasAttribution = data.hasAttribution;
@@ -45,11 +58,31 @@ export class Agent extends PlexObject {
     this.identifier = data.identifier;
     this.primary = data.primary;
     this.shortIdentifier = rsplit(this.identifier, '.', 1)[1];
-    this.name = data.name ?? data.MediaType?.name;
+    const types = asArray(data.MediaType);
+    this.mediaTypes = types.map(type => new AgentMediaType(this.server, type, undefined, this));
+    this.languageCodes = asArray(data.Language).map(language => language.code);
+    this.name = data.name ?? types[0]?.name;
     this.id = data.id;
-    this.mediaType = data.MediaType?.mediaType;
-    this.languageCode = data.Language?.code ?? data.MediaType?.Language?.code;
+    this.mediaType = types[0]?.mediaType;
+    this.languageCode = this.languageCodes[0] ?? this.mediaTypes[0]?.languageCodes[0];
   }
+}
+
+export class AgentMediaType extends PlexObject {
+  static override TAG = 'MediaType';
+  declare name?: string;
+  declare mediaType?: number;
+  declare languageCodes: string[];
+
+  protected _loadData(data: AgentMediaTypeData): void {
+    this.name = data.name;
+    this.mediaType = data.mediaType;
+    this.languageCodes = asArray(data.Language).map(language => language.code);
+  }
+}
+
+function asArray<T>(value: T | T[] | undefined): T[] {
+  return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
 
 export const SEARCHTYPES = {

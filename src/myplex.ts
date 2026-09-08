@@ -1,10 +1,17 @@
-import { ofetch } from 'ofetch';
+import { FetchError, ofetch } from 'ofetch';
 import { parseStringPromise } from 'xml2js';
 
+import {
+  AccountOptOut,
+  GeoLocation,
+  onlineMediaSourcesUrl,
+  type GeoLocationData,
+} from './account-settings.ts';
 import { PlexObject } from './base/plexObject.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
-import { BadRequest, NotFound } from './exceptions.ts';
-import type { LibrarySection } from './library.ts';
+import { BadRequest, NotFound, TwoFactorRequiredError } from './exceptions.ts';
+import type { Hub, LibrarySection } from './library.ts';
+import type { StreamingAvailability } from './media.types.ts';
 import type {
   Connection,
   Device,
@@ -31,8 +38,19 @@ import type {
 import { MyPlexPinLogin } from './pin.ts';
 import type { LinkPlexPinOptions } from './pin.types.ts';
 import type { PlexServer } from './server.ts';
+import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { createPlexServer } from './serverFactory.ts';
+import { PlexSonosClient, type SonosPlayerData } from './sonos.ts';
 import { encodeBase64, type MediaContainer, parsePlexBoolean } from './util.ts';
+
+export interface AccountQueryOptions {
+  url: string;
+  method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
+  headers?: Record<string, string>;
+  body?: BodyInit | Record<string, unknown>;
+  username?: string;
+  password?: string;
+}
 
 /**
  * MyPlex account and profile information. This object represents the data found Account on
@@ -130,8 +148,10 @@ export class MyPlexAccount {
   declare subscriptionFeatures?: string[];
   /** List of devices your allowed to use with this account */
   declare entitlements?: string[];
+  declare roles: string[];
 
   public baseUrl: string | null = null;
+  #verificationCode?: string;
   public username?: string;
   public password?: string;
   public token?: string;
@@ -147,6 +167,7 @@ export class MyPlexAccount {
     password,
     token,
     timeout = TIMEOUT,
+    verificationCode,
     server,
   }: {
     baseUrl?: string | null;
@@ -155,8 +176,11 @@ export class MyPlexAccount {
     token?: string;
     timeout?: number;
     server?: PlexServer;
+    /** Two-factor authentication code for password sign-in. */
+    verificationCode?: string;
   } = {}) {
     this.baseUrl = baseUrl;
+    this.#verificationCode = verificationCode;
     this.username = username;
     this.password = password;
     this.token = token;
@@ -199,9 +223,103 @@ export class MyPlexAccount {
     return this;
   }
 
-  /**
-   * Returns the :class:`~plexapi.myplex.MyPlexResource` that matches the name specified.
-   */
+  /** List streaming providers offering this discover or watchlist item. */
+  async streamingServices(item: WatchlistTarget): Promise<StreamingAvailability[]> {
+    const id = discoverRatingKey(item);
+    const data = await this.query<MediaContainer<{ Availability?: StreamingAvailability[] }>>({
+      url: `${this.METADATA}/library/metadata/${encodeURIComponent(id)}/availabilities`,
+    });
+    return data.MediaContainer.Availability ?? [];
+  }
+
+  /** Browse Plex's on-demand video hubs. */
+  async videoOnDemand(): Promise<Hub[]> {
+    const { Hub } = await import('./library.ts');
+    const { fetchItems } = await import('./baseFunctionality.ts');
+    const server = createPlexServer('https://vod.provider.plex.tv', this.token, this.timeout);
+    return fetchItems(server, '/hubs', undefined, Hub);
+  }
+
+  /** Owner history across owned servers; maxResults applies to each server. */
+  async history(
+    options: Pick<HistoryOptions, 'maxResults' | 'minDate'> = {},
+  ): Promise<HistoryResult[]> {
+    const resources = (await this.resources()).filter(
+      resource => resource.owned && resource.provides.includes('server'),
+    );
+    const history: HistoryResult[] = [];
+    for (const resource of resources) {
+      const server = await resource.connect();
+      history.push(...(await server.history({ ...options, accountId: 1 })));
+    }
+    return history;
+  }
+
+  /** Linked Sonos speakers available to this account. */
+  async sonosSpeakers(): Promise<PlexSonosClient[]> {
+    if (!this.subscriptionFeatures?.includes('companions_sonos')) {
+      return [];
+    }
+    const data = await this.query<{ MediaContainer?: { Player?: SonosPlayerData[] } }>({
+      url: 'https://sonos.plex.tv/resources',
+    });
+    return (data.MediaContainer?.Player ?? []).map(player => new PlexSonosClient(this, player));
+  }
+
+  async sonosSpeaker(
+    identifier: { name: string } | { id: string },
+  ): Promise<PlexSonosClient | undefined> {
+    const speakers = await this.sonosSpeakers();
+    return speakers.find(speaker =>
+      'name' in identifier
+        ? speaker.title?.split('+')[0].trim() === identifier.name
+        : speaker.machineIdentifier?.startsWith(identifier.id),
+    );
+  }
+
+  /** Invalidate this account's authentication token. */
+  async signout(): Promise<void> {
+    await this.query({ url: 'https://plex.tv/api/v2/users/signout', method: 'delete' });
+  }
+
+  /** Keep the account token active. */
+  async ping(): Promise<boolean> {
+    const data = await this.query<{ pong?: boolean }>({ url: 'https://plex.tv/api/v2/ping' });
+    return data?.pong === true;
+  }
+
+  async publicIP(): Promise<string> {
+    return this.query({ url: 'https://plex.tv/:/ip', responseType: 'text' });
+  }
+
+  async geoip(ipAddress: string): Promise<GeoLocation> {
+    const params = new URLSearchParams({ ip_address: ipAddress });
+    const data = await this.query<GeoLocationData>({
+      url: `https://plex.tv/api/v2/geoip?${params}`,
+    });
+    return new GeoLocation(data);
+  }
+
+  /** Change the account's playback and library-statistics privacy choices. */
+  async optOut(options: { playback?: boolean; library?: boolean }): Promise<void> {
+    const body: Record<string, number> = {};
+    if (options.playback !== undefined) {
+      body.optOutPlayback = Number(options.playback);
+    }
+    if (options.library !== undefined) {
+      body.optOutLibraryStats = Number(options.library);
+    }
+    if (Object.keys(body).length === 0) {
+      return;
+    }
+    await this.query({ url: 'https://plex.tv/api/v2/user/privacy', method: 'put', body });
+  }
+
+  async onlineMediaSources(): Promise<AccountOptOut[]> {
+    const data = await this.query<Record<string, string>>({ url: onlineMediaSourcesUrl(this) });
+    return Object.entries(data).map(([key, value]) => new AccountOptOut(this, key, value));
+  }
+
   async resource(name: string): Promise<MyPlexResource> {
     const resources = await this.resources();
     const matchingResource = resources.find(
@@ -762,21 +880,17 @@ export class MyPlexAccount {
    * @param path
    * @param options
    */
-  async query<T = any>({
+  async query(options: AccountQueryOptions & { responseType: 'text' }): Promise<string>;
+  async query<T = any>(options: AccountQueryOptions & { responseType?: never }): Promise<T>;
+  async query({
     url,
     method = 'get',
     headers,
     body: requestBody,
+    responseType,
     username,
     password,
-  }: {
-    url: string;
-    method?: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete';
-    headers?: Record<string, string>;
-    body?: BodyInit | Record<string, unknown>;
-    username?: string;
-    password?: string;
-  }): Promise<T> {
+  }: AccountQueryOptions & { responseType?: 'text' }): Promise<unknown> {
     const requestHeaders = this._headers();
     if (username && password) {
       const credentials = encodeBase64(`${username}:${password}`);
@@ -801,8 +915,12 @@ export class MyPlexAccount {
       // Can't seem to pass responseType
     });
 
+    if (responseType === 'text') {
+      return responseBody?.trim() ?? '';
+    }
+
     if (responseBody === undefined || responseBody.trimStart() === '') {
-      return undefined as T;
+      return undefined;
     }
 
     const trimmedBody = responseBody.trimStart();
@@ -905,13 +1023,27 @@ export class MyPlexAccount {
   }
 
   private async _signin(username?: string, password?: string): Promise<UserResponse> {
-    const data = await this.query<{ user: UserResponse }>({
-      url: this.SIGNIN,
-      method: 'post',
-      username,
-      password,
-    });
-    return data.user;
+    try {
+      const data = await this.query<{ user: UserResponse }>({
+        url: this.SIGNIN,
+        method: 'post',
+        username,
+        password,
+        body: this.#verificationCode
+          ? new URLSearchParams({ verificationCode: this.#verificationCode })
+          : undefined,
+      });
+      return data.user;
+    } catch (error) {
+      if (
+        error instanceof FetchError &&
+        error.statusCode === 401 &&
+        /verification code/i.test(JSON.stringify(error.data))
+      ) {
+        throw new TwoFactorRequiredError();
+      }
+      throw error;
+    }
   }
 
   private _loadData(user: UserResponse): void {
@@ -944,6 +1076,7 @@ export class MyPlexAccount {
     this.subscriptionPlan = user.subscription?.plan ?? null;
     this.subscriptionFeatures = user.subscription?.features ?? [];
     this.entitlements = user.entitlements;
+    this.roles = user.roles ?? [];
   }
 }
 
@@ -1106,6 +1239,10 @@ abstract class DiscoverMetadataItem implements WatchlistTarget {
     this.account = account;
   }
 
+  async streamingServices(): Promise<StreamingAvailability[]> {
+    return this.account.streamingServices(this);
+  }
+
   async onWatchlist(): Promise<boolean> {
     return this.account.onWatchlist(this);
   }
@@ -1247,10 +1384,10 @@ export class MyPlexServerShare {
   readonly owned: boolean;
   readonly pending: boolean;
 
-  constructor(account: MyPlexAccount, data: MyPlexServerShareData) {
+  constructor(account: MyPlexAccount, data: MyPlexServerShareData, accountID?: number) {
     this.account = account;
     this.id = optionalNumber(data.$.id);
-    this.accountID = optionalNumber(data.$.accountID);
+    this.accountID = accountID ?? optionalNumber(data.$.accountID);
     this.serverId = optionalNumber(data.$.serverId);
     this.machineIdentifier = data.$.machineIdentifier;
     this.name = data.$.name;
@@ -1259,6 +1396,43 @@ export class MyPlexServerShare {
     this.allLibraries = parsePlexBoolean(data.$.allLibraries);
     this.owned = parsePlexBoolean(data.$.owned);
     this.pending = parsePlexBoolean(data.$.pending);
+  }
+  /** History for this user on the shared server. */
+  async history(options: HistoryOptions = {}): Promise<HistoryResult[]> {
+    if (!this.machineIdentifier) {
+      throw new BadRequest('Missing shared-server machine identifier.');
+    }
+    const resource = await this.account.resource(this.machineIdentifier);
+    const server = await resource.connect();
+    return server.history({ ...options, accountId: options.accountId ?? this.accountID });
+  }
+
+  async sections(): Promise<SharedLibrarySection[]> {
+    if (!this.machineIdentifier || this.id === undefined) {
+      throw new BadRequest('Missing shared-server identifier.');
+    }
+    const url = this.account.FRIENDSERVERS.replace(
+      '{machineId}',
+      encodeURIComponent(this.machineIdentifier),
+    ).replace('{serverId}', String(this.id));
+    const data = await this.account.query<{
+      MediaContainer?: {
+        SharedServer?: Array<{ Section?: Array<{ $: SharedLibrarySectionData }> }>;
+      };
+    }>({ url });
+    return (data.MediaContainer?.SharedServer?.[0]?.Section ?? []).map(
+      section => new SharedLibrarySection(this, section.$),
+    );
+  }
+
+  async section(title: string): Promise<SharedLibrarySection> {
+    const section = (await this.sections()).find(
+      candidate => candidate.title?.toLowerCase() === title.toLowerCase(),
+    );
+    if (!section) {
+      throw new NotFound(`Shared library section ${title} not found.`);
+    }
+    return section;
   }
 }
 
@@ -1302,7 +1476,9 @@ export class MyPlexUser {
     this.protected = parsePlexBoolean(data.$.protected);
     this.recommendationsPlaylistId = data.$.recommendationsPlaylistId;
     this.restricted = data.$.restricted;
-    this.servers = (data.Server ?? []).map(server => new MyPlexServerShare(account, server));
+    this.servers = (data.Server ?? []).map(
+      server => new MyPlexServerShare(account, server, this.id),
+    );
     this.thumb = data.$.thumb;
     this.title = data.$.title;
     this.username = data.$.username;
@@ -1321,6 +1497,29 @@ export class MyPlexUser {
     }
 
     return server;
+  }
+
+  async history(
+    options: Pick<HistoryOptions, 'maxResults' | 'minDate'> = {},
+  ): Promise<HistoryResult[]> {
+    const history: HistoryResult[] = [];
+    for (const server of this.servers) {
+      history.push(...(await server.history({ ...options, accountId: this.id })));
+    }
+    return history;
+  }
+
+  /** Fetch this user's server-scoped access token using the owning account. */
+  async getToken(machineIdentifier: string): Promise<string | undefined> {
+    const url = this.account.FRIENDINVITE.replace(
+      '{machineId}',
+      encodeURIComponent(machineIdentifier),
+    );
+    const data = await this.account.query<{
+      MediaContainer?: { SharedServer?: Array<{ $: { userID?: string; accessToken?: string } }> };
+    }>({ url });
+    return data.MediaContainer?.SharedServer?.find(server => Number(server.$.userID) === this.id)?.$
+      .accessToken;
   }
 
   /** Remove this user from the account's friends. */
@@ -1361,7 +1560,9 @@ export class MyPlexInvite {
     this.home = parsePlexBoolean(data.$.home);
     this.id = optionalNumber(data.$.id);
     this.server = parsePlexBoolean(data.$.server);
-    this.servers = (data.Server ?? []).map(server => new MyPlexServerShare(account, server));
+    this.servers = (data.Server ?? []).map(
+      server => new MyPlexServerShare(account, server, this.id),
+    );
     this.thumb = data.$.thumb;
     this.username = data.$.username;
   }
@@ -1856,5 +2057,40 @@ export class MyPlexDevice extends PlexObject {
     this.createdAt = new Date(Number.parseInt(data.$.createdAt, 10) * 1000);
     this.lastSeenAt = new Date(Number.parseInt(data.$.lastSeenAt, 10) * 1000);
     this.connections = data.Connection?.map(connection => connection.$.uri);
+  }
+}
+
+interface SharedLibrarySectionData {
+  id?: string;
+  key?: string;
+  title?: string;
+  type?: string;
+  shared?: boolean | number | string;
+}
+
+export class SharedLibrarySection {
+  readonly serverShare: MyPlexServerShare;
+  readonly id?: number;
+  readonly key?: number;
+  readonly title?: string;
+  readonly type?: string;
+  readonly shared: boolean;
+
+  constructor(serverShare: MyPlexServerShare, data: SharedLibrarySectionData) {
+    this.serverShare = serverShare;
+    this.id = optionalNumber(data.id);
+    this.key = optionalNumber(data.key);
+    this.title = data.title;
+    this.type = data.type;
+    this.shared = parsePlexBoolean(data.shared);
+  }
+
+  async history(
+    options: Pick<HistoryOptions, 'maxResults' | 'minDate'> = {},
+  ): Promise<HistoryResult[]> {
+    if (this.key === undefined) {
+      throw new BadRequest('Missing shared library section key.');
+    }
+    return this.serverShare.history({ ...options, librarySectionId: this.key });
   }
 }
