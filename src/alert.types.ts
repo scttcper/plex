@@ -1,3 +1,5 @@
+import type { SettingResponse } from './settings.ts';
+
 export interface NotificationContainer<T> {
   NotificationContainer: T;
 }
@@ -8,14 +10,16 @@ export interface ActivityNotification {
   ActivityNotification: Array<{
     event: string;
     uuid: string;
-    Activity: {
+    /** Activity details when supplied by the server. */
+    Activity?: {
       uuid: string;
-      type: 'library.update.section';
-      cancellable: false;
-      userID: 1;
+      /** Server-defined activity, for example library.update.section. */
+      type: string;
+      cancellable: boolean;
+      userID?: number;
       title: string;
       subtitle: string;
-      progress: 0;
+      progress: number;
     };
   }>;
 }
@@ -48,17 +52,33 @@ export interface TimelineNotification {
 export interface ReachabilityNotification {
   type: 'reachability';
   size: number;
-  TimelineEntry: Array<{
-    reachability: false;
+  ReachabilityNotification: Array<{
+    reachability: boolean;
   }>;
 }
 
 export interface BackgroundProcessingQueueEventNotification {
   type: 'backgroundProcessingQueue';
   size: number;
-  TimelineEntry: Array<{
+  BackgroundProcessingQueueEventNotification: Array<{
     queueID: number;
-    event: 'queueRegenerated';
+    /** Server-defined queue event, for example queueRegenerated. */
+    event: string;
+  }>;
+}
+
+export interface PreferenceNotification {
+  type: 'preference';
+  size: number;
+  Setting: SettingResponse[];
+}
+
+export interface AccountNotification {
+  type: 'account';
+  size: number;
+  AccountUpdateNotification: Array<{
+    event: string;
+    hasPlexPass?: boolean;
   }>;
 }
 
@@ -67,4 +87,6 @@ export type AlertTypes =
   | StatusNotification
   | TimelineNotification
   | ReachabilityNotification
-  | BackgroundProcessingQueueEventNotification;
+  | BackgroundProcessingQueueEventNotification
+  | PreferenceNotification
+  | AccountNotification;

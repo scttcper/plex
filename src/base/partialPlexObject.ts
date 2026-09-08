@@ -140,19 +140,26 @@ export abstract class PartialPlexObject extends PlexObject {
     locked = true,
     remove = false,
   }: MetadataTagEditOptions): Promise<void> {
-    if (!remove && !this.isFullObject) {
-      await this.reload();
+    let existing: string[] = [];
+    if (!remove) {
+      // Use the latest payload, including plugin tags that models do not hydrate.
+      const data = await this.server.query<
+        MediaContainer<{ Metadata?: Array<Record<string, unknown>> }>
+      >({
+        path: this._buildQueryKey(this.key),
+      });
+      const metadata = data.MediaContainer.Metadata?.[0];
+      if (!metadata) {
+        throw new BadRequest('Cannot preserve tags without the current metadata.');
+      }
+      const current = metadata[tag.charAt(0).toUpperCase() + tag.slice(1)];
+      if (current !== undefined) {
+        if (!Array.isArray(current) || !current.every(isMetadataTag)) {
+          throw new BadRequest(`Invalid metadata for tag ${tag}.`);
+        }
+        existing = current.map(value => value.tag);
+      }
     }
-    const plural = tag === 'country' ? 'countries' : tag === 'similar' ? tag : `${tag}s`;
-    const current: unknown = Reflect.get(this, plural);
-    const existing = Array.isArray(current)
-      ? current
-          .filter(
-            (value): value is { tag: string } =>
-              value !== null && typeof value === 'object' && typeof value.tag === 'string',
-          )
-          .map(value => value.tag)
-      : [];
     const values = remove ? [...items] : [...new Set([...existing, ...items])];
     await this.edit(tagHelper(tag, values, { locked, remove }));
     await this.reload();
@@ -556,4 +563,10 @@ export abstract class PartialPlexObject extends PlexObject {
   ) {
     await this.editTags({ tag, items, locked, remove });
   }
+}
+
+function isMetadataTag(value: unknown): value is { tag: string } {
+  return (
+    value !== null && typeof value === 'object' && 'tag' in value && typeof value.tag === 'string'
+  );
 }

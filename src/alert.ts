@@ -38,8 +38,11 @@ export class AlertListener {
     this._ws = socket;
     socket.on('message', message => {
       try {
-        const data: NotificationContainer<AlertTypes> = JSON.parse(message.toString());
-        this.callback(data.NotificationContainer);
+        const data: unknown = JSON.parse(message.toString());
+        if (!isNotificationEnvelope(data)) {
+          throw new TypeError('Invalid Plex notification envelope.');
+        }
+        this.callback(data.NotificationContainer as AlertTypes);
       } catch (error) {
         this.options.onError?.(error);
       }
@@ -50,7 +53,13 @@ export class AlertListener {
         this.options.onError?.(error);
         reject(error);
       });
-      socket.once('close', () => reject(new Error('Alert connection closed before opening.')));
+      socket.once('close', () => {
+        socket.removeAllListeners('message');
+        if (this._ws === socket) {
+          this._ws = undefined;
+        }
+        reject(new Error('Alert connection closed before opening.'));
+      });
     });
     try {
       await this.connecting;
@@ -62,4 +71,22 @@ export class AlertListener {
   stop(): void {
     this._ws?.close();
   }
+}
+
+/** Check the envelope before passing the server-defined notification payload to callers. */
+function isNotificationEnvelope(
+  value: unknown,
+): value is NotificationContainer<{ type: string; size: number }> {
+  if (value === null || typeof value !== 'object' || !('NotificationContainer' in value)) {
+    return false;
+  }
+  const container = value.NotificationContainer;
+  return (
+    container !== null &&
+    typeof container === 'object' &&
+    'type' in container &&
+    typeof container.type === 'string' &&
+    'size' in container &&
+    typeof container.size === 'number'
+  );
 }

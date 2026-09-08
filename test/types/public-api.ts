@@ -10,9 +10,9 @@ import type {
   PlexServer,
   StreamUrlOptions,
   discover,
-} from '../src/index.ts';
+} from '../../dist/src/index.js';
 
-// Compiled by the build; never executed. These checks exercise the public barrel.
+// Compile against the published declarations with strict consumer settings; never execute.
 export async function publicApiTypes(
   account: MyPlexAccount,
   movie: Movie,
@@ -48,4 +48,52 @@ export async function publicApiTypes(
   movie.getStreamURL({ protocol: ['dash'] });
   const discovery: Awaited<ReturnType<typeof discover>> = [] satisfies DiscoveryEntry[];
   void [structured, legacyResponse, unchecked, body, downloads, discovery];
+}
+
+export const activityNotification: Extract<
+  import('../../dist/src/index.js').AlertTypes,
+  { type: 'activity' }
+> = {
+  type: 'activity',
+  size: 2,
+  ActivityNotification: [
+    { uuid: 'ended', event: 'ended' },
+    {
+      uuid: 'updated',
+      event: 'updated',
+      Activity: {
+        uuid: 'updated',
+        type: 'media.optimize',
+        cancellable: true,
+        userID: 42,
+        title: 'Optimizing',
+        subtitle: '',
+        progress: 75,
+      },
+    },
+  ],
+};
+
+export const reachabilityNotification: Extract<
+  import('../../dist/src/index.js').AlertTypes,
+  { type: 'reachability' }
+> = {
+  type: 'reachability',
+  size: 1,
+  ReachabilityNotification: [{ reachability: true }],
+};
+
+export const backgroundQueueNotification: Extract<
+  import('../../dist/src/index.js').AlertTypes,
+  { type: 'backgroundProcessingQueue' }
+> = {
+  type: 'backgroundProcessingQueue',
+  size: 1,
+  BackgroundProcessingQueueEventNotification: [{ queueID: 1, event: 'queueRegenerated' }],
+};
+
+export function optionalFileTypes(part: import('../../dist/src/index.js').MediaPart): void {
+  // @ts-expect-error Not every media part has a local filename.
+  const file: string = part.file;
+  void file;
 }

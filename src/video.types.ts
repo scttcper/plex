@@ -458,7 +458,7 @@ export interface MediaPartData {
   audioProfile?: string;
   container: string;
   duration: number;
-  file: string;
+  file?: string;
   has64bitOffsets?: boolean;
   hasThumbnail?: boolean;
   optimizedForStreaming?: boolean;

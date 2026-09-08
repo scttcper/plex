@@ -474,7 +474,9 @@ export class Movie extends Video {
     }
 
     const parts = (this.media?.map(media => media.parts) ?? []).flat();
-    return parts.map(part => part.file);
+    return parts
+      .map(part => part.file)
+      .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
   /**
@@ -880,7 +882,9 @@ export class Episode extends Video {
 
   locations(): string[] {
     const parts = (this.media?.map(media => media.parts) ?? []).flat();
-    return parts.map(part => part.file);
+    return parts
+      .map(part => part.file)
+      .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
   /**
@@ -968,7 +972,9 @@ export class Clip extends Video {
   declare media: Media[];
 
   locations(): string[] {
-    return this.iterParts().map(part => part.file);
+    return this.iterParts()
+      .map(part => part.file)
+      .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
   protected override _loadData(data: any): void {

@@ -151,7 +151,8 @@ export class MediaPart extends PlexObject {
 
   declare container: string;
   declare duration: number;
-  declare file: string;
+  /** Local path, absent for media without a file on this server. */
+  declare file?: string;
   declare id: number;
   declare indexes?: string;
   declare size: number;

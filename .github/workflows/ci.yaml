@@ -27,6 +27,11 @@ jobs:
       - name: lint
         run: pnpm run lint
 
+      - name: build and check public declarations
+        run: |
+          node --run build
+          node --run test:types
+
       - name: Get PMS Docker image digest
         id: docker-digest
         run: |

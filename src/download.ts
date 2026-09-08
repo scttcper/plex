@@ -53,6 +53,7 @@ export async function* downloadMedia(
       if (metadata.Media?.length) {
         const media = options.allVersions ? metadata.Media : metadata.Media.slice(0, 1);
         for (const part of media.flatMap(version => version.Part ?? [])) {
+          options.signal?.throwIfAborted();
           if (!part.key) {
             continue;
           }
@@ -61,16 +62,24 @@ export async function* downloadMedia(
             throw new BadRequest('Download URL must belong to the Plex server.');
           }
           url.searchParams.set('download', '1');
-          const body = await server.stream(url.toString(), { signal: options.signal });
+          const controller = new AbortController();
+          const signal = options.signal
+            ? AbortSignal.any([options.signal, controller.signal])
+            : controller.signal;
+          let body: ReadableStream<Uint8Array> | undefined;
           try {
+            body = await server.stream(url.toString(), { signal });
             yield {
               filename: win32.basename(part.file ?? part.key),
               key: metadata.key ?? path,
               body,
             };
           } finally {
-            if (!body.locked) {
-              await body.cancel();
+            // Also stop a fetch when the caller still holds a reader lock.
+            controller.abort();
+            if (body && !body.locked) {
+              // An errored/aborted body can reject cancellation during cleanup.
+              await body.cancel().catch(() => {});
             }
           }
         }
@@ -91,6 +100,7 @@ async function* downloadMetadata(
 ): AsyncGenerator<DownloadMetadata> {
   let offset = 0;
   while (true) {
+    signal?.throwIfAborted();
     const url = server.url(path);
     url.searchParams.set('X-Plex-Container-Start', String(offset));
     url.searchParams.set('X-Plex-Container-Size', '100');

@@ -29,7 +29,8 @@
     "bootstraptest": "node scripts/bootstraptest.ts --create-photos",
     "teardowntest": "node scripts/teardowntest.ts",
     "add-media": "node scripts/add-media.ts",
-    "test-cleanup": "node scripts/test-cleanup.ts"
+    "test-cleanup": "node scripts/test-cleanup.ts",
+    "test:types": "tsc --project test/types/tsconfig.json"
   },
   "dependencies": {
     "@ctrl/mac-address": "^3.2.1",

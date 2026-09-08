@@ -75,3 +75,14 @@ it('creates and removes managed visibility for a temporary collection', async ()
   expect(hub.promotedToRecommended).toBe(false);
   await hub.remove();
 });
+
+it('preserves collection labels when adding and removing tags', async () => {
+  await collection.editTags({ tag: 'label', items: ['Keep, & preserve'] });
+  await collection.editTags({ tag: 'label', items: ['Another label'] });
+  expect(collection.labels.map(label => label.tag).sort()).toEqual([
+    'Another label',
+    'Keep, & preserve',
+  ]);
+  await collection.editTags({ tag: 'label', items: ['Keep, & preserve'], remove: true });
+  expect(collection.labels.map(label => label.tag)).toEqual(['Another label']);
+});
