@@ -20,9 +20,16 @@ jobs:
       # https://github.com/actions/checkout
       - uses: actions/checkout@v7
 
-      # https://github.com/wyvox/action-setup-pnpm
-      - uses: wyvox/action-setup-pnpm@v4
-        with: { node-version: 26 }
+      # https://github.com/pnpm/action-setup
+      - uses: pnpm/action-setup@v6
+
+      # https://github.com/actions/setup-node
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - name: lint
         run: pnpm run lint
