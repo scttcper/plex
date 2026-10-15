@@ -1,7 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   Common,
@@ -19,6 +19,7 @@ import {
   BadRequest,
 } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 const TEST_ADD_LIBRARY_NAME = '__plexapi_add_test__';
@@ -52,7 +53,7 @@ it('should get all sections', async () => {
   const library = await plex.library();
   const sections = await library.sections();
   expect(sections.length).toBeGreaterThan(1);
-  expect(sections.find(section => section.type === 'movie').type).toBe('movie');
+  expect(sections.some(section => section.type === 'movie')).toBe(true);
 });
 
 it('should create and delete a temporary movie section', async () => {
@@ -87,10 +88,10 @@ it('should get a list of movies and mark one watched', async () => {
   const section = await library.section<MovieSection>('Movies');
   const results = await section.search({ title: 'Bunny' });
   expect(results.length).toBeGreaterThanOrEqual(1);
-  expect(results[0].isChildOf(MovieSection)).toBe(true);
-  expect(results[0].isChildOf(Movie)).toBe(false);
-  await results[0].markWatched();
-  await results[0].markUnwatched();
+  expect(first(results).isChildOf(MovieSection)).toBe(true);
+  expect(first(results).isChildOf(Movie)).toBe(false);
+  await first(results).markWatched();
+  await first(results).markUnwatched();
 });
 
 it('should reload a library section without dropping its metadata', async () => {
@@ -115,9 +116,10 @@ it('should search for movies matching a title', async () => {
   const results = await section.search({ title: 'Bunny' });
   expect(results.length).toBe(1);
   const [buckBunny] = results;
+  assertDefined(buckBunny);
   await buckBunny.reload();
-  expect(results[0].title).toBe('Big Buck Bunny');
-  expect(results[0].librarySectionID).toBeTruthy();
+  expect(first(results).title).toBe('Big Buck Bunny');
+  expect(first(results).librarySectionID).toBeTruthy();
 });
 
 it('should get a movie with typed search filters', async () => {
@@ -134,6 +136,7 @@ it('should search for tv show matching a title', async () => {
   const section = await library.section<ShowSection>('TV Shows');
   const results = await section.search({ title: 'Silicon Valley' });
   const show = results[0];
+  assertDefined(show);
   expect(show.index).toBeDefined();
   expect(show.isWatched).toBeFalsy();
 });
@@ -191,18 +194,18 @@ it('should get root library hubs', async () => {
   const section = await library.section<MovieSection>('Movies');
   const hubs = await library.hubs({ sectionID: section.key, limit: 2 });
   expect(hubs.length).toBeGreaterThan(0);
-  expect(typeof hubs[0].title).toBe('string');
-  expect(typeof hubs[0].type).toBe('string');
-  expect(typeof hubs[0].more).toBe('boolean');
-  expect(typeof hubs[0].size).toBe('number');
+  expect(typeof first(hubs).title).toBe('string');
+  expect(typeof first(hubs).type).toBe('string');
+  expect(typeof first(hubs).more).toBe('boolean');
+  expect(typeof first(hubs).size).toBe('number');
 });
 
 it('should get root library recently added items', async () => {
   const library = await plex.library();
   const recentlyAdded = await library.recentlyAdded();
   expect(recentlyAdded.length).toBeGreaterThan(0);
-  expect(typeof recentlyAdded[0].title).toBe('string');
-  expect(typeof recentlyAdded[0].type).toBe('string');
+  expect(typeof first(recentlyAdded).title).toBe('string');
+  expect(typeof first(recentlyAdded).type).toBe('string');
 });
 
 it('should search root library items by type', async () => {
@@ -224,9 +227,9 @@ it('should get global library tags', async () => {
   const tags = await library.tags('genre');
   expect(tags.length).toBeGreaterThan(0);
   expect(tags[0]).toBeInstanceOf(Genre);
-  expect(typeof tags[0].tag).toBe('string');
-  expect(typeof tags[0].filter).toBe('string');
-  const items = await tags[0].items();
+  expect(typeof first(tags).tag).toBe('string');
+  expect(typeof first(tags).filter).toBe('string');
+  const items = await first(tags).items();
   expect(items.length).toBeGreaterThan(0);
   expect(items[0]).toBeInstanceOf(Movie);
 });
@@ -237,6 +240,42 @@ it('should get movie section on deck items', async () => {
   const onDeck = await section.onDeck();
   // On deck may be empty if nothing is in progress, that's OK
   expect(Array.isArray(onDeck)).toBe(true);
+});
+
+describe('show section on deck', () => {
+  let showSection: ShowSection;
+  let episode: Episode;
+
+  beforeAll(async () => {
+    const library = await plex.library();
+    showSection = await library.section<ShowSection>('TV Shows');
+    episode = first(await showSection.searchEpisodes({ title: 'Reapercussions' }));
+    assertDefined(episode.duration);
+    assertDefined(episode.ratingKey);
+    // Stop partway through so Plex puts the episode on deck.
+    const params = new URLSearchParams({
+      duration: episode.duration.toString(),
+      identifier: 'com.plexapp.plugins.library',
+      key: episode.key,
+      ratingKey: episode.ratingKey,
+      state: 'stopped',
+      time: '120000',
+    });
+    await plex.query({ path: `/:/timeline?${params.toString()}` });
+  });
+
+  afterAll(async () => {
+    await episode.markUnwatched();
+  });
+
+  it('should return on deck episodes instead of shows', async () => {
+    const onDeck = await showSection.onDeck();
+    const item = first(onDeck.filter(deckItem => deckItem.ratingKey === episode.ratingKey));
+
+    expect(item).toBeInstanceOf(Episode);
+    expect(item.viewOffset).toBe(120_000);
+    expect(item.grandparentTitle).toBe('The 100');
+  });
 });
 
 it('should get movie section recently added items', async () => {
@@ -299,6 +338,7 @@ it('should get typed advanced settings for a section', async () => {
   const section = await library.section<MovieSection>('Movies');
   const settings = await section.settings();
   const enableBIFGeneration = settings.find(setting => setting.id === 'enableBIFGeneration');
+  assertDefined(enableBIFGeneration);
   expect(enableBIFGeneration).toBeInstanceOf(Setting);
   expect(enableBIFGeneration.id).toBe('enableBIFGeneration');
   expect(typeof enableBIFGeneration.value).toBe('boolean');
@@ -311,7 +351,7 @@ it('should get items for a filter choice', async () => {
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
   const genres = await section.listFilterChoices('genre');
-  const items = await genres[0].items();
+  const items = await first(genres).items();
   expect(items.length).toBeGreaterThan(0);
   expect(items[0]).toBeInstanceOf(Movie);
 });
@@ -322,7 +362,7 @@ it('should get library section managed hubs and timeline', async () => {
   const hubs = await section.managedHubs();
   const timeline = await section.timeline();
   expect(hubs.length).toBeGreaterThan(0);
-  expect(typeof hubs[0].identifier).toBe('string');
+  expect(typeof first(hubs).identifier).toBe('string');
   expect(timeline).toBeInstanceOf(LibraryTimeline);
 });
 
@@ -338,8 +378,8 @@ it('should search section hubs', async () => {
   const section = await library.section<MovieSection>('Movies');
   const hubs = await section.hubSearch('Bunny', { mediatype: 'movie', limit: 2 });
   expect(hubs.length).toBeGreaterThan(0);
-  expect(typeof hubs[0].title).toBe('string');
-  expect(hubs[0].type).toBe('movie');
+  expect(typeof first(hubs).title).toBe('string');
+  expect(first(hubs).type).toBe('movie');
 });
 
 it('should get common fields for movie items', async () => {
@@ -347,10 +387,13 @@ it('should get common fields for movie items', async () => {
   const section = await library.section<MovieSection>('Movies');
   const bunny = await section.search({ title: 'Bunny' });
   const elephants = await section.search({ title: 'Elephants' });
-  const common = await section.common([bunny[0], elephants[0]]);
+  const common = await section.common([first(bunny), first(elephants)]);
   expect(common).toBeInstanceOf(Common);
   expect(common.commonType).toBe('movie');
-  expect(common.ratingKeys).toEqual([Number(bunny[0].ratingKey), Number(elephants[0].ratingKey)]);
+  expect(common.ratingKeys).toEqual([
+    Number(first(bunny).ratingKey),
+    Number(first(elephants).ratingKey),
+  ]);
 });
 
 it('should get movie section first character data', async () => {
@@ -360,6 +403,7 @@ it('should get movie section first character data', async () => {
   expect(characters.length).toBeGreaterThan(0);
   // Each character entry should have a title and size
   const firstChar = characters[0];
+  assertDefined(firstChar);
   expect(typeof firstChar.title).toBe('string');
   expect(typeof firstChar.size).toBe('number');
   expect(firstChar.size).toBeGreaterThan(0);

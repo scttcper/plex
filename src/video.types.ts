@@ -113,15 +113,18 @@ export interface TitleMetadatum {
   Related: Related;
 }
 
-export interface ChapterData extends MediaTagData {
-  index: number;
+export interface ChapterData {
+  id?: number;
+  tag?: string;
+  index?: number;
   startTimeOffset: number;
   endTimeOffset: number;
   thumb?: string;
   filter?: string;
 }
 
-export interface MarkerData extends MediaTagData {
+export interface MarkerData {
+  id?: number;
   final?: PlexBoolean;
   Attributes?: { version?: number };
   type: string;
@@ -390,7 +393,7 @@ export interface EpisodeMetadata {
   grandparentKey: string;
   grandparentRatingKey: string;
   grandparentSlug?: string;
-  grandparentTheme: string;
+  grandparentTheme?: string;
   grandparentThumb: string;
   grandparentTitle: string;
   guid: string;
@@ -413,7 +416,7 @@ export interface EpisodeMetadata {
   type: string;
   updatedAt: number;
   viewOffset?: number;
-  year: number;
+  year?: number;
   titleSort?: string;
   Media: MediaData[];
   Writer?: Array<{ tag: string }>;
@@ -434,7 +437,7 @@ export interface EpisodeMetadata {
 export interface MediaData {
   proxyType?: number;
   id: number;
-  duration: number;
+  duration?: number;
   title?: string;
   bitrate?: number;
   width?: number;
@@ -466,7 +469,7 @@ export interface MediaPartData {
   container: string;
   decision?: string;
   deepAnalysisVersion?: number | `${number}`;
-  duration: number;
+  duration?: number;
   file?: string;
   has64bitOffsets?: PlexBoolean;
   hasThumbnail?: PlexBoolean;
@@ -475,7 +478,7 @@ export interface MediaPartData {
   protocol?: string;
   requiredBandwidths?: string;
   selected?: PlexBoolean;
-  size: number;
+  size?: number;
   syncItemId?: string;
   syncState?: string;
   videoProfile?: string;

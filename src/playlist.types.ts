@@ -13,8 +13,8 @@ export interface PlaylistResponse {
   playlistType: string;
   composite: string;
   leafCount: number;
-  addedAt: number;
-  updatedAt: number;
+  addedAt?: number;
+  updatedAt?: number;
   content?: string;
   icon?: string;
   librarySectionID?: number;

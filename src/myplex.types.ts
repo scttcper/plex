@@ -148,7 +148,7 @@ export interface Device {
     provides: string;
     clientIdentifier: string;
     version: string;
-    token: string;
+    token?: string;
     createdAt: string;
     lastSeenAt: string;
     screenResolution: string;

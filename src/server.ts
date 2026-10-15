@@ -677,7 +677,7 @@ export class PlexServer {
     });
     const totalResults = raw.MediaContainer.totalSize;
     // Filter out null/undefined items from the metadata
-    const validMetadata = raw.MediaContainer.Metadata?.filter(Boolean) ?? [];
+    const validMetadata = raw.MediaContainer.Metadata?.filter(item => item != null) ?? [];
     results.push(...validMetadata);
     while (
       results.length <= totalResults &&
@@ -1048,7 +1048,7 @@ export class PlexServer {
     }
 
     if (separatorIndex === 0) {
-      return trimmed[0];
+      return trimmed.charAt(0);
     }
 
     const parent = trimmed.slice(0, separatorIndex);
@@ -1131,8 +1131,9 @@ export class PlexServer {
     const devices = await account.devices();
 
     for (const device of devices) {
-      if (device.connections?.length) {
-        const connection = new URL(device.connections[0]);
+      const [uri] = device.connections ?? [];
+      if (uri) {
+        const connection = new URL(uri);
         ports[device.clientIdentifier] =
           connection.port || (connection.protocol === 'https:' ? '443' : '80');
       }

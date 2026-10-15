@@ -2,6 +2,7 @@ import { URLSearchParams } from 'node:url';
 
 import type { PlexClient } from '../client.ts';
 import type { PlayMediaOptions } from '../client.types.ts';
+import { BadRequest } from '../exceptions.ts';
 import {
   type AudioStream,
   type LyricStream,
@@ -206,6 +207,9 @@ export abstract class Playable extends PartialPlexObject {
    * use {@link Playable.markUnplayed} to clear progress instead.
    */
   async updateProgress({ time, state = 'stopped' }: UpdateProgressOptions): Promise<void> {
+    if (!this.ratingKey) {
+      throw new BadRequest('Updating progress requires a metadata rating key.');
+    }
     const params = new URLSearchParams({
       key: this.ratingKey,
       identifier: 'com.plexapp.plugins.library',
@@ -224,6 +228,9 @@ export abstract class Playable extends PartialPlexObject {
     state = 'stopped',
     duration = (this as { duration?: number }).duration,
   }: UpdateTimelineOptions): Promise<void> {
+    if (!this.ratingKey) {
+      throw new BadRequest('Updating the timeline requires a metadata rating key.');
+    }
     const params = new URLSearchParams({
       ratingKey: this.ratingKey,
       key: this.key,

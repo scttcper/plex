@@ -9,6 +9,7 @@ import {
   VideoStream,
 } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -34,7 +35,7 @@ beforeAll(async () => {
   const section = await library.section<MovieSection>('Movies');
   const results = await section.search({ title: 'Bunny' });
   expect(results.length).toBeGreaterThan(0);
-  movie = results[0];
+  movie = first(results);
   // Reload to get full object with media/parts/streams
   await movie.reload();
 });
@@ -50,19 +51,20 @@ it('should return MediaPart objects from iterParts', () => {
   const parts = movie.iterParts();
   expect(parts.length).toBeGreaterThan(0);
   expect(parts[0]).toBeInstanceOf(MediaPart);
-  expect(typeof parts[0].file).toBe('string');
-  expect(parts[0].file.length).toBeGreaterThan(0);
+  expect(typeof first(parts).file).toBe('string');
+  expect(first(parts).file).not.toBe('');
 });
 
 it('should have audio streams accessible from media parts', () => {
   const audioStreams = movie.audioStreams();
   expect(audioStreams.length).toBeGreaterThan(0);
   expect(audioStreams[0]).toBeInstanceOf(AudioStream);
-  expect(audioStreams[0].codec).toBeDefined();
+  expect(first(audioStreams).codec).toBeDefined();
 });
 
 it('should return strongly typed video streams', () => {
   const [stream] = movie.videoStreams();
+  assertDefined(stream);
 
   expect(stream).toBeInstanceOf(VideoStream);
   expect(stream.streamType).toBe(1);

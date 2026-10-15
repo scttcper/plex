@@ -5,6 +5,8 @@ import { PlayQueue } from '../src/playqueue.ts';
 import { PlexServer } from '../src/server.ts';
 import type { Movie } from '../src/video.ts';
 
+import { itemAt } from './assertions.ts';
+
 function createServer(): PlexServer {
   const server = new PlexServer('http://192.168.1.2:32400', 'server-token');
   server.machineIdentifier = 'server-machine';
@@ -134,11 +136,11 @@ describe('PlexClient', () => {
     try {
       const timelines = await client.timelines();
       expect(timelines).toHaveLength(2);
-      expect(timelines[1].state).toBe('paused');
-      expect(timelines[1].time).toBe(1500);
-      expect(timelines[1].duration).toBe(9000);
-      expect(timelines[1].shuffle).toBe(true);
-      expect(timelines[1].ratingKey).toBe('10');
+      expect(itemAt(timelines, 1).state).toBe('paused');
+      expect(itemAt(timelines, 1).time).toBe(1500);
+      expect(itemAt(timelines, 1).duration).toBe(9000);
+      expect(itemAt(timelines, 1).shuffle).toBe(true);
+      expect(itemAt(timelines, 1).ratingKey).toBe('10');
     } finally {
       fetchMock.mockRestore();
     }

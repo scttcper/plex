@@ -64,36 +64,44 @@ export abstract class MediaTag extends PlexObject {
     this.role = data.role;
     this.tag = data.tag;
     this.tagType = data.tagType;
-    const parent: { librarySectionID?: number; type?: string } | undefined = this.parent?.deref();
-    if (!this.key && this.filter && parent?.librarySectionID !== undefined && parent.type) {
-      this.key = `/library/sections/${parent.librarySectionID}/all?${this.filter}&type=${searchType(parent.type)}`;
+    const parent = this.parent?.deref();
+    const sectionId = parent && 'librarySectionID' in parent ? parent.librarySectionID : undefined;
+    const parentType = parent && 'type' in parent ? parent.type : undefined;
+    if (
+      !this.key &&
+      this.filter &&
+      typeof sectionId === 'number' &&
+      typeof parentType === 'string' &&
+      parentType
+    ) {
+      this.key = `/library/sections/${sectionId}/all?${this.filter}&type=${searchType(parentType)}`;
     }
   }
 }
 
 export class Media extends PlexObject {
   static override TAG = 'Media' as const;
-  declare aspectRatio: number;
+  declare aspectRatio?: number;
   /**
    * Number of audio channels for this video (ex: 6)
    */
-  declare audioChannels: number;
+  declare audioChannels?: number;
   /**
    * Audio codec used within the video (ex: ac3)
    */
-  declare audioCodec: string;
+  declare audioCodec?: string;
   /**
    * Bitrate of the video (ex: 1624)
    */
-  declare bitrate: number;
+  declare bitrate?: number;
   /**
    * Length of the video in milliseconds (ex: 6990483)
    */
-  declare duration: number;
+  declare duration?: number;
   /**
    * Height of the video in pixels (ex: 256)
    */
-  declare height: number;
+  declare height?: number;
   /**
    * Plex ID of this media item
    */
@@ -108,13 +116,13 @@ export class Media extends PlexObject {
   declare container?: string;
   /** Audio profile of the media (ex: lc, dts). */
   declare audioProfile?: string;
-  declare videoCodec: string;
-  declare videoFrameRate: string;
-  declare videoProfile: string;
+  declare videoCodec?: string;
+  declare videoFrameRate?: string;
+  declare videoProfile?: string;
   /** Plex resolution bucket (ex: 4k, 1080, 720, 480, sd). */
   declare videoResolution?: string;
   /** Width of the video in pixels */
-  declare width: number;
+  declare width?: number;
   declare parts: MediaPart[];
   declare proxyType?: number;
   declare hasVoiceActivity?: boolean;
@@ -167,6 +175,7 @@ export class Media extends PlexObject {
 
 export class MediaPart extends PlexObject {
   static override TAG = 'Part' as const;
+  declare key: string;
 
   /** True if the file is readable by Plex. Only returned when checking files. */
   declare accessible?: boolean;
@@ -177,7 +186,7 @@ export class MediaPart extends PlexObject {
   declare decision?: string;
   /** Deep analysis version Plex used for this part. */
   declare deepAnalysisVersion?: number;
-  declare duration: number;
+  declare duration?: number;
   /** Local path, absent for media without a file on this server. */
   declare file?: string;
   /** True if the file uses 64 bit offsets. */
@@ -194,11 +203,11 @@ export class MediaPart extends PlexObject {
   declare requiredBandwidths?: string;
   /** True if this part is selected in a playback session. */
   declare selected?: boolean;
-  declare size: number;
+  declare size?: number;
   declare optimizedForStreaming: boolean;
   declare syncItemId?: string;
   declare syncState?: string;
-  declare videoProfile: string;
+  declare videoProfile?: string;
   declare streams: MediaPartStream[];
   declare exists?: boolean;
 
@@ -312,7 +321,8 @@ export class MediaPartStream extends PlexObject {
   static override TAG = 'Stream' as const;
 
   declare id: number;
-  declare key: string;
+  /** Stream download path, returned for sidecar streams such as lyrics. */
+  declare key?: string;
   declare codec: string;
   declare bitrate?: number;
   declare decision?: string;
@@ -331,7 +341,7 @@ export class MediaPartStream extends PlexObject {
 
   protected _loadData(data: MediaPartStreamData) {
     this.id = data.id;
-    this.key = data.key ?? '';
+    this.key = data.key;
     this.codec = data.codec;
     this.bitrate = data.bitrate;
     this.decision = data.decision;
@@ -568,10 +578,10 @@ export class Producer extends MediaTag {
   FILTER = 'producer' as const;
 }
 
-export class Marker extends MediaTag {
+export class Marker extends PlexObject {
   static override TAG = 'Marker' as const;
-  FILTER = 'marker' as const;
 
+  declare id?: number;
   declare type: string;
   declare startTimeOffset: number;
   declare endTimeOffset: number;
@@ -582,15 +592,20 @@ export class Marker extends MediaTag {
     if (this.type !== 'credits') {
       return undefined;
     }
-    const parent: { markers?: Marker[] } | undefined = this.parent?.deref();
-    const credits = parent?.markers?.filter(marker => marker.type === 'credits') ?? [];
+    const parent = this.parent?.deref();
+    const markers: unknown = parent && 'markers' in parent ? parent.markers : undefined;
+    const credits = Array.isArray(markers)
+      ? markers.filter(
+          (marker): marker is Marker => marker instanceof Marker && marker.type === 'credits',
+        )
+      : [];
     return (
       credits.length > 0 &&
       this.startTimeOffset === Math.min(...credits.map(marker => marker.startTimeOffset))
     );
   }
 
-  protected override _loadData(data: MarkerData) {
+  protected _loadData(data: MarkerData) {
     this.id = data.id;
     this.final = data.final === undefined ? undefined : parsePlexBoolean(data.final);
     this.version = data.Attributes?.version;
@@ -603,15 +618,23 @@ export class Marker extends MediaTag {
 /**
  * Represents a single Chapter media tag.
  */
-export class Chapter extends MediaTag {
+export class Chapter extends PlexObject {
   static override TAG = 'Chapter' as const;
-  FILTER = 'chapter' as const;
 
+  declare id?: number;
+  declare filter?: string;
+  declare index?: number;
+  /** Chapter name, when the file provides one. */
+  declare tag?: string;
   declare startTimeOffset: number;
   declare endTimeOffset: number;
   declare thumb?: string;
 
-  protected override _loadData(data: ChapterData) {
+  protected _loadData(data: ChapterData) {
+    this.id = data.id;
+    this.filter = data.filter;
+    this.index = data.index;
+    this.tag = data.tag;
     this.startTimeOffset = data.startTimeOffset;
     this.endTimeOffset = data.endTimeOffset;
     this.thumb = data.thumb;
@@ -625,12 +648,13 @@ export class Collection extends MediaTag {
   static override TAG = 'Collection' as const;
   FILTER = 'collection' as const;
   async collection(): Promise<Collections> {
-    const parent: { librarySectionID?: number } | undefined = this.parent?.deref();
-    if (parent?.librarySectionID === undefined) {
+    const parent = this.parent?.deref();
+    const sectionId = parent && 'librarySectionID' in parent ? parent.librarySectionID : undefined;
+    if (typeof sectionId !== 'number') {
       throw new BadRequest('Collection tag is missing its library section.');
     }
     const library = await this.server.library();
-    const section = await library.sectionByID(parent.librarySectionID);
+    const section = await library.sectionByID(sectionId);
     return section.collection(this.tag);
   }
 }
@@ -726,8 +750,8 @@ export class CommonSenseMedia extends PlexObject {
 
   override async reload(): Promise<void> {
     const parent = this.parent?.deref();
-    const guid = parent?.guid;
-    if (!guid?.startsWith('plex://')) {
+    const guid = parent && 'guid' in parent ? parent.guid : undefined;
+    if (typeof guid !== 'string' || !guid.startsWith('plex://')) {
       return;
     }
 
@@ -821,6 +845,7 @@ export class ParentalAdvisoryTopic extends PlexObject {
  * Base class for all Art, Poster, and Theme objects.
  */
 export abstract class BaseResource extends PlexObject {
+  declare key: string;
   /**
    * The source of the resource. 'local' for local files (e.g. theme.mp3),
    */
@@ -842,28 +867,43 @@ export abstract class BaseResource extends PlexObject {
   declare thumb: string;
 
   async select(): Promise<void> {
+    if (!this.initpath) {
+      throw new BadRequest('Selecting artwork requires the list path it was loaded from.');
+    }
     const key = this.initpath.slice(0, -1);
     const params = new URLSearchParams();
     params.append('url', this.ratingKey);
     await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
   }
 
-  resourceFilepath(): string {
-    if (this.ratingKey.startsWith('media://')) {
-      return `Media/localhost/${this.ratingKey.split('://')[1]}`;
+  /**
+   * Path to this resource relative to the Plex data directory, or undefined when the
+   * parent item's metadata directory is unknown.
+   */
+  resourceFilepath(): string | undefined {
+    const [scheme, path] = this.ratingKey.split('://', 2);
+    if (path === undefined) {
+      return this.ratingKey;
+    }
+
+    if (scheme === 'media') {
+      return `Media/localhost/${path}`;
+    }
+
+    if (scheme !== 'metadata' && scheme !== 'upload') {
+      return this.ratingKey;
     }
 
     const parent = this.parent?.deref();
-
-    if (this.ratingKey.startsWith('metadata://') && parent) {
-      return `${parent.metadataDirectory}/Contents/_combined/${this.ratingKey.split('://')[1]}`;
+    const directory =
+      parent && 'metadataDirectory' in parent ? parent.metadataDirectory : undefined;
+    if (typeof directory !== 'string') {
+      return undefined;
     }
 
-    if (this.ratingKey.startsWith('upload://') && parent) {
-      return `${parent.metadataDirectory}/Uploads/${this.ratingKey.split('://')[1]}`;
-    }
-
-    return this.ratingKey;
+    return scheme === 'metadata'
+      ? `${directory}/Contents/_combined/${path}`
+      : `${directory}/Uploads/${path}`;
   }
 
   protected _loadData(data: ArtworkResourceData): void {

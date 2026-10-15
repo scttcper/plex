@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MusicSection } from '../src/library.ts';
 import type { PlexServer } from '../src/server.ts';
 
+import { assertDefined } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 describe('History API Tests', () => {
@@ -32,6 +33,7 @@ describe('History API Tests', () => {
     const tracks = await musicLibrary.searchTracks({ title: '' });
     expect(tracks.length).toBeGreaterThan(0);
     const track = tracks[0];
+    assertDefined(track);
     const key = `/:/scrobble?key=${track.ratingKey}&identifier=com.plexapp.plugins.library`;
     await plex.query({ path: key });
     await sleep(2000); // Wait for history to be updated

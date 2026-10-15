@@ -7,10 +7,9 @@ import {
   onlineMediaSourcesUrl,
   type GeoLocationData,
 } from './account-settings.ts';
-import { PlexObject } from './base/plexObject.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
-import { BadRequest, NotFound, TwoFactorRequiredError } from './exceptions.ts';
+import { BadRequest, NotFound, TwoFactorRequiredError, Unauthorized } from './exceptions.ts';
 import type { Hub, LibrarySection } from './library.ts';
 import type { StreamingAvailability } from './media.types.ts';
 import type {
@@ -239,6 +238,9 @@ export class MyPlexAccount {
   async videoOnDemand(): Promise<Hub[]> {
     const { Hub } = await import('./library.ts');
     const { fetchItems } = await import('./baseFunctionality.ts');
+    if (!this.token) {
+      throw new Unauthorized('Browsing video on demand requires a Plex token.');
+    }
     const server = createPlexServer('https://vod.provider.plex.tv', this.token, this.timeout);
     return fetchItems(server, '/hubs', undefined, Hub);
   }
@@ -275,7 +277,7 @@ export class MyPlexAccount {
     const speakers = await this.sonosSpeakers();
     return speakers.find(speaker =>
       'name' in identifier
-        ? speaker.title?.split('+')[0].trim() === identifier.name
+        ? speaker.title?.split('+', 1)[0]?.trim() === identifier.name
         : speaker.machineIdentifier?.startsWith(identifier.id),
     );
   }
@@ -872,7 +874,7 @@ export class MyPlexAccount {
     const response = await this.query<MediaContainer<{ Device: Device[] }>>({
       url: MyPlexDevice.key,
     });
-    return response.MediaContainer.Device.map(data => new MyPlexDevice(this.server, data));
+    return response.MediaContainer.Device.map(data => new MyPlexDevice(this, data));
   }
 
   /**
@@ -1086,7 +1088,7 @@ export interface PendingInvitesOptions {
   includeSent?: boolean;
 }
 
-export type LibraryShareSection = Pick<LibrarySection<unknown>, 'key' | 'title'> | number | string;
+export type LibraryShareSection = Pick<LibrarySection, 'key' | 'title'> | number | string;
 
 export interface MyPlexLibraryShareSection {
   /** Account-level section id used in sharing requests. */
@@ -2025,10 +2027,11 @@ export class ResourceConnection {
  * this API, etc. The raw xml for the data presented here can be found at:
  * https://plex.tv/devices.xml
  */
-export class MyPlexDevice extends PlexObject {
-  static override TAG = 'Device';
+export class MyPlexDevice {
+  static TAG = 'Device';
   static key = 'https://plex.tv/devices.xml';
 
+  readonly account: MyPlexAccount;
   declare name: string;
   declare publicAddress: string;
   declare product: string;
@@ -2042,7 +2045,8 @@ export class MyPlexDevice extends PlexObject {
   declare clientIdentifier: string;
   declare version: string;
   declare id: string;
-  declare token: string;
+  /** Device access token, when plex.tv includes one. Connections fall back to the account token. */
+  declare token?: string;
   declare screenResolution: string;
   declare screenDensity: string;
   declare createdAt: Date;
@@ -2050,19 +2054,26 @@ export class MyPlexDevice extends PlexObject {
   /** List of connection URIs for the device. */
   declare connections?: string[];
 
+  constructor(account: MyPlexAccount, data: Device) {
+    this.account = account;
+    this._loadData(data);
+  }
+
   /** Connect to this device as a Plex Media Server. */
   async connect({ timeout }: DeviceConnectOptions = {}): Promise<PlexServer> {
+    const token = this._connectionToken();
     return connectInPreferredOrder(this.connections ?? [], this.name, url =>
-      connectServer(url, this.token, timeout),
+      connectServer(url, token, timeout),
     );
   }
 
   /** Connect to this device as a player, such as Plex for iOS or Plexamp. */
   async connectClient({ timeout }: DeviceConnectOptions = {}): Promise<PlexClient> {
+    const token = this._connectionToken();
     return connectInPreferredOrder(this.connections ?? [], this.name, url =>
       new PlexClient({
         baseurl: url,
-        token: this.token,
+        token,
         identifier: this.clientIdentifier,
         timeout,
       }).connect(),
@@ -2072,12 +2083,19 @@ export class MyPlexDevice extends PlexObject {
   /**
    * Remove this device from your account
    */
-  async delete() {
-    const key = `https://plex.tv/devices/${this.id}.xml`;
-    await this.server.query({ path: key, method: 'delete' });
+  async delete(): Promise<void> {
+    await this.account.query({ url: `https://plex.tv/devices/${this.id}.xml`, method: 'delete' });
   }
 
-  protected override _loadData(data: Device): void {
+  private _connectionToken(): string {
+    const token = this.token ?? this.account.token;
+    if (!token) {
+      throw new Unauthorized(`Connecting to device "${this.name}" requires a Plex token.`);
+    }
+    return token;
+  }
+
+  private _loadData(data: Device): void {
     this.name = data.$.name;
     this.publicAddress = data.$.publicAddress;
     this.product = data.$.product;

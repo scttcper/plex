@@ -11,6 +11,7 @@ import {
   type PlexServer,
 } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createAccount, createClient } from './test-client.ts';
 
 let server: PlexServer;
@@ -22,8 +23,7 @@ beforeAll(async () => {
   account = await createAccount();
   const library = await server.library();
   const section = await library.section<MovieSection>('Movies');
-  [movie] = await section.all();
-  expect(movie).toBeDefined();
+  movie = first(await section.all());
   await movie.reload();
 });
 
@@ -39,7 +39,9 @@ it('reads typed server identity, account, and updater status', async () => {
 
 it('finds system accounts and devices by ID', async () => {
   const [systemAccount] = await server.systemAccounts();
+  assertDefined(systemAccount);
   const [device] = await server.systemDevices();
+  assertDefined(device);
   expect((await server.systemAccount(systemAccount.accountID)).accountID).toBe(
     systemAccount.accountID,
   );
@@ -49,8 +51,8 @@ it('finds system accounts and devices by ID', async () => {
 it('reads metadata preferences and loaded optional flags', async () => {
   const preferences = await movie.preferences();
   expect(preferences.length).toBeGreaterThan(0);
-  const first = preferences[0];
-  expect((await movie.preference(first.id)).value).toEqual(first.value);
+  const preference = first(preferences);
+  expect((await movie.preference(preference.id)).value).toEqual(preference.value);
   expect(typeof movie.hasPreviewThumbnails).toBe('boolean');
   expect(typeof movie.hasVoiceActivity).toBe('boolean');
   expect(typeof movie.ultraBlurColors?.topLeft).toBe('string');
@@ -61,9 +63,9 @@ it('reads metadata preferences and loaded optional flags', async () => {
 
 it('streams an original file and stops without downloading the entire video', async () => {
   const downloads = movie.download();
-  const first = await downloads.next();
-  assert(first.done === false);
-  const file = first.value;
+  const next = await downloads.next();
+  assert(next.done === false);
+  const file = next.value;
   expect(file.filename).not.toContain('/');
   const reader = file.body.getReader();
   try {
@@ -90,7 +92,7 @@ it('reads account ping, IP, location, and online-source preferences', async () =
 it('retains all agent media types when advertised', async () => {
   const agents = await server.agents();
   expect(agents.length).toBeGreaterThan(0);
-  expect(Array.isArray(agents[0].mediaTypes)).toBe(true);
+  expect(Array.isArray(first(agents).mediaTypes)).toBe(true);
   expect(
     agents.flatMap(agent => agent.mediaTypes).every(type => type instanceof AgentMediaType),
   ).toBe(true);

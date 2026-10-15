@@ -10,6 +10,7 @@ import {
   type PlexServer,
 } from '../src/index.ts';
 
+import { first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 const prefix = '__api_parity_test__';
@@ -24,12 +25,12 @@ async function cleanup(): Promise<void> {
     return;
   }
   for (const item of (await section.collections()).filter(candidate =>
-    candidate.title.startsWith(prefix),
+    candidate.title?.startsWith(prefix),
   )) {
     await item.delete();
   }
   for (const item of (await server.playlists()).filter(candidate =>
-    candidate.title.startsWith(prefix),
+    candidate.title?.startsWith(prefix),
   )) {
     await item.delete();
   }
@@ -39,8 +40,7 @@ beforeAll(async () => {
   server = await createClient();
   section = await (await server.library()).section<MovieSection>('Movies');
   await cleanup();
-  const [movie] = await section.all();
-  expect(movie).toBeDefined();
+  const movie = first(await section.all());
   collection = await server.createCollection(`${runPrefix}collection`, { section, items: [movie] });
   playlist = await server.createPlaylist(`${runPrefix}playlist`, { items: [movie] });
 });

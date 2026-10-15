@@ -23,6 +23,8 @@ import { AlertListener } from '../src/alert.ts';
 import type { ActivityNotification } from '../src/alert.types.ts';
 import { PlexServer } from '../src/server.ts';
 
+import { assertDefined, first } from './assertions.ts';
+
 beforeEach(() => {
   sockets.length = 0;
 });
@@ -31,11 +33,11 @@ describe('alert listener lifecycle', () => {
   it('shares concurrent connections and delivers nonzero activity progress', async () => {
     const callback = vi.fn();
     const listener = new AlertListener(new PlexServer('https://plex.example', 'test'), callback);
-    const first = listener.run();
-    const second = listener.run();
+    const firstRun = listener.run();
+    const secondRun = listener.run();
     expect(sockets).toHaveLength(1);
-    sockets[0].emit('open');
-    await Promise.all([first, second]);
+    first(sockets).emit('open');
+    await Promise.all([firstRun, secondRun]);
     const notification = {
       type: 'activity',
       size: 1,
@@ -55,14 +57,14 @@ describe('alert listener lifecycle', () => {
         },
       ],
     } satisfies ActivityNotification;
-    sockets[0].emit(
+    first(sockets).emit(
       'message',
       Buffer.from(JSON.stringify({ NotificationContainer: notification })),
     );
     expect(callback).toHaveBeenCalledExactlyOnceWith(notification);
     listener.stop();
     expect(listener._ws).toBeUndefined();
-    expect(sockets[0].listenerCount('message')).toBe(0);
+    expect(first(sockets).listenerCount('message')).toBe(0);
   });
 
   it('rejects a failed connection and can connect again', async () => {
@@ -71,15 +73,17 @@ describe('alert listener lifecycle', () => {
       onError,
     });
     const failure = new Error('connection refused');
-    const first = listener.run();
-    const rejected = expect(first).rejects.toBe(failure);
-    sockets[0].emit('error', failure);
-    sockets[0].emit('close');
+    const failedRun = listener.run();
+    const rejected = expect(failedRun).rejects.toBe(failure);
+    first(sockets).emit('error', failure);
+    first(sockets).emit('close');
     await rejected;
     expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
     const next = listener.run();
     expect(sockets).toHaveLength(2);
-    sockets[1].emit('open');
+    const [, retrySocket] = sockets;
+    assertDefined(retrySocket);
+    retrySocket.emit('open');
     await next;
     listener.stop();
   });
@@ -100,11 +104,11 @@ describe('alert listener lifecycle', () => {
       onError,
     });
     const connected = listener.run();
-    sockets[0].emit('open');
+    first(sockets).emit('open');
     await connected;
-    sockets[0].emit('message', Buffer.from('{'));
-    sockets[0].emit('message', Buffer.from('{"NotificationContainer":null}'));
-    sockets[0].emit('message', Buffer.from('{}'));
+    first(sockets).emit('message', Buffer.from('{'));
+    first(sockets).emit('message', Buffer.from('{"NotificationContainer":null}'));
+    first(sockets).emit('message', Buffer.from('{}'));
     expect(onError).toHaveBeenCalledTimes(3);
     expect(callback).not.toHaveBeenCalled();
     listener.stop();

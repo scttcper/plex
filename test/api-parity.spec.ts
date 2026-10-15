@@ -11,6 +11,8 @@ import { PlexServer } from '../src/server.ts';
 import { Settings, type SettingResponse } from '../src/settings.ts';
 import { Episode, Movie } from '../src/video.ts';
 
+import { first } from './assertions.ts';
+
 const setting: SettingResponse = {
   id: 'FriendlyName',
   label: 'Name',
@@ -40,7 +42,7 @@ describe('shared media controls', () => {
       $: { id: '42' },
       Server: [{ $: { id: '7', machineIdentifier: 'server-id' } }],
     });
-    expect(user.servers[0].accountID).toBe(42);
+    expect(first(user.servers).accountID).toBe(42);
   });
   it('rates music and clears ratings using the Plex reset sentinel', async () => {
     const server = new PlexServer('http://localhost:32400', 'test');
@@ -198,7 +200,7 @@ describe('metadata additions', () => {
     const query = vi.spyOn(server, 'query').mockResolvedValue(null);
     const changes = Object.freeze({ 'title.value': 'Frozen title' });
     await movie(server).edit(changes);
-    const params = new URL(query.mock.calls[0][0].path).searchParams;
+    const params = new URL(first(query.mock.calls)[0].path).searchParams;
     expect(params.get('id')).toBe('10');
     expect(params.get('type')).toBe('1');
     expect(changes).toEqual({ 'title.value': 'Frozen title' });
@@ -230,7 +232,7 @@ describe('metadata additions', () => {
     const item = movie(server);
     const fields = { title: 'A & B', userRating: 0, addedAt: new Date('2026-01-01T00:00:00Z') };
     await item.editFields(fields, { locked: false });
-    const params = new URL(query.mock.calls[0][0].path).searchParams;
+    const params = new URL(first(query.mock.calls)[0].path).searchParams;
     expect(params.get('title.value')).toBe('A & B');
     expect(params.get('userRating.value')).toBe('0');
     expect(params.get('addedAt.value')).toBe('1767225600');
@@ -282,7 +284,7 @@ describe('metadata additions', () => {
     });
     expect(item.isLocked('title')).toBe(true);
     expect(item.isLocked('summary')).toBe(false);
-    expect(item.actors[0].tag).toBe('Actor');
+    expect(first(item.actors).tag).toBe('Actor');
     expect(item.episodeNumber).toBe(3);
     expect(item.ultraBlurColors?.topLeft).toBe('ff0000');
   });
@@ -305,7 +307,7 @@ describe('metadata additions', () => {
       ],
     });
     expect(agent.mediaTypes).toHaveLength(2);
-    expect(agent.mediaTypes[0].languageCodes).toEqual(['en', 'fr']);
+    expect(first(agent.mediaTypes).languageCodes).toEqual(['en', 'fr']);
     expect(agent.languageCode).toBe('en');
   });
 });

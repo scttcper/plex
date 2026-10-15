@@ -1,5 +1,6 @@
 import { stringToBase64 } from 'uint8array-extras';
 
+import { NotFound } from './exceptions.ts';
 import type { Section } from './library.ts';
 import type { PlexServer } from './server.ts';
 
@@ -37,6 +38,15 @@ export function parseOptionalDate(value: unknown): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
+/** First metadata entry of a Plex container, or NotFound when Plex returned none. */
+export function firstMetadata<T>(data: { Metadata?: readonly T[] }, key: string | undefined): T {
+  const [metadata] = data.Metadata ?? [];
+  if (metadata === undefined) {
+    throw new NotFound(`No metadata returned for "${key}".`);
+  }
+  return metadata;
+}
+
 /** Parse the boolean shapes returned by Plex JSON APIs. */
 export function parsePlexBoolean(value: unknown, fallback = false): boolean {
   if (value === undefined || value === null || value === '') {
@@ -61,7 +71,7 @@ export function rsplit(str: string, sep: string, maxsplit: number): string[] {
 export async function getAgentIdentifier(section: Section, agent: string) {
   const agents: string[] = [];
   for (const ag of await section.agents()) {
-    const identifiers = [ag.identifier, ag.shortIdentifier, ag.name];
+    const identifiers = [ag.identifier, ag.shortIdentifier, ...(ag.name ? [ag.name] : [])];
     if (identifiers.includes(agent)) {
       return ag.identifier;
     }
@@ -83,10 +93,8 @@ export function tagHelper(
     const tagname = `${tag}[].tag.tag-`;
     data[tagname] = items.map(item => encodeURIComponent(item)).join(',');
   } else {
-    for (let idx = 0; idx < items.length; idx++) {
-      const item = items[idx];
-      const tagname = `${tag}[${idx}].tag.tag`;
-      data[tagname] = item;
+    for (const [idx, item] of items.entries()) {
+      data[`${tag}[${idx}].tag.tag`] = item;
     }
   }
 
@@ -96,7 +104,7 @@ export function tagHelper(
 
 export function ltrim(x: string, characters: string[]): string {
   let start = 0;
-  while (characters.includes(x[start])) {
+  while (start < x.length && characters.includes(x.charAt(start))) {
     start += 1;
   }
 

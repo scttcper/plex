@@ -4,6 +4,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { type Movie, type MovieSection, type PlexServer, SubtitleStream } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 const subtitleTitle = 'plex-ts-selection-test';
@@ -18,7 +19,7 @@ async function cleanupTestSubtitles(): Promise<void> {
       stream => stream.title === subtitleTitle && stream.key === `/library/streams/${stream.id}`,
     );
   for (const stream of leftovers) {
-    await plex.query({ path: stream.key, method: 'delete' });
+    await plex.query({ path: `/library/streams/${stream.id}`, method: 'delete' });
   }
 }
 
@@ -50,7 +51,7 @@ beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
-  [movie] = await section.search({ title: 'Bunny' });
+  movie = first(await section.search({ title: 'Bunny' }));
   await movie.reload();
   await cleanupTestSubtitles();
 });
@@ -70,6 +71,7 @@ it('uploads, selects, resets, and removes an external subtitle', async () => {
     const matches = movie.subtitleStreams().filter(stream => stream.title === subtitleTitle);
     expect(matches).toHaveLength(1);
     const [subtitle] = matches;
+    assertDefined(subtitle);
     expect(subtitle).toBeInstanceOf(SubtitleStream);
     expect(typeof subtitle.id).toBe('number');
     expect(typeof subtitle.key).toBe('string');
@@ -111,6 +113,7 @@ it.skip('searches for and downloads an on-demand subtitle', async () => {
   });
   expect(results.length).toBeGreaterThan(0);
   const [result] = results;
+  assertDefined(result);
   expect(result).toBeInstanceOf(SubtitleStream);
   expect(typeof result.id).toBe('number');
   expect(typeof result.key).toBe('string');

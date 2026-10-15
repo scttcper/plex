@@ -19,8 +19,8 @@ interface ParsedFile {
 }
 
 interface DuplicateMovie {
-  title: string;
-  year: number;
+  title?: string;
+  year?: number;
   locations: string[];
   parsedFiles: ParsedFile[];
   filesToRemove: string[];
@@ -78,9 +78,8 @@ async function listDuplicateMovies() {
       parsedFiles.sort((a, b) => b.qualityScore - a.qualityScore);
 
       // Check if all files have the same quality score
-      const sameQuality = parsedFiles.every(
-        file => file.qualityScore === parsedFiles[0].qualityScore,
-      );
+      const [best] = parsedFiles;
+      const sameQuality = parsedFiles.every(file => file.qualityScore === best?.qualityScore);
 
       // Keep the highest quality file, mark others for removal
       const filesToRemove = parsedFiles.slice(1).map(file => file.path);

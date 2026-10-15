@@ -10,6 +10,7 @@ import type {
   LibrarySection,
   Libtype,
   MusicSection,
+  RatingKeyItem,
   SearchArgs,
   SearchClassForLibtype,
   SearchFilterValue,
@@ -26,7 +27,7 @@ import type {
 import { searchType } from './search.ts';
 import type { PlexServer } from './server.ts';
 import { smartFilterParams } from './smart-filter.ts';
-import { parsePlexBoolean } from './util.ts';
+import { firstMetadata, parseOptionalDate, parsePlexBoolean } from './util.ts';
 import { Episode, Movie, Season, Show } from './video.ts';
 
 /**
@@ -56,7 +57,7 @@ export interface CreateSmartPlaylistOptions {
   /** True to create a smart playlist */
   smart: true;
   /** Smart playlists only, the library section to create the playlist in. */
-  section?: LibrarySection<unknown>;
+  section?: LibrarySection<RatingKeyItem>;
   /** Smart playlists only, limit the number of items in the playlist. */
   limit?: number;
   /**
@@ -151,8 +152,8 @@ export class Playlist extends Playable {
       sectionId: section.key,
       filters: { guid__endswith: path },
     });
-    const playlist = matches[0];
-    if (!playlist) {
+    const [playlist] = matches;
+    if (!playlist?.ratingKey) {
       throw new NotFound('Plex did not return the imported playlist.');
     }
     await Playlist.update(server, playlist.ratingKey, { title });
@@ -206,6 +207,9 @@ export class Playlist extends Playable {
 
   /** Copy the current playlist contents into another user's account on this server. */
   async copyToUser(user: MyPlexUser | string | number): Promise<Playlist> {
+    if (!this.title) {
+      throw new BadRequest('Copying a playlist requires its title.');
+    }
     const server = await this.server.switchUser(user);
     return Playlist.create(server, this.title, { items: await this.items() });
   }
@@ -252,11 +256,12 @@ export class Playlist extends Playable {
     title: string,
     items: PlaylistContent[],
   ): Promise<Playlist> {
-    if (!items || items.length === 0) {
+    const [firstItem] = items;
+    if (!firstItem) {
       throw new BadRequest('Must include items to add when creating new playlist.');
     }
 
-    const { listType } = items[0];
+    const { listType } = firstItem;
     const ratingKeys = items.map(item => {
       if (!item.ratingKey) {
         throw new BadRequest(`Cannot add item without a ratingKey to playlist "${title}".`);
@@ -278,8 +283,10 @@ export class Playlist extends Playable {
 
   TYPE = 'playlist';
 
-  declare addedAt: Date;
-  declare updatedAt: Date;
+  /** Missing on generated radio stations. */
+  declare addedAt?: Date;
+  /** Missing on generated radio stations. */
+  declare updatedAt?: Date;
   declare composite: string;
   declare guid: string;
   declare fields: Field[];
@@ -350,9 +357,9 @@ export class Playlist extends Playable {
     }
 
     const content = decodeURIComponent(this.content ?? '');
-    const sectionMatch = /\/library\/sections\/(\d+)\/all/.exec(content);
-    if (sectionMatch) {
-      return (await this.server.library()).sectionByID(sectionMatch[1]);
+    const sectionId = /\/library\/sections\/(\d+)\/all/.exec(content)?.[1];
+    if (sectionId) {
+      return (await this.server.library()).sectionByID(sectionId);
     }
 
     const [item] = await this.items();
@@ -490,8 +497,8 @@ export class Playlist extends Playable {
     this.ratingKey = data.ratingKey;
     this.title = data.title;
     this.type = data.type;
-    this.addedAt = new Date(data.addedAt);
-    this.updatedAt = new Date(data.updatedAt);
+    this.addedAt = parseOptionalDate(data.addedAt);
+    this.updatedAt = parseOptionalDate(data.updatedAt);
     this.composite = data.composite;
     this.guid = data.guid;
     this.fields = (data.Field ?? []).map(field => new Field(this.server, field, undefined, this));
@@ -513,7 +520,7 @@ export class Playlist extends Playable {
   }
 
   protected _loadFullData(data: { Metadata: PlaylistResponse[] }) {
-    this._loadData(data.Metadata[0]);
+    this._loadData(firstMetadata(data, this.key));
   }
 
   private async _getPlaylistItemID(item: PlaylistContent): Promise<number> {

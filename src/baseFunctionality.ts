@@ -188,7 +188,11 @@ export async function fetchItems<T = PlexItemData>(
       containerItems(MediaContainer, Cls?.TAG ?? fetchOptions.containerTag),
       MediaContainer,
     );
-    results.push(...findItems(elems, options, Cls, server, parent, pageKey));
+    results.push(
+      ...(Cls
+        ? findItems(elems, options, Cls, server, parent, pageKey)
+        : findItems(elems as T[], options)),
+    );
 
     const totalSize = parseOptionalNumber(MediaContainer.totalSize);
     const rawPageSize = parseOptionalNumber(MediaContainer.size) ?? elems.length;
@@ -315,7 +319,8 @@ function getAttrOperator(attr: string): [string[], keyof typeof OPERATORS, ItemO
 }
 
 function nestedValues(value: unknown, path: string[]): unknown[] {
-  if (path.length === 0) {
+  const [key, ...rest] = path;
+  if (key === undefined) {
     return [value];
   }
 
@@ -327,6 +332,5 @@ function nestedValues(value: unknown, path: string[]): unknown[] {
     return [];
   }
 
-  const [key, ...rest] = path;
   return nestedValues((value as Record<string, unknown>)[key], rest);
 }

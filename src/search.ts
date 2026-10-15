@@ -11,8 +11,9 @@ export class SearchResult extends PlexObject {
 
   declare guid: string;
   declare name: string;
-  declare score: number;
-  declare year: number;
+  /** Match confidence, returned for automatic matches. */
+  declare score?: number;
+  declare year?: number;
   declare lifespanEnded: boolean;
 
   protected _loadData(data: MatchSearchResult) {
@@ -57,7 +58,7 @@ export class Agent extends PlexObject {
     this.hasPrefs = data.hasPrefs;
     this.identifier = data.identifier;
     this.primary = data.primary;
-    this.shortIdentifier = rsplit(this.identifier, '.', 1)[1];
+    this.shortIdentifier = rsplit(this.identifier, '.', 1).at(-1) ?? this.identifier;
     const types = asArray(data.MediaType);
     this.mediaTypes = types.map(type => new AgentMediaType(this.server, type, undefined, this));
     this.languageCodes = asArray(data.Language).map(language => language.code);

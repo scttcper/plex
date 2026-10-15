@@ -8,6 +8,7 @@ import {
   type ShowSection,
 } from '../src/index.ts';
 
+import { assertDefined, first, itemAt } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -20,10 +21,8 @@ beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
-  [buckBunny] = await section.search({ title: 'Bunny' });
-  [ghostbusters] = await section.search({ title: 'Ghostbusters' });
-  expect(buckBunny).toBeDefined();
-  expect(ghostbusters).toBeDefined();
+  buckBunny = first(await section.search({ title: 'Bunny' }));
+  ghostbusters = first(await section.search({ title: 'Ghostbusters' }));
   const leftovers = await plex.playlists({ title: smartPlaylistTitle });
   await Promise.all(leftovers.map(item => item.delete()));
 });
@@ -36,13 +35,16 @@ afterEach(async () => {
 it('should create a playlist and add/remove an item', async () => {
   playlist = await Playlist.create(plex, 'my playlist', { items: [buckBunny] });
   expect(playlist.ratingKey).toBeDefined();
+  // Plex sends unix seconds; parsing them as milliseconds lands in 1970.
+  assertDefined(playlist.addedAt);
+  expect(Math.abs(playlist.addedAt.getTime() - Date.now())).toBeLessThan(86_400_000);
 
   await playlist.addItems([ghostbusters]);
 
   const items = await playlist.items();
   expect(items).toHaveLength(2);
-  expect(items[0].ratingKey).toBe(buckBunny.ratingKey);
-  expect(items[1].ratingKey).toBe(ghostbusters.ratingKey);
+  expect(first(items).ratingKey).toBe(buckBunny.ratingKey);
+  expect(itemAt(items, 1).ratingKey).toBe(ghostbusters.ratingKey);
 
   await playlist.removeItems([ghostbusters]);
 
@@ -64,9 +66,9 @@ it('should retrieve playlist items grouped by library type', async () => {
   const groupedEpisodes = await playlist.items({ libtype: 'episode' });
 
   expect(shows).toHaveLength(1);
-  expect(shows[0].ratingKey).toBe(show.ratingKey);
+  expect(first(shows).ratingKey).toBe(show.ratingKey);
   expect(seasons).toHaveLength(1);
-  expect(seasons[0].parentRatingKey).toBe(show.ratingKey);
+  expect(first(seasons).parentRatingKey).toBe(show.ratingKey);
   expect(groupedEpisodes.map(episode => episode.ratingKey)).toEqual(
     episodes.map(episode => episode.ratingKey),
   );
@@ -96,6 +98,7 @@ it('should update a playlist by ratingKey without fetching it first', async () =
   expect(playlist.summary).toBe('');
 
   // Update using static method with just the ratingKey (no fetch required)
+  assertDefined(playlist.ratingKey);
   await Playlist.update(plex, playlist.ratingKey, {
     title: new_title,
     summary: new_summary,

@@ -85,6 +85,7 @@ export class ServerPath extends PlexObject {
   static override TAG = 'Path';
 
   declare home: boolean;
+  declare key: string;
   declare network: boolean;
   declare path: string;
   declare title: string;
@@ -114,6 +115,7 @@ export class ServerPath extends PlexObject {
 export class ServerFile extends PlexObject {
   static override TAG = 'File';
 
+  declare key: string;
   declare path: string;
   declare title: string;
 

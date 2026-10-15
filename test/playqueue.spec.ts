@@ -11,6 +11,7 @@ import {
   type ShowSection,
 } from '../src/index.ts';
 
+import { assertDefined, first, itemAt } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -25,17 +26,17 @@ beforeAll(async () => {
 
   // Get a movie for testing
   const movieSection = await library.section<MovieSection>('Movies');
-  [movie] = await movieSection.search({ title: 'Bunny' });
-  expect(movie).toBeDefined();
+  movie = first(await movieSection.search({ title: 'Bunny' }));
 
   // Get episodes for testing
   const showSection = await library.section<ShowSection>('TV Shows');
   const shows = await showSection.search({ title: 'Silicon Valley' });
   expect(shows.length).toBeGreaterThan(0);
   const show = shows[0];
+  assertDefined(show);
   const seasons = await show.seasons();
   expect(seasons.length).toBeGreaterThan(0);
-  episodes = (await seasons[0].episodes()).slice(0, 3);
+  episodes = (await first(seasons).episodes()).slice(0, 3);
   expect(episodes.length).toBeGreaterThanOrEqual(3);
 });
 
@@ -153,7 +154,7 @@ describe('PlayQueue Items Management', () => {
 
     const firstItem = playQueue.getItem(0);
     expect(firstItem).toBeDefined();
-    expect(firstItem?.ratingKey).toBe(items[0].ratingKey);
+    expect(firstItem?.ratingKey).toBe(first(items).ratingKey);
   });
 
   it('should check if PlayQueue contains item', async () => {
@@ -161,7 +162,7 @@ describe('PlayQueue Items Management', () => {
 
     const items = playQueue.items;
     expect(items.length).toBeGreaterThan(0);
-    const contains = playQueue.contains(items[0]);
+    const contains = playQueue.contains(first(items));
     expect(contains).toBe(true);
   });
 
@@ -177,7 +178,7 @@ describe('PlayQueue Items Management', () => {
     playQueue = await PlayQueue.create(plex, episodes.slice(0, 1));
 
     const initialCount = playQueue.playQueueTotalCount;
-    await playQueue.addItem(episodes[1]);
+    await playQueue.addItem(itemAt(episodes, 1));
 
     expect(playQueue.playQueueTotalCount).toBe(initialCount + 1);
   });
@@ -185,7 +186,7 @@ describe('PlayQueue Items Management', () => {
   it('should add item with playNext option', async () => {
     playQueue = await PlayQueue.create(plex, episodes.slice(0, 1));
 
-    await playQueue.addItem(episodes[1], { playNext: true });
+    await playQueue.addItem(itemAt(episodes, 1), { playNext: true });
 
     const items = playQueue.items;
     expect(items.length).toBe(2);
@@ -196,7 +197,7 @@ describe('PlayQueue Items Management', () => {
 
     const initialCount = playQueue.playQueueTotalCount;
     const initialVersion = playQueue.playQueueVersion;
-    const removed = playQueue.items[2];
+    const removed = itemAt(playQueue.items, 2);
 
     await playQueue.removeItem(removed);
 
@@ -211,6 +212,7 @@ describe('PlayQueue Items Management', () => {
 
     const items = playQueue.items;
     const firstItem = items[0];
+    assertDefined(firstItem);
     const secondItem = items[1];
 
     // Move first item after second item
@@ -218,7 +220,7 @@ describe('PlayQueue Items Management', () => {
 
     const newItems = playQueue.items;
     // The order should have changed
-    expect(newItems[0].ratingKey).not.toBe(firstItem.ratingKey);
+    expect(first(newItems).ratingKey).not.toBe(firstItem.ratingKey);
   });
 
   it('should clear all but the selected item from PlayQueue', async () => {
@@ -259,7 +261,7 @@ describe('PlayQueue from Playlist', () => {
     expect(playQueue.playQueueTotalCount).toBe(1);
 
     const items = playQueue.items;
-    expect(items[0].ratingKey).toBe(movie.ratingKey);
+    expect(first(items).ratingKey).toBe(movie.ratingKey);
   });
 });
 
@@ -280,14 +282,13 @@ describe('PlayQueue Error Handling', () => {
   });
 
   it('should handle queue item not found', async () => {
-    playQueue = await PlayQueue.create(plex, movie);
+    const queue = await PlayQueue.create(plex, movie);
+    playQueue = queue;
 
     // Try to get a queue item that doesn't exist
     const library = await plex.library();
     const movieSection = await library.section<MovieSection>('Movies');
-    const otherMovies = await movieSection.search({ title: 'Ghost' });
-
-    const otherMovie = otherMovies[0];
-    expect(() => playQueue.getQueueItem(otherMovie)).toThrow();
+    const otherMovie = first(await movieSection.search({ title: 'Ghost' }));
+    expect(() => queue.getQueueItem(otherMovie)).toThrow();
   });
 });

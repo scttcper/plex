@@ -222,7 +222,8 @@ export interface CommonData {
   Label?: MediaTagData[];
   Mood?: MediaTagData[];
   Producer?: MediaTagData[];
-  Rating?: MediaRating[];
+  /** Plex returns empty rating entries when the items do not share one. */
+  Rating?: Array<Partial<MediaRating>>;
   Role?: MediaTag[];
   Style?: MediaTagData[];
   Tag?: MediaTagData[];
@@ -425,7 +426,7 @@ export interface ShowData {
   thumb: string;
   art: string;
   banner?: string;
-  theme: string;
+  theme?: string;
   duration?: number;
   editionTitle?: string;
   originallyAvailableAt?: string;
@@ -460,9 +461,9 @@ export interface CollectionData {
   content?: string;
   collectionMode?: number;
   collectionSort?: number;
-  librarySectionTitle: string;
-  librarySectionID: number;
-  librarySectionKey: string;
+  librarySectionTitle?: string;
+  librarySectionID?: number;
+  librarySectionKey?: string;
   contentRating: string;
   subtype: string;
   summary: string;
@@ -474,10 +475,10 @@ export interface CollectionData {
   art?: string;
   addedAt: number;
   updatedAt: number;
-  childCount: string;
-  size: number;
-  maxYear: string;
-  minYear: string;
+  childCount?: string;
+  size?: number;
+  maxYear?: string;
+  minYear?: string;
 }
 
 export interface ExtrasData {

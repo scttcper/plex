@@ -44,6 +44,8 @@ export abstract class PartialPlexObject extends PlexObject {
     includeStations: 0,
   };
 
+  /** Plex relative url of this metadata item. */
+  declare key: string;
   declare ratingKey?: string;
   declare title?: string;
   declare type?: string;
@@ -117,6 +119,9 @@ export abstract class PartialPlexObject extends PlexObject {
       playlist: 'Playlists',
       collection: 'Collections',
     };
+    if (!this.type) {
+      return undefined;
+    }
     const directory = directories[this.type];
     const field =
       this.type === 'episode'
@@ -303,10 +308,8 @@ export abstract class PartialPlexObject extends PlexObject {
   } = {}): Promise<void> {
     const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
-      const autoMatch = await this.matches();
-      if (autoMatch.length > 0) {
-        searchResult = autoMatch[0];
-      } else {
+      searchResult = (await this.matches())[0];
+      if (!searchResult) {
         throw new Error(`No matches found using this agent: (${agent})`);
       }
     } else if (!searchResult) {
@@ -360,16 +363,14 @@ export abstract class PartialPlexObject extends PlexObject {
       const ident = await getAgentIdentifier(section, agent);
       params.append('agent', ident);
     } else if ([agent, title, year, language].some(x => x)) {
-      if (title) {
-        params.append('title', title);
-      } else {
-        params.append('title', this.title);
+      const matchTitle = title || this.title;
+      if (matchTitle) {
+        params.append('title', matchTitle);
       }
 
-      if (year) {
-        params.append('year', year);
-      } else {
-        params.append('year', this.year.toString());
+      const matchYear = year || this.year?.toString();
+      if (matchYear) {
+        params.append('year', matchYear);
       }
 
       if (language) {
@@ -423,6 +424,9 @@ export abstract class PartialPlexObject extends PlexObject {
       return parent.section();
     }
 
+    if (this.librarySectionID === undefined) {
+      throw new BadRequest('Finding the library section requires a librarySectionID.');
+    }
     return (await this.server.library()).sectionByID(this.librarySectionID);
   }
 
