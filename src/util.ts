@@ -5,6 +5,15 @@ import { NotFound } from './exceptions.ts';
 import type { Section } from './library.ts';
 import type { PlexServer } from './server.ts';
 
+/** A class that constructs `T`. */
+export type Class<T, Arguments extends unknown[] = any[]> = {
+  prototype: Pick<T, keyof T>;
+  new (...args: Arguments): T;
+};
+
+/** Known string values that still autocomplete but accept any other string Plex may send. */
+export type LiteralUnion<Literal extends string> = Literal | (string & Record<never, never>);
+
 export interface MediaContainer<T> {
   MediaContainer: T;
 }

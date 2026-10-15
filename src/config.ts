@@ -1,6 +1,5 @@
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
-
-import { getMAC, parseMAC } from '@ctrl/mac-address';
 
 // PlexAPI Settings
 export const PROJECT = 'PlexAPI';
@@ -20,9 +19,27 @@ export const X_PLEX_PRODUCT = PROJECT;
 export const X_PLEX_VERSION = VERSION;
 export const X_PLEX_DEVICE = X_PLEX_PLATFORM;
 export const X_PLEX_DEVICE_NAME = os.hostname();
-const mac = getMAC();
-const base16Mac: string = parseMAC(mac).toLong().toString(16);
-export const X_PLEX_IDENTIFIER = `0x${base16Mac}`;
+/**
+ * Matches all-zero MAC addresses. Deliberately unanchored like the old @ctrl/mac-address check
+ * so existing installs keep the same identifier.
+ */
+const zeroMac = /(?:0{1,2}[:-]){5}0{1,2}/;
+
+/** Hex MAC of the first interface with a real address, like python-plexapi's uuid.getnode(). */
+function macIdentifier(): string | undefined {
+  const mac = Object.values(os.networkInterfaces())
+    .flat()
+    .find(info => info !== undefined && !zeroMac.test(info.mac))?.mac;
+  return mac === undefined
+    ? undefined
+    : `0x${Number.parseInt(mac.replaceAll(/[:-]/g, ''), 16).toString(16)}`;
+}
+
+/**
+ * Client identifier sent to Plex. Machines without a MAC address (some containers) get a random
+ * id per process, set a stable one with {@link setPlexHeaders}.
+ */
+export const X_PLEX_IDENTIFIER = macIdentifier() ?? randomUUID();
 
 type PlexHeaderName =
   | 'X-Plex-Platform'

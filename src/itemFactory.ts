@@ -1,5 +1,3 @@
-import type { Class } from 'type-fest';
-
 import { Album, Artist, Track } from './audio.ts';
 import { Playable } from './base/playable.ts';
 import type { PlexObject } from './base/plexObject.ts';
@@ -7,6 +5,7 @@ import type { PlexItemData } from './baseFunctionality.ts';
 import { Unsupported } from './exceptions.ts';
 import { Photo, Photoalbum } from './photo.ts';
 import type { PlexServer } from './server.ts';
+import type { Class } from './util.ts';
 import { Clip, Episode, Movie, Season, Show } from './video.ts';
 
 export type HydratedPlexItem =

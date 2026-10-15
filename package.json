@@ -33,11 +33,9 @@
     "test:types": "tsc --project test/types/tsconfig.json"
   },
   "dependencies": {
-    "@ctrl/mac-address": "^3.2.1",
     "@rgrove/parse-xml": "^5.0.0",
     "jose": "^6.2.12",
     "ofetch": "^1.5.1",
-    "type-fest": "^5.10.0",
     "uint8array-extras": "^1.6.0"
   },
   "devDependencies": {

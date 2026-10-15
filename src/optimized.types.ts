@@ -1,12 +1,9 @@
-import type { LiteralUnion } from 'type-fest';
+import type { LiteralUnion } from './util.ts';
 
 export type OptimizationPreset = 'mobile' | 'original' | 'tv';
 
 /** Common states returned by Plex, while allowing server-specific values. */
-export type OptimizationState = LiteralUnion<
-  'complete' | 'failed' | 'pending' | 'processing',
-  string
->;
+export type OptimizationState = LiteralUnion<'complete' | 'failed' | 'pending' | 'processing'>;
 
 export interface CustomOptimizationTarget {
   /** Device profile understood by Plex, such as `Universal Mobile` or `Universal TV`. */

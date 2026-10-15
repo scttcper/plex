@@ -1,7 +1,5 @@
 import { URLSearchParams } from 'node:url';
 
-import type { Class } from 'type-fest';
-
 import { Album, Artist, Track } from './audio.ts';
 import { PartialPlexObject } from './base/partialPlexObject.ts';
 import { PlexObject } from './base/plexObject.ts';
@@ -85,6 +83,7 @@ import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { Setting, type SettingResponse, type SettingValue } from './settings.ts';
 import { smartFilterParams } from './smart-filter.ts';
 import {
+  type Class,
   firstMetadata,
   type MediaContainer,
   parseOptionalNumber,

@@ -1,5 +1,3 @@
-import type { ValueOf } from 'type-fest';
-
 import { PlexObject } from './base/plexObject.ts';
 import { fetchItems } from './baseFunctionality.ts';
 import type { AgentMediaTypeData, AgentData, MatchSearchResult } from './search.types.ts';
@@ -108,7 +106,7 @@ export const SEARCHTYPES = {
   userPlaylistItem: 1001,
 } as const;
 
-type SearchTypesValues = ValueOf<typeof SEARCHTYPES>;
+type SearchTypesValues = (typeof SEARCHTYPES)[keyof typeof SEARCHTYPES];
 
 /**
  * Returns the integer value of the library string type.
