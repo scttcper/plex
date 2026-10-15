@@ -62,6 +62,20 @@ describe('Audio Class Tests', () => {
     expect(Array.isArray(await artist.extras())).toBe(true);
   });
 
+  it('keeps artwork paths token free and builds token urls on demand', async () => {
+    const library = await plex.library();
+    const musicSection = await library.section<MusicSection>('Music');
+    const artist = first(await musicSection.searchArtists({ title: 'Ladytron' }));
+    const album = first(await artist.albums());
+    const track = first(await album.tracks());
+
+    expect(album.thumb).toMatch(/^\/library\/metadata\//);
+    expect(album.thumb).not.toContain('X-Plex-Token');
+    expect(album.thumbUrl?.searchParams.get('X-Plex-Token')).toBe(plex.token);
+    // Tracks without their own art fall back to the album thumbnail.
+    expect(track.thumbUrl?.pathname).toBe(track.thumb ?? track.parentThumb);
+  });
+
   it('loads audio stream values for tracks', async () => {
     const library = await plex.library();
     const musicSection = await library.section('Music');

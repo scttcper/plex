@@ -495,6 +495,8 @@ export interface ExtrasData {
   duration: number;
   addedAt: number;
   extraType: number;
+  librarySectionID?: number;
+  updatedAt?: number;
   originallyAvailableAt?: string;
   primaryGuid?: string;
   skipDetails?: number;

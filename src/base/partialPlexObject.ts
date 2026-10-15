@@ -269,7 +269,7 @@ export abstract class PartialPlexObject extends PlexObject {
   /**
    * load full data / reload the data for this object from this.key.
    */
-  override async reload(ekey?: string, args?: any): Promise<void> {
+  override async reload(ekey?: string, args?: Record<string, boolean | number>): Promise<void> {
     this._detailsKey = this._buildDetailsKey(args);
     const key = ekey ?? this._detailsKey ?? this.key;
     if (!key) {
@@ -277,9 +277,8 @@ export abstract class PartialPlexObject extends PlexObject {
     }
 
     this.initpath = key;
-    const data = await this.server.query({ path: key });
-    const innerData = data.MediaContainer ?? data;
-    this._loadFullData(innerData);
+    const data = await this.server.query<{ MediaContainer?: unknown }>({ path: key });
+    this._loadFullData(data.MediaContainer ?? data);
   }
 
   /**
@@ -432,8 +431,8 @@ export abstract class PartialPlexObject extends PlexObject {
   /**
    * Delete a media element. This has to be enabled under settings > server > library in plex webui.
    */
-  async delete(): Promise<any> {
-    return this.server.query({ path: this.key, method: 'delete' });
+  async delete(): Promise<void> {
+    await this.server.query({ path: this.key, method: 'delete' });
   }
 
   /** Add a collection(s). */
@@ -541,7 +540,7 @@ export abstract class PartialPlexObject extends PlexObject {
     await this.edit({ 'originallyAvailableAt.value': date, 'originallyAvailableAt.locked': 1 });
   }
 
-  protected abstract _loadFullData(data: any): void;
+  protected abstract _loadFullData(data: unknown): void;
 
   /**
    * Get the Plex Web URL with the correct parameters.

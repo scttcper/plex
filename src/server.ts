@@ -592,7 +592,7 @@ export class PlexServer {
    * Send a request to the server and parse the JSON response.
    * Use {@link PlexServer.stream} for binary responses.
    */
-  async query<T = any>({
+  async query<T = unknown>({
     path,
     method = 'get',
     headers,

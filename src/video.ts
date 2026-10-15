@@ -168,7 +168,11 @@ export abstract class Video extends Playable {
    * the most specific thumbnail for that item.
    */
   get thumbUrl(): URL | undefined {
-    const thumb = this.thumb ?? (this as any).parentThumb ?? (this as any).grandparentThumb;
+    const { parentThumb, grandparentThumb } = this as {
+      parentThumb?: string;
+      grandparentThumb?: string;
+    };
+    const thumb = this.thumb ?? parentThumb ?? grandparentThumb;
     return thumb ? this.server.url(thumb, { includeToken: true }) : undefined;
   }
 
@@ -319,7 +323,7 @@ export abstract class Video extends Playable {
     );
   }
 
-  protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
+  protected _loadData(data: MovieData | ShowData | EpisodeMetadata | ExtrasData): void {
     const videoData = data as VideoMetadataData;
     this.key = data.key;
     this.ratingKey = data.ratingKey;
@@ -567,7 +571,7 @@ export class Movie extends Video {
 
   protected _loadFullData(data: FullMovieResponse): void {
     const metadata = firstMetadata(data, this.key);
-    this._loadData(metadata as any);
+    this._loadData(metadata);
     this.librarySectionID = metadata.librarySectionID;
     this.chapters = metadata.Chapter?.map(chapter => new Chapter(this.server, chapter));
     this.collections =
@@ -1118,10 +1122,8 @@ export class Clip extends Video {
       .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
-  // Extras share the video loader but have their own shape, Extra narrows this to ExtrasData.
-  protected override _loadData(clip: any): void {
-    super._loadData(clip);
-    const data = clip as ExtrasData;
+  protected override _loadData(data: ExtrasData): void {
+    super._loadData(data);
     this.duration = parseOptionalNumber(data.duration);
     this.extraType = parseOptionalNumber(data.extraType);
     this.index = parseOptionalNumber(data.index);
@@ -1137,7 +1139,7 @@ export class Clip extends Video {
     this.year = parseOptionalNumber(data.year);
   }
 
-  protected _loadFullData(data: any): void {
+  protected _loadFullData(data: { Metadata: ExtrasData[] }): void {
     this._loadData(firstMetadata(data, this.key));
   }
 }
@@ -1150,7 +1152,7 @@ export class Extra extends Clip {
     super._loadData(data);
   }
 
-  protected override _loadFullData(data: any): void {
+  protected override _loadFullData(data: { Metadata: ExtrasData[] }): void {
     this._loadData(firstMetadata(data, this.key));
   }
 }

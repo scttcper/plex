@@ -1,3 +1,4 @@
+import type { MovieData } from './library.types.ts';
 import type { ImageData } from './media.types.ts';
 import type { PlexBoolean } from './util.ts';
 
@@ -68,49 +69,7 @@ export interface FullMovieResponse {
   librarySectionUUID: string;
   mediaTagPrefix: string;
   mediaTagVersion: number;
-  Metadata: TitleMetadatum[];
-}
-
-export interface TitleMetadatum {
-  ratingKey: string;
-  key: string;
-  guid: string;
-  studio: string;
-  type: string;
-  title: string;
-  titleSort?: string;
-  librarySectionTitle: string;
-  librarySectionID: number;
-  librarySectionKey: string;
-  contentRating: string;
-  summary: string;
-  rating: number;
-  viewCount?: number;
-  lastViewedAt?: number;
-  year: number;
-  tagline?: string;
-  thumb: string;
-  art: string;
-  duration: number;
-  originallyAvailableAt: string;
-  addedAt: number;
-  updatedAt: number;
-  chapterSource?: ChapterSource;
-  primaryExtraKey: string;
-  ratingImage: string;
-  Media: MovieMedia[];
-  Genre: MediaTagData[];
-  Director: MediaTagData[];
-  Writer: MediaTagData[];
-  Producer: MediaTagData[];
-  Country: MediaTagData[];
-  Role: Role[];
-  Similar?: MediaTagData[];
-  Chapter?: ChapterData[];
-  Collection?: MediaTagData[];
-  Field?: Field[];
-  Extras: Extras;
-  Related: Related;
+  Metadata: Array<MovieData & { Chapter?: ChapterData[] }>;
 }
 
 export interface ChapterData {
@@ -133,9 +92,12 @@ export interface MarkerData {
 }
 
 export interface MediaTagData {
-  id?: number;
+  id?: number | string;
   filter?: string;
+  key?: string;
+  role?: string;
   tag: string;
+  tagType?: number;
 }
 
 export interface Extras {
@@ -547,6 +509,13 @@ export interface AudioStreamData extends MediaPartStreamData {
   startRamp?: string;
   threshold?: NumericValue;
   visualImpaired?: PlexBoolean;
+}
+
+export interface LyricStreamData extends MediaPartStreamData {
+  streamType: 4;
+  minLines?: number | `${number}`;
+  provider?: string;
+  timed?: PlexBoolean;
 }
 
 export interface VideoStreamData extends MediaPartStreamData {

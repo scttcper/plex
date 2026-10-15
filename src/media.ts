@@ -6,6 +6,9 @@ import type { Collections } from './library.ts';
 import type {
   ReviewData,
   AgeRatingData,
+  GuidData,
+  ImageData,
+  RatingData,
   ArtworkResourceData,
   CommonSenseMediaData,
   ParentalAdvisoryTopicData,
@@ -19,7 +22,10 @@ import type {
   MediaData,
   MediaPartData,
   AudioStreamData,
+  Field as FieldData,
+  LyricStreamData,
   MediaPartStreamData,
+  MediaTagData,
   VideoStreamData,
 } from './video.types.ts';
 
@@ -57,7 +63,7 @@ export abstract class MediaTag extends PlexObject {
     return data.map(item => createPlexItem(this.server, item, this.key, this));
   }
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: MediaTagData): void {
     this.key = data.key;
     this.id = data.id;
     this.filter = data.filter;
@@ -487,7 +493,7 @@ export class SubtitleStream extends MediaPartStream {
     await parent.setSelectedSubtitleStream(this);
   }
 
-  protected override _loadData(data: any): void {
+  protected override _loadData(data: MediaPartStreamData): void {
     super._loadData(data);
     this.canAutoSync = parsePlexBoolean(data.canAutoSync);
     this.container = data.container;
@@ -497,10 +503,10 @@ export class SubtitleStream extends MediaPartStream {
     this.hearingImpaired = parsePlexBoolean(data.hearingImpaired);
     this.perfectMatch = parsePlexBoolean(data.perfectMatch);
     this.providerTitle = data.providerTitle;
-    this.score = data.score ? Number.parseInt(data.score, 10) : undefined;
+    this.score = parseOptionalNumber(data.score);
     this.sourceKey = data.sourceKey;
     this.transient = data.transient;
-    this.userID = data.userID ? Number.parseInt(data.userID, 10) : undefined;
+    this.userID = parseOptionalNumber(data.userID);
   }
 }
 
@@ -519,10 +525,10 @@ export class LyricStream extends MediaPartStream {
   /** True if the lyrics are timed to the track. */
   declare timed: boolean;
 
-  protected override _loadData(data: any): void {
+  protected override _loadData(data: LyricStreamData): void {
     super._loadData(data);
     this.format = data.format;
-    this.minLines = data.minLines ? Number.parseInt(data.minLines, 10) : undefined;
+    this.minLines = parseOptionalNumber(data.minLines);
     this.provider = data.provider;
     this.timed = parsePlexBoolean(data.timed);
   }
@@ -698,7 +704,7 @@ class GuidTag extends PlexObject {
    */
   declare id: string;
 
-  protected _loadData(data: any) {
+  protected _loadData(data: GuidData): void {
     this.id = data.id;
   }
 }
@@ -730,7 +736,7 @@ export class Rating extends PlexObject {
    */
   declare value: number;
 
-  protected _loadData(data: any) {
+  protected _loadData(data: RatingData): void {
     this.image = data.image;
     this.type = data.type;
     this.value = data.value;
@@ -1108,10 +1114,9 @@ export class Image extends PlexObject {
   /** The API URL (/library/metadata/<ratingKey>/thumb/<thumbid>). */
   declare url?: string;
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: ImageData): void {
     this.alt = data.alt;
     this.type = data.type;
-    // Assuming server.url is needed to make this a complete URL
     this.url = data.url ? this.server.url(data.url, { includeToken: true })?.toString() : undefined;
   }
 }
@@ -1125,7 +1130,7 @@ export class Field extends PlexObject {
   /** The name of the field. */
   declare name: string;
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: FieldData): void {
     this.locked = parsePlexBoolean(data.locked);
     this.name = data.name;
   }

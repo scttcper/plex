@@ -21,7 +21,7 @@ export abstract class PlexObject {
   protected initpath: string | undefined;
   protected _INCLUDES?: Record<string, string | number>;
 
-  constructor(server: PlexServer, data: any, initpath?: string, parent?: PlexObject) {
+  constructor(server: PlexServer, data: unknown, initpath?: string, parent?: PlexObject) {
     this.server = server;
     this.initpath = initpath;
     this.parent = parent ? new WeakRef(parent) : undefined;
@@ -38,9 +38,8 @@ export abstract class PlexObject {
       throw new Error('Cannot reload an object not built from a URL');
     }
 
-    const data = await this.server.query({ path: key });
-    const innerData = data.MediaContainer ? data.MediaContainer : data;
-    this._loadData(innerData);
+    const data = await this.server.query<{ MediaContainer?: unknown }>({ path: key });
+    this._loadData(data.MediaContainer ?? data);
   }
 
   /**
@@ -90,5 +89,5 @@ export abstract class PlexObject {
     return buildQueryKey(key, params);
   }
 
-  protected abstract _loadData(data: any): void;
+  protected abstract _loadData(data: unknown): void;
 }

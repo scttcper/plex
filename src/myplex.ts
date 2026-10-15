@@ -888,7 +888,7 @@ export class MyPlexAccount {
    * parsed, XML responses are converted to the same shape, and `responseType: 'text'` returns the body.
    */
   async query(options: AccountQueryOptions & { responseType: 'text' }): Promise<string>;
-  async query<T = any>(options: AccountQueryOptions & { responseType?: never }): Promise<T>;
+  async query<T = unknown>(options: AccountQueryOptions & { responseType?: never }): Promise<T>;
   async query({
     url,
     method = 'get',

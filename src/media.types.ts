@@ -84,3 +84,14 @@ export interface StreamingAvailability {
   title?: string;
   url?: string;
 }
+
+export interface GuidData {
+  /** External id such as `imdb://tt3222784`. */
+  id: string;
+}
+
+export interface RatingData {
+  image: string;
+  type: 'audience' | 'critic';
+  value: number;
+}

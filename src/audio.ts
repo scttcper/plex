@@ -1,6 +1,6 @@
-import type { AlbumData, ArtistData, TrackData } from './audio.types.ts';
+import type { AlbumData, ArtistData, AudioItemData, TrackData } from './audio.types.ts';
 import { Playable } from './base/playable.ts';
-import { fetchItem, fetchItems } from './baseFunctionality.ts';
+import { fetchItem, fetchItems, type ItemFilterValue } from './baseFunctionality.ts';
 import { BadRequest, NotFound } from './exceptions.ts';
 import {
   Chapter,
@@ -21,6 +21,7 @@ import {
 import type { UltraBlurColorsData } from './media.types.ts';
 import { Playlist } from './playlist.ts';
 import type { PlaylistResponse } from './playlist.types.ts';
+import { parseOptionalDate, parseOptionalNumber } from './util.ts';
 
 type MusicSectionLike = {
   sonicAdventure: (start: Track | number, end: Track | number) => Promise<Track[]>;
@@ -68,7 +69,7 @@ export class Audio extends Playable {
   declare viewCount: number;
 
   /** Store the raw data from the Plex API for lazy loading related items. */
-  declare protected _data?: Record<string, any>;
+  declare protected _data?: AudioItemData;
 
   /** List of field objects. */
   declare fields: Field[];
@@ -81,6 +82,22 @@ export class Audio extends Playable {
   /** Build an authenticated server URL for a path such as a media part key. */
   url(part: string): string | undefined {
     return part ? this.server.url(part, { includeToken: true })?.toString() : undefined;
+  }
+
+  /** Thumbnail URL with the token, falling back to the album or artist thumbnail. */
+  get thumbUrl(): URL | undefined {
+    const { parentThumb, grandparentThumb } = this as {
+      parentThumb?: string;
+      grandparentThumb?: string;
+    };
+    const thumb = this.thumb ?? parentThumb ?? grandparentThumb;
+    return thumb ? this.server.url(thumb, { includeToken: true }) : undefined;
+  }
+
+  /** Background art URL with the token, falling back to the artist's art. */
+  get artUrl(): URL | undefined {
+    const art = this.art ?? (this as { grandparentArt?: string }).grandparentArt;
+    return art ? this.server.url(art, { includeToken: true }) : undefined;
   }
 
   /** Indicates if the audio item has undergone sonic analysis. */
@@ -135,84 +152,42 @@ export class Audio extends Playable {
    * @param data The raw data object from the Plex API.
    * @protected
    */
-  protected _loadData(data: Record<string, any>): void {
+  protected _loadData(data: AudioItemData): void {
     this._data = data;
-
-    const addedAtTimestamp = data.addedAt ? Number.parseInt(data.addedAt, 10) : Number.NaN;
-    this.addedAt = Number.isNaN(addedAtTimestamp) ? undefined : new Date(addedAtTimestamp * 1000);
-    this.art = data.art ? this.server.url(data.art, { includeToken: true })?.toString() : undefined;
+    this.addedAt = parseOptionalDate(data.addedAt);
+    this.art = data.art;
     this.artBlurHash = data.artBlurHash;
-    const distanceFloat = data.distance ? Number.parseFloat(data.distance) : Number.NaN;
-    this.distance = Number.isNaN(distanceFloat) ? undefined : distanceFloat;
+    this.distance = parseOptionalNumber(data.distance);
     this.guid = data.guid;
-    const indexInt = data.index ? Number.parseInt(data.index, 10) : Number.NaN;
-    this.index = Number.isNaN(indexInt) ? undefined : indexInt;
-    this.key = data.key ?? this.key ?? '';
-    const lastRatedAtTimestamp = data.lastRatedAt
-      ? Number.parseInt(data.lastRatedAt, 10)
-      : Number.NaN;
-    this.lastRatedAt = Number.isNaN(lastRatedAtTimestamp)
-      ? undefined
-      : new Date(lastRatedAtTimestamp * 1000);
-    const lastViewedAtTimestamp = data.lastViewedAt
-      ? Number.parseInt(data.lastViewedAt, 10)
-      : Number.NaN;
-    this.lastViewedAt = Number.isNaN(lastViewedAtTimestamp)
-      ? undefined
-      : new Date(lastViewedAtTimestamp * 1000);
-    const librarySectionIDInt = data.librarySectionID
-      ? Number.parseInt(data.librarySectionID, 10)
-      : Number.NaN;
-    this.librarySectionID = Number.isNaN(librarySectionIDInt)
-      ? this.librarySectionID
-      : librarySectionIDInt;
+    this.index = parseOptionalNumber(data.index);
+    this.key = data.key;
+    this.lastRatedAt = parseOptionalDate(data.lastRatedAt);
+    this.lastViewedAt = parseOptionalDate(data.lastViewedAt);
+    this.librarySectionID = parseOptionalNumber(data.librarySectionID) ?? this.librarySectionID;
     this.librarySectionKey = data.librarySectionKey;
     this.librarySectionTitle = data.librarySectionTitle;
-    const musicAnalysisVersionInt = data.musicAnalysisVersion
-      ? Number.parseInt(data.musicAnalysisVersion, 10)
-      : Number.NaN;
-    this.musicAnalysisVersion = Number.isNaN(musicAnalysisVersionInt)
-      ? undefined
-      : musicAnalysisVersionInt;
+    this.musicAnalysisVersion = parseOptionalNumber(data.musicAnalysisVersion);
     this.playlistItemID = data.playlistItemID;
-    this.ratingKey = data.ratingKey;
-    const ratingKeyInt = data.ratingKey ? Number.parseInt(data.ratingKey, 10) : Number.NaN;
-    this.ratingKey = Number.isNaN(ratingKeyInt) ? this.ratingKey : ratingKeyInt.toString();
+    this.ratingKey = data.ratingKey ?? this.ratingKey;
     this.summary = data.summary;
-    this.thumb = data.thumb
-      ? this.server.url(data.thumb, { includeToken: true })?.toString()
-      : undefined;
+    this.thumb = data.thumb;
     this.thumbBlurHash = data.thumbBlurHash;
     this.title = data.title ?? this.title;
     this.titleSort = data.titleSort ?? this.title;
     this.type = data.type ?? this.type;
-    const updatedAtTimestamp = data.updatedAt ? Number.parseInt(data.updatedAt, 10) : Number.NaN;
-    this.updatedAt = Number.isNaN(updatedAtTimestamp)
-      ? undefined
-      : new Date(updatedAtTimestamp * 1000);
-    const userRatingFloat = data.userRating ? Number.parseFloat(data.userRating) : Number.NaN;
-    this.userRating = Number.isNaN(userRatingFloat) ? undefined : userRatingFloat;
-    const viewCountInt =
-      data.viewCount !== undefined ? Number.parseInt(data.viewCount, 10) : Number.NaN;
-    this.viewCount = Number.isNaN(viewCountInt) ? 0 : viewCountInt;
-
+    this.updatedAt = parseOptionalDate(data.updatedAt);
+    this.userRating = parseOptionalNumber(data.userRating);
+    this.viewCount = parseOptionalNumber(data.viewCount) ?? 0;
     this.ultraBlurColors = data.UltraBlurColors;
-    this.fields = data.Field?.map((d: unknown) => new Field(this.server, d, undefined, this)) ?? [];
-    this.images = data.Image?.map((d: unknown) => new Image(this.server, d, undefined, this)) ?? [];
-    this.moods = data.Mood?.map((d: unknown) => new Mood(this.server, d, undefined, this)) ?? [];
+    this.fields = data.Field?.map(d => new Field(this.server, d, undefined, this)) ?? [];
+    this.images = data.Image?.map(d => new Image(this.server, d, undefined, this)) ?? [];
+    this.moods = data.Mood?.map(d => new Mood(this.server, d, undefined, this)) ?? [];
   }
 
-  /**
-   * Overrides `PartialPlexObject._loadFullData` to apply Audio-specific attributes
-   * after fetching the full item data.
-   * @param data The raw data object representing the full item from the Plex API.
-   * @protected
-   */
-  protected override _loadFullData(data: any): void {
-    // Data is typically nested under 'Metadata' for single item fetches
-    const metadataItem = Array.isArray(data.Metadata) ? data.Metadata[0] : data;
-    if (metadataItem) {
-      this._loadData(metadataItem);
+  protected override _loadFullData(data: { Metadata?: AudioItemData[] }): void {
+    const [metadata] = data.Metadata ?? [];
+    if (metadata) {
+      this._loadData(metadata);
     }
   }
 }
@@ -406,8 +381,7 @@ export class Artist extends Audio {
   declare collections?: Collection[];
 
   get locations(): string[] {
-    // Replicate listAttrs logic (assuming Location tag with path attribute)
-    return this._data?.Location?.map((loc: { path?: string }) => loc.path).filter(Boolean) ?? [];
+    return this._data?.Location?.map(location => location.path) ?? [];
   }
 
   /**
@@ -483,15 +457,10 @@ export class Artist extends Audio {
     args: { title: string } | { album: string; track: number },
   ): Promise<Track | undefined> {
     const key = this._buildQueryKey(`${this.key}/allLeaves`);
-    let query: Record<string, any> = {};
-
-    if ('title' in args) {
-      query = { title__iexact: args.title };
-    } else if ('album' in args && 'track' in args) {
-      query = { parentTitle__iexact: args.album, index: args.track };
-    } else {
-      throw new Error('Missing argument: title or album and track are required');
-    }
+    const query: Record<string, ItemFilterValue> =
+      'title' in args
+        ? { title__iexact: args.title }
+        : { parentTitle__iexact: args.album, index: args.track };
 
     try {
       return await fetchItem(this.server, key, query, Track, this);
@@ -689,7 +658,7 @@ export class Album extends Audio {
     this.collections = data.Collection?.map(d => new Collection(this.server, d, undefined, this));
     this.formats = data.Format?.map(d => new Format(this.server, d, undefined, this));
     this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this));
-    this.guids = data.Guid?.map((d: any) => new Guid(this.server, d, undefined, this));
+    this.guids = data.Guid?.map(d => new Guid(this.server, d, undefined, this));
     this.labels = data.Label?.map(d => new Label(this.server, d, undefined, this));
     this.styles = data.Style?.map(d => new Style(this.server, d, undefined, this));
     this.subformats = data.Subformat?.map(d => new Subformat(this.server, d, undefined, this));
