@@ -313,27 +313,15 @@ export abstract class Video extends Playable {
     return this;
   }
 
-  /**
-   * I haven't tested this yet. It may not work.
-   */
-  async uploadPoster({
-    url,
-    file,
-  }: {
-    url?: string;
-    file?: Uint8Array;
-  } = {}): Promise<void> {
-    if (url) {
-      const key = `/library/metadata/${this.ratingKey}/posters?url=${encodeURIComponent(url)}`;
-      await this.server.query({ path: key, method: 'post' });
-    } else if (file) {
-      const key = `/library/metadata/${this.ratingKey}/posters`;
-      await this.server.query({
-        path: key,
-        method: 'post',
-        body: file,
-      });
-    }
+  /** Upload a poster from a URL or image bytes. Shorthand for `artwork.upload()`. */
+  async uploadPoster(
+    options: { url: string; file?: never } | { url?: never; file: Uint8Array },
+  ): Promise<void> {
+    await this.artwork.upload(
+      options.url === undefined
+        ? { kind: 'poster', data: options.file }
+        : { kind: 'poster', url: options.url },
+    );
   }
 
   protected _loadData(data: MovieData | ShowData | EpisodeMetadata): void {
@@ -455,9 +443,7 @@ export class Movie extends Video {
   declare writers: Writer[];
   declare chapters?: Chapter[];
   declare collections: Collection[];
-  // fields (List<:class:`~plexapi.media.Field`>): List of field objects.
   declare genres: Genre[];
-  // media (List<:class:`~plexapi.media.Media`>): List of media objects.
   declare producers: Producer[];
   declare roles: Role[];
   declare similar: Similar[];
@@ -646,8 +632,6 @@ export class Show extends Video {
   declare tagline?: string;
   /** Original title preference (-1 library default, 0 disabled, 1 enabled). */
   declare useOriginalTitle?: number;
-  /** <:class:`~plexapi.media.Collection`>): List of collections this media belongs. */
-  // collections: List;
   /** Duration of show in milliseconds. */
   declare duration: number;
   /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en). */
@@ -670,8 +654,6 @@ export class Show extends Video {
   declare genres: Genre[];
   /** List of role objects. */
   declare roles: Role[];
-  /** <:class:`~plexapi.media.Similar`>): List of Similar objects. */
-  // similar: List;
 
   /**
    * Alias of {@link Show.roles}
@@ -854,7 +836,7 @@ export class Season extends Video {
   }
 
   /**
-   * @returns a list of :class:`~plexapi.video.Episode` objects.
+   * @returns a list of {@link Episode} objects.
    */
   async episode(titleOrIndex: string | number): Promise<Episode> {
     const key = this._buildQueryKey(`/library/metadata/${this.ratingKey}/children`);
@@ -936,17 +918,17 @@ export class Episode extends Video {
   declare contentRating: string;
   /**  Duration of episode in milliseconds. */
   declare duration: number;
-  /** Key to this episodes :class:`~plexapi.video.Show`. */
+  /** Key to this episodes {@link Show}. */
   declare grandparentKey: string;
-  /** Unique key for this episodes :class:`~plexapi.video.Show`. */
+  /** Unique key for this episodes {@link Show}. */
   declare grandparentRatingKey: string;
   /** URL slug of the show. */
   declare grandparentSlug?: string;
-  /** Key to this episodes :class:`~plexapi.video.Show` theme. */
+  /** Key to this episodes {@link Show} theme. */
   declare grandparentTheme: string;
-  /** Key to this episodes :class:`~plexapi.video.Show` thumb. */
+  /** Key to this episodes {@link Show} thumb. */
   declare grandparentThumb: string;
-  /** Title of this episodes :class:`~plexapi.video.Show`. */
+  /** Title of this episodes {@link Show}. */
   declare grandparentTitle: string;
   /** Plex GUID (com.plexapp.agents.imdb://tt4302938?lang=en). */
   declare guid: string;
@@ -956,9 +938,9 @@ export class Episode extends Video {
   declare originallyAvailableAt?: Date;
   /** Season number of episode. */
   declare parentIndex: number;
-  /** Key to this episodes :class:`~plexapi.video.Season`. */
+  /** Key to this episodes {@link Season}. */
   declare parentKey: string;
-  /**  Unique key for this episodes :class:`~plexapi.video.Season`. */
+  /**  Unique key for this episodes {@link Season}. */
   declare parentRatingKey: string;
   /** Key to this episodes thumbnail. */
   declare parentThumb: string;

@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { ofetch } from 'ofetch';
 
-import { BASE_HEADERS, TIMEOUT, X_PLEX_IDENTIFIER, X_PLEX_PRODUCT } from './config.ts';
+import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import { BadRequest } from './exceptions.ts';
 import type {
   CheckPlexPinOptions,
@@ -93,9 +93,9 @@ export class MyPlexPinLogin {
 
   /** Request a new Plex PIN. */
   static async create({
-    clientIdentifier = X_PLEX_IDENTIFIER,
+    clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'],
     mode = 'pin',
-    product = X_PLEX_PRODUCT,
+    product = BASE_HEADERS['X-Plex-Product'],
     requestTimeout = TIMEOUT,
     signal,
   }: CreatePlexPinLoginOptions = {}): Promise<MyPlexPinLogin> {
@@ -113,9 +113,9 @@ export class MyPlexPinLogin {
   /** Resume a PIN login using its Plex identifier. */
   static async resume({
     id,
-    clientIdentifier = X_PLEX_IDENTIFIER,
+    clientIdentifier = BASE_HEADERS['X-Plex-Client-Identifier'],
     mode = 'pin',
-    product = X_PLEX_PRODUCT,
+    product = BASE_HEADERS['X-Plex-Product'],
     requestTimeout = TIMEOUT,
     signal,
   }: ResumePlexPinLoginOptions): Promise<MyPlexPinLogin> {

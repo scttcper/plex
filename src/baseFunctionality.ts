@@ -129,7 +129,7 @@ export async function fetchItemData<T = PlexItemData>(
 
 /**
  * Load the specified key to find and build all items with the specified tag
- * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
+ * and attrs. See {@link fetchItem} for more details
  * on how this is used.
  */
 export async function fetchItems<T>(
@@ -205,7 +205,7 @@ export async function fetchItems<T = PlexItemData>(
 
 /**
  * Load the specified data to find and build all items with the specified tag
- * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
+ * and attrs. See {@link fetchItem} for more details
  * on how this is used.
  */
 export function findItems<T>(

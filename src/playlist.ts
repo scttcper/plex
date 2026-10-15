@@ -505,8 +505,6 @@ export class Playlist extends Playable {
     this.librarySectionKey = data.librarySectionKey;
     this.librarySectionTitle = data.librarySectionTitle;
     this.radio = parsePlexBoolean(data.radio);
-
-    // TODO: verify these. Possibly audio playlist related
     this.allowSync = data.allowSync;
     this.duration = data.duration;
     this.durationInSeconds = data.durationInSeconds;

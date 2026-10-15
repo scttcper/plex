@@ -1,4 +1,10 @@
 import type { Playable } from './base/playable.ts';
+import type { Collections } from './library.ts';
+import type { Photoalbum } from './photo.ts';
+import type { Playlist } from './playlist.ts';
+
+/** Items a PlayQueue can be created from. */
+export type PlayQueueSource = Playable | Playable[] | Playlist | Collections<any> | Photoalbum;
 
 export interface PlayQueueResponse {
   /** PlayQueue identifier */

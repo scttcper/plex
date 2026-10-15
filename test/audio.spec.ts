@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { Artist } from '../src/audio.ts';
+import type { MusicSection } from '../src/library.ts';
+import { Playlist } from '../src/playlist.ts';
 import type { PlexServer } from '../src/server.ts';
 
 import { createClient } from './test-client.ts';
@@ -53,6 +55,18 @@ describe('Audio Class Tests', () => {
     expect(typeof stream.loudness).toBe('number');
     expect(typeof stream.peak).toBe('number');
     expect(typeof stream.canNormalizeLoudness).toBe('boolean');
+  });
+
+  it('lists music radio stations as playlists', async () => {
+    const library = await plex.library();
+    const musicSection = await library.section<MusicSection>('Music');
+
+    const stations = await musicSection.stations();
+
+    expect(stations.length).toBeGreaterThan(0);
+    expect(stations[0]).toBeInstanceOf(Playlist);
+    expect(stations[0].radio).toBe(true);
+    expect(stations[0].playlistType).toBe('audio');
   });
 
   it('track relations (track.album, track.artist, album.artist) resolve correctly', async () => {

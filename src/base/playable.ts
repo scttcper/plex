@@ -79,7 +79,7 @@ export abstract class Playable extends PartialPlexObject {
   declare transcodeSession?: PlexTranscodeSession;
   /** Datetime item was last viewed (history). */
   declare viewedAt?: Date;
-  /** (int): Playlist item ID (only populated for :class:`~plexapi.playlist.Playlist` items). */
+  /** Playlist item ID, only populated for items loaded from a {@link Playlist}. */
   declare playlistItemID?: number;
   /** Queue-local item ID (only populated for PlayQueue items). */
   declare playQueueItemID?: number;

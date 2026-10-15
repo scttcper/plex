@@ -57,6 +57,25 @@ describe('Collections', () => {
     expect(items.length).toBe(collection.childCount);
   });
 
+  it('should create a play queue from a collection', async () => {
+    const movies = (await movieSection.all()).slice(0, 2);
+    const collection = await Collections.create(plex, TEST_COLLECTION_NAME, {
+      section: movieSection,
+      items: movies,
+    });
+
+    try {
+      const playQueue = await collection.createPlayQueue();
+
+      expect(playQueue.playQueueTotalCount).toBe(2);
+      expect(playQueue.items.map(item => item.ratingKey).toSorted()).toEqual(
+        movies.map(movie => movie.ratingKey).toSorted(),
+      );
+    } finally {
+      await cleanupTestCollections();
+    }
+  });
+
   it('should create, verify items, and delete a collection', async () => {
     const movies = await movieSection.all();
     expect(movies.length).toBeGreaterThanOrEqual(2);

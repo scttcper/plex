@@ -26,6 +26,7 @@ import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import { BadRequest, NotFound } from './exceptions.ts';
 import type { Playlist } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
+import type { PlayQueueSource } from './playqueue.types.ts';
 import type { PlexServer } from './server.ts';
 import { parseOptionalNumber, parsePlexBoolean, serverAddressParams } from './util.ts';
 
@@ -487,7 +488,7 @@ export class PlexClient {
 
   /** Create a play queue on the client and start playing it. Preferred over playMedia. */
   async createPlayQueue(
-    items: Playable | Playable[] | Playlist,
+    items: PlayQueueSource,
     { offset = 0, paused = false, ...playQueueOptions }: CreateClientPlayQueueOptions = {},
   ): Promise<void> {
     const server = [items].flat()[0]?.server;

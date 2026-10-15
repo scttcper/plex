@@ -1,10 +1,9 @@
 import { URL, URLSearchParams } from 'node:url';
 
-import { ofetch } from 'ofetch';
+import { FetchError, ofetch } from 'ofetch';
 
 import { AlertListener, type AlertListenerOptions } from './alert.ts';
 import type { AlertTypes } from './alert.types.ts';
-import type { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT, X_PLEX_CONTAINER_SIZE } from './config.ts';
@@ -22,7 +21,7 @@ import {
 } from './optimized.ts';
 import { Playlist, type CreatePlaylistOptions, type PlaylistContentType } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
-import type { CreatePlayQueueOptions } from './playqueue.types.ts';
+import type { CreatePlayQueueOptions, PlayQueueSource } from './playqueue.types.ts';
 import { Agent, SEARCHTYPES } from './search.ts';
 import type {
   ServerAccount,
@@ -92,7 +91,7 @@ type BrowseResponse = {
  * list connected clients, browse your library sections and perform actions such as
  * emptying trash. If you do not know the auth token required to access your Plex
  * server, or simply want to access your server with your username and password, you
- * can also create an PlexServer instance from :class:`~plexapi.myplex.MyPlexAccount`.
+ * can also create an PlexServer instance from {@link MyPlexAccount}.
  */
 export class PlexServer {
   baseurl: string;
@@ -494,8 +493,12 @@ export class PlexServer {
     try {
       const data = await this.query<MediaContainer<LibraryRootResponse>>({ path: Library.key });
       this._library = new Library(this, data.MediaContainer);
-    } catch {
-      // TODO: validate error type, also TODO figure out how this is used
+    } catch (error) {
+      // Only the server owner can read /library, shared users fall back to the section list.
+      if (!(error instanceof FetchError) || ![400, 401, 403].includes(error.statusCode ?? 0)) {
+        throw error;
+      }
+
       const data = await this.query<MediaContainer<LibraryRootResponse>>({
         path: '/library/sections/',
       });
@@ -588,11 +591,8 @@ export class PlexServer {
   }
 
   /**
-   * Main method used to handle HTTPS requests to the Plex server. This method helps
-   * by encoding the response to utf-8 and parsing the returned XML into and
-   * ElementTree object. Returns None if no data exists in the response.
-   * TODO: use headers
-   * @param options
+   * Send a request to the server and parse the JSON response.
+   * Use {@link PlexServer.stream} for binary responses.
    */
   async query<T = any>({
     path,
@@ -871,14 +871,14 @@ export class PlexServer {
    * @returns New PlayQueue instance
    */
   async createPlayQueue(
-    item: Playable | Playable[] | Playlist,
+    item: PlayQueueSource,
     options: CreatePlayQueueOptions = {},
   ): Promise<PlayQueue> {
     return PlayQueue.create(this, item, options);
   }
 
   /**
-   * Returns a :class:`~plexapi.myplex.MyPlexAccount` object using the same
+   * Returns a {@link MyPlexAccount} object using the same
    * token to access this server. If you are not the owner of this PlexServer
    * you're likley to recieve an authentication error calling this.
    */
@@ -895,7 +895,7 @@ export class PlexServer {
     return this._myPlexAccount;
   }
 
-  // Returns list of all :class:`~plexapi.client.PlexClient` objects connected to server.
+  /** Returns all {@link PlexClient} objects connected to the server. */
   async clients(): Promise<PlexClient[]> {
     const items: PlexClient[] = [];
     const response = await this.query<MediaContainer<ConnectionInfo>>({
@@ -919,7 +919,7 @@ export class PlexServer {
       let { port } = server;
 
       if (!port) {
-        // TODO: print warning about doing weird port stuff
+        // Older clients omit their port from /clients, Plex.tv's device list still has it.
         port = Number(ports?.[server.machineIdentifier]);
       }
 
@@ -930,7 +930,7 @@ export class PlexServer {
     return items;
   }
 
-  /** Returns list of all :class:`~plexapi.media.Optimized` objects connected to server. */
+  /** Returns list of all {@link Optimized} objects connected to server. */
   async optimizedItems(): Promise<Optimized[]> {
     return fetchOptimizedItems(this);
   }
@@ -961,8 +961,8 @@ export class PlexServer {
   }
 
   /**
-   * Build a URL string with proper token argument. Token will be appended to the URL
-   * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
+   * Build a URL for this server. Extra params and the token are added to any query string
+   * already in the key.
    */
   url(
     key: string,
@@ -975,19 +975,16 @@ export class PlexServer {
     } = {},
   ): URL {
     if (!this.baseurl) {
-      throw new Error('PlexClient object missing baseurl.');
+      throw new Error('PlexServer object missing baseurl.');
     }
 
     const url = new URL(key, this.baseurl);
-    if (this.token && includeToken) {
-      const searchParams = new URLSearchParams(params);
-      searchParams.append('X-Plex-Token', this.token);
-      url.search = searchParams.toString();
-      return url;
+    for (const [name, value] of params ?? []) {
+      url.searchParams.append(name, value);
     }
 
-    if (params) {
-      url.search = params.toString();
+    if (this.token && includeToken) {
+      url.searchParams.set('X-Plex-Token', this.token);
     }
 
     return url;

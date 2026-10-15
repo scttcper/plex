@@ -84,7 +84,8 @@ export { Setting, Settings } from './settings.ts';
 export type { SettingEnumValues, SettingType, SettingValue } from './settings.ts';
 export * from './video.ts';
 export * from './audio.ts';
-export { X_PLEX_IDENTIFIER } from './config.ts';
+export { setPlexHeaders, X_PLEX_IDENTIFIER } from './config.ts';
+export type { PlexHeaderOptions } from './config.ts';
 export { SearchResult, Agent, AgentMediaType, SEARCHTYPES } from './search.ts';
 export type { MatchSearchResult } from './search.types.ts';
 

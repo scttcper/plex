@@ -10,6 +10,7 @@ import type {
   MovePlayQueueItemOptions,
   PlayQueueContainerResponse,
   PlayQueueResponse,
+  PlayQueueSource,
   RemovePlayQueueItemOptions,
 } from './playqueue.types.ts';
 import type { PlexServer } from './server.ts';
@@ -22,12 +23,12 @@ type PlayQueuePlayable = Playable & {
   ratingKey: string;
 };
 
-function hasPlaylistShape(item: Playable | Playlist): item is PlaylistLike {
+function hasPlaylistShape(item: unknown): item is PlaylistLike {
   return (item as { type?: unknown }).type === 'playlist';
 }
 
-function asPlayQueuePlayable(item: Playable): PlayQueuePlayable {
-  const playable = item as Playable & {
+function asPlayQueuePlayable(item: unknown): PlayQueuePlayable {
+  const playable = item as {
     key?: unknown;
     listType?: unknown;
     ratingKey?: unknown;
@@ -129,7 +130,7 @@ export class PlayQueue extends PlexObject {
    */
   static async create(
     server: PlexServer,
-    items: Playable | Playable[] | Playlist,
+    items: PlayQueueSource,
     options: CreatePlayQueueOptions = {},
   ): Promise<PlayQueue> {
     const args = await this.createArgs(server, items, options);
@@ -147,7 +148,7 @@ export class PlayQueue extends PlexObject {
   /** Build the parameters used by server and client play queue creation commands. */
   static async createArgs(
     server: PlexServer,
-    items: Playable | Playable[] | Playlist,
+    items: PlayQueueSource,
     options: CreatePlayQueueOptions = {},
   ): Promise<Record<string, string | number | boolean>> {
     const {

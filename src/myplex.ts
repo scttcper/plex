@@ -62,7 +62,7 @@ export interface AccountQueryOptions {
  * MyPlex account and profile information. This object represents the data found Account on
  * the myplex.tv servers at the url https://plex.tv/users/account. You may create this object
  * directly by passing in your username & password (or token). There is also a convenience
- * method provided at :class:`~plexapi.server.PlexServer.myPlexAccount()` which will create
+ * method provided at {@link PlexServer.myPlexAccount} which will create
  * and return this object.
  */
 export class MyPlexAccount {
@@ -866,7 +866,7 @@ export class MyPlexAccount {
   }
 
   /**
-   * Returns a list of all :class:`~plexapi.myplex.MyPlexDevice` objects connected to the server.
+   * Returns a list of all {@link MyPlexDevice} objects connected to the server.
    */
   async devices(): Promise<MyPlexDevice[]> {
     const response = await this.query<MediaContainer<{ Device: Device[] }>>({
@@ -876,12 +876,8 @@ export class MyPlexAccount {
   }
 
   /**
-   * Main method used to handle HTTPS requests to the Plex client. This method helps
-   * by encoding the response to utf-8 and parsing the returned XML into and
-   * ElementTree object. Returns None if no data exists in the response.
-   * TODO: use headers
-   * @param path
-   * @param options
+   * Send an authenticated request to plex.tv or another Plex service. JSON responses are
+   * parsed, XML responses go through xml2js, and `responseType: 'text'` returns the body.
    */
   async query(options: AccountQueryOptions & { responseType: 'text' }): Promise<string>;
   async query<T = any>(options: AccountQueryOptions & { responseType?: never }): Promise<T>;

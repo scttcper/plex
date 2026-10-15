@@ -19,6 +19,8 @@ import type {
   PhotoMetadataResponse,
   PhotoPartData,
 } from './photo.types.ts';
+import type { PlayQueue } from './playqueue.ts';
+import type { CreatePlayQueueOptions } from './playqueue.types.ts';
 import { type MediaContainer, parseOptionalDate, parseOptionalNumber } from './util.ts';
 import { Clip } from './video.ts';
 
@@ -76,6 +78,11 @@ export class Photoalbum extends PartialPlexObject {
   declare titleSort?: string;
   declare updatedAt?: Date;
   declare userRating?: number;
+
+  /** Create a PlayQueue that plays every photo in this album. */
+  async createPlayQueue(options: CreatePlayQueueOptions = {}): Promise<PlayQueue> {
+    return this.server.createPlayQueue(this, options);
+  }
 
   async album(title: string): Promise<Photoalbum> {
     const [album] = await this.albums({ title__iexact: title });

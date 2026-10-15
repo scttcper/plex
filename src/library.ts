@@ -78,6 +78,8 @@ import {
   type PlaylistContentType,
   type SmartPlaylistSearchOptions,
 } from './playlist.ts';
+import type { PlayQueue } from './playqueue.ts';
+import type { CreatePlayQueueOptions } from './playqueue.types.ts';
 import { type Agent, searchType, SEARCHTYPES } from './search.ts';
 import type { SearchResultContainer } from './search.types.ts';
 import type { PlexServer } from './server.ts';
@@ -1694,7 +1696,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
   /**
    * Run an analysis on all of the items in this library section.
-   * See :func:`~plexapi.base.PlexPartialObject.analyze` for more details.
+   * See {@link PartialPlexObject.analyze} for more details.
    */
   async analyze(): Promise<void> {
     const key = `/library/sections/${this.key}/analyze`;
@@ -2990,13 +2992,11 @@ export class MusicSection extends LibrarySection<Track> {
     return fetchItems<Album>(this.server, key, undefined, Album, this);
   }
 
-  /**
-   * Returns the music stations Hub for this section, if available.
-   * TODO: Investigate how to return actual station items (Playlists?) from the Hub.
-   */
-  async stations(): Promise<Hub | undefined> {
+  /** Returns the radio station playlists Plex generates for this section. */
+  async stations(): Promise<Playlist[]> {
     const hubs = await this.hubs();
-    return hubs.find(hub => hub.hubIdentifier === 'hub.music.stations');
+    const hub = hubs.find(item => item.context === 'hub.music.stations');
+    return hub ? hub.items(Playlist) : [];
   }
 
   /** Search for an artist. */
@@ -3488,6 +3488,11 @@ export class Collections<
       throw new NotFound(`Item ${title} not found in collection.`);
     }
     return item;
+  }
+
+  /** Create a PlayQueue that plays every item in this collection. */
+  async createPlayQueue(options: CreatePlayQueueOptions = {}): Promise<PlayQueue> {
+    return this.server.createPlayQueue(this, options);
   }
 
   async visibility(): Promise<ManagedHub> {
@@ -4044,7 +4049,7 @@ export class FilteringFilter extends PlexObject {
 
   /** The key for the filter. */
   declare filter: string;
-  /** The :class:`~plexapi.library.FilteringFieldType` type (string, boolean, integer, date, etc). */
+  /** The {@link FilteringFieldType} type (string, boolean, integer, date, etc). */
   declare filterType: string;
   /** The title of the filter. */
   declare title: string;
