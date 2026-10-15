@@ -33,7 +33,7 @@
     "test:types": "tsc --project test/types/tsconfig.json"
   },
   "dependencies": {
-    "@rgrove/parse-xml": "^5.0.0",
+    "fast-xml-parser": "^5.11.2",
     "jose": "^6.2.12",
     "ofetch": "^1.5.1",
     "uint8array-extras": "^1.6.0"

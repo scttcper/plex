@@ -1,4 +1,4 @@
-import { parseXml, XmlElement } from '@rgrove/parse-xml';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { stringToBase64 } from 'uint8array-extras';
 
 import { NotFound } from './exceptions.ts';
@@ -143,27 +143,25 @@ export function serverAddressParams(server: PlexServer): {
   };
 }
 
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '',
+  ignoreDeclaration: true,
+  parseAttributeValue: false,
+  parseTagValue: false,
+  // Every child element is a list like in Plex JSON, the root element stays an object.
+  isArray: (_name, jpath, _isLeafNode, isAttribute) => !isAttribute && String(jpath).includes('.'),
+});
+
 /**
  * Parse an XML body into the shape Plex uses for JSON: attributes become properties and child
  * elements become arrays keyed by tag name. Attribute values stay strings.
  */
 export function parsePlexXml(text: string): Record<string, unknown> {
-  const { root } = parseXml(text);
-  return root ? { [root.name]: xmlElementToJson(root) } : {};
-}
-
-function xmlElementToJson(element: XmlElement): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...element.attributes };
-  for (const child of element.children) {
-    if (child instanceof XmlElement) {
-      const siblings = result[child.name];
-      if (Array.isArray(siblings)) {
-        siblings.push(xmlElementToJson(child));
-      } else {
-        result[child.name] = [xmlElementToJson(child)];
-      }
-    }
+  const validation = XMLValidator.validate(text);
+  if (validation !== true) {
+    throw new SyntaxError(`Invalid XML: ${validation.err.msg}`);
   }
 
-  return result;
+  return xmlParser.parse(text) as Record<string, unknown>;
 }
