@@ -39,6 +39,7 @@ jobs:
           node --run build
           node --run test:types
 
+      # The tag is a multi-arch manifest list, so read its digest header instead of a config digest.
       - name: Get PMS Docker image digest
         id: docker-digest
         run: |
@@ -47,16 +48,26 @@ jobs:
           echo "Tag: ${{ env.PLEX_CONTAINER_TAG }}"
           token=$(curl \
             --silent \
+            --fail \
             "https://auth.docker.io/token?scope=repository:${{ env.PLEX_CONTAINER }}:pull&service=registry.docker.io" \
             | jq -r '.token')
           digest=$(curl \
             --silent \
-            --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+            --fail \
+            --head \
             --header "Authorization: Bearer $token" \
+            --header "Accept: application/vnd.oci.image.index.v1+json" \
+            --header "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
+            --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
             "https://registry-1.docker.io/v2/${{ env.PLEX_CONTAINER }}/manifests/${{ env.PLEX_CONTAINER_TAG }}" \
-            | jq -r '.config.digest')
+            | awk 'tolower($1) == "docker-content-digest:" { print $2 }' \
+            | tr -d '\r')
+          if [ -z "$digest" ]; then
+            echo "::error::Could not resolve the ${{ env.PLEX_CONTAINER }}:${{ env.PLEX_CONTAINER_TAG }} digest"
+            exit 1
+          fi
           echo "Digest: $digest"
-          echo ::set-output name=digest::$digest
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Cache PMS Docker image
         id: docker-cache
@@ -82,6 +93,7 @@ jobs:
           echo "PLEXAPI_AUTH_SERVER_TOKEN=${{ secrets.PLEXAPI_AUTH_SERVER_TOKEN }}" >> $GITHUB_ENV
 
       - name: Bootstrap Plex server
+        id: bootstrap
         timeout-minutes: 8
         run: |
           for attempt in 1 2 3; do
@@ -98,11 +110,10 @@ jobs:
           echo "Bootstrap failed after 3 attempts"
           exit 1
 
-      # https://github.com/webiny/action-post-run
-      - name: Unlink PMS from MyPlex account
-        uses: webiny/action-post-run@3.1.0
-        with:
-          run: pnpm run teardowntest
-
       - name: test
         run: pnpm run test
+
+      # Runs even when tests fail so the account doesn't collect stale test servers.
+      - name: Unlink PMS from MyPlex account
+        if: ${{ always() && steps.bootstrap.outcome != 'skipped' }}
+        run: pnpm run teardowntest
