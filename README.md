@@ -8,8 +8,6 @@
 npm install @ctrl/plex
 ```
 
-Requires Node.js 24 or newer.
-
 ### Docs
 
 https://plex.ep.workers.dev
