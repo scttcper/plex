@@ -1,770 +1,649 @@
 import { URL, URLSearchParams } from 'node:url';
 
 import { ofetch } from 'ofetch';
+import { parseStringPromise } from 'xml2js';
 
 import type { Playable } from './base/playable.ts';
 import type {
+  ClientCommandOptions,
+  ClientMediaType,
+  ClientRepeatMode,
   ClientTimelineData,
   CreateClientPlayQueueOptions,
+  IsPlayingMediaOptions,
   Player,
   PlayMediaOptions,
+  PlexClientOptions,
+  PlexClientQueryOptions,
+  ProxyThroughServerOptions,
+  SendCommandOptions,
   SendCommandParams,
   SetParametersOptions,
   SetStreamsOptions,
+  TimelinesOptions,
 } from './client.types.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
 import type { Playlist } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
 import type { PlexServer } from './server.ts';
-import type { MediaContainer } from './util.ts';
-
-export interface PlexOptions {
-  /** (:class:`~plexapi.server.PlexServer`): PlexServer this client is connected to (optional). */
-  server?: PlexServer;
-  /** (ElementTree): Response from PlexServer used to build this object (optional). */
-  data?: Partial<Player> & { name?: string };
-  /** (str): Path used to generate data. */
-  initpath?: string;
-  /** (str): HTTP URL to connect dirrectly to this client. */
-  baseurl?: string;
-  /** (str): X-Plex-Token used for authenication (optional). */
-  token?: string;
-  /** (:class:`~requests.Session`): requests.Session object if you want more control (optional). */
-  session?: string;
-  /** (int): timeout in seconds on initial connect to client (default config.TIMEOUT). */
-  timeout?: number;
-}
+import { parseOptionalNumber, parsePlexBoolean, serverAddressParams } from './util.ts';
 
 /**
- * Represents a single timeline entry from a Plex client.
+ * A single timeline entry reported by a Plex player.
  */
 export class ClientTimeline {
-  declare state: string;
-  declare type: string;
-  declare time: number;
-  declare duration: number;
-  declare seekRange: string;
-  declare key: string;
-  declare ratingKey: string;
-  declare volume: number;
-  declare shuffle: boolean;
-  declare repeat: number;
-  declare playQueueID: number;
-  declare playQueueItemID: number;
-  declare controllable: string;
-  declare machineIdentifier: string;
-  declare providerIdentifier: string;
-  declare containerKey: string;
-  declare address: string;
-  declare port: number;
-  declare protocol: string;
+  readonly state: string;
+  readonly type: string;
+  readonly address?: string;
+  readonly audioStreamId?: number;
+  readonly autoPlay?: boolean;
+  readonly containerKey?: string;
+  readonly controllable?: string;
+  readonly duration?: number;
+  readonly itemType?: string;
+  readonly key?: string;
+  readonly location?: string;
+  readonly machineIdentifier?: string;
+  readonly partCount?: number;
+  readonly partIndex?: number;
+  readonly playQueueID?: number;
+  readonly playQueueItemID?: number;
+  readonly playQueueVersion?: number;
+  readonly port?: number;
+  readonly protocol?: string;
+  readonly providerIdentifier?: string;
+  readonly ratingKey?: string;
+  readonly repeat?: number;
+  readonly seekRange?: string;
+  readonly shuffle?: boolean;
+  readonly subtitleColor?: string;
+  readonly subtitlePosition?: string;
+  readonly subtitleSize?: number;
+  readonly time?: number;
+  readonly volume?: number;
 
   constructor(data: ClientTimelineData) {
     this.state = data.state;
     this.type = data.type;
-    this.time = data.time ?? 0;
-    this.duration = data.duration ?? 0;
-    this.seekRange = data.seekRange ?? '';
-    this.key = data.key ?? '';
-    this.ratingKey = data.ratingKey ?? '';
-    this.volume = data.volume ?? 0;
-    this.shuffle = data.shuffle ?? false;
-    this.repeat = data.repeat ?? 0;
-    this.playQueueID = data.playQueueID ?? 0;
-    this.playQueueItemID = data.playQueueItemID ?? 0;
-    this.controllable = data.controllable ?? '';
-    this.machineIdentifier = data.machineIdentifier ?? '';
-    this.providerIdentifier = data.providerIdentifier ?? '';
-    this.containerKey = data.containerKey ?? '';
-    this.address = data.address ?? '';
-    this.port = data.port ?? 0;
-    this.protocol = data.protocol ?? '';
+    this.address = data.address;
+    this.audioStreamId = parseOptionalNumber(data.audioStreamId);
+    this.autoPlay = data.autoPlay === undefined ? undefined : parsePlexBoolean(data.autoPlay);
+    this.containerKey = data.containerKey;
+    this.controllable = data.controllable;
+    this.duration = parseOptionalNumber(data.duration);
+    this.itemType = data.itemType;
+    this.key = data.key;
+    this.location = data.location;
+    this.machineIdentifier = data.machineIdentifier;
+    this.partCount = parseOptionalNumber(data.partCount);
+    this.partIndex = parseOptionalNumber(data.partIndex);
+    this.playQueueID = parseOptionalNumber(data.playQueueID);
+    this.playQueueItemID = parseOptionalNumber(data.playQueueItemID);
+    this.playQueueVersion = parseOptionalNumber(data.playQueueVersion);
+    this.port = parseOptionalNumber(data.port);
+    this.protocol = data.protocol;
+    this.providerIdentifier = data.providerIdentifier;
+    this.ratingKey = data.ratingKey;
+    this.repeat = parseOptionalNumber(data.repeat);
+    this.seekRange = data.seekRange;
+    this.shuffle = data.shuffle === undefined ? undefined : parsePlexBoolean(data.shuffle);
+    this.subtitleColor = data.subtitleColor;
+    this.subtitlePosition = data.subtitlePosition;
+    this.subtitleSize = parseOptionalNumber(data.subtitleSize);
+    this.time = parseOptionalNumber(data.time);
+    this.volume = parseOptionalNumber(data.volume);
   }
 }
 
+type PlayableMedia = Playable | Playlist | PlayQueue;
+
+interface PlayerContainer {
+  MediaContainer?: { Player?: Partial<Player> | Array<Partial<Player>> };
+}
+
+interface TimelineContainer {
+  MediaContainer?: { Timeline?: ClientTimelineData[] };
+}
+
 /**
- * Main class for interacting with a Plex client. This class can connect
- * directly to the client and control it or proxy commands through your
- * Plex Server. To better understand the Plex client API's read this page:
- * https://github.com/plexinc/plex-media-player/wiki/Remote-control-API
- * Attributes:
- *     TAG (str): 'Player'
- *     key (str): '/resources'
- *     device (str): Best guess on the type of device this is (PS, iPhone, Linux, etc).
- *     deviceClass (str): Device class (pc, phone, etc).
- *     machineIdentifier (str): Unique ID for this device.
- *     model (str): Unknown
- *     platform (str): Unknown
- *     platformVersion (str): Description
- *     product (str): Client Product (Plex for iOS, etc).
- *     protocol (str): Always seems ot be 'plex'.
- *     protocolCapabilities (list<str>): List of client capabilities (navigation, playback,
- *         timeline, mirror, playqueues).
- *     protocolVersion (str): Protocol version (1, future proofing?)
- *     server (:class:`~plexapi.server.PlexServer`): Server this client is connected to.
- *     session (:class:`~requests.Session`): Session object used for connection.
- *     state (str): Unknown
- *     title (str): Name of this client (Johns iPhone, etc).
- *     token (str): X-Plex-Token used for authenication
- *     vendor (str): Unknown
- *     version (str): Device version (4.6.1, etc).
- *     _session (obj): Requests session object used to access this client.
- *     _proxyThroughServer (bool): Set to True after calling
- *         :func:`~plexapi.client.PlexClient.proxyThroughServer()` (default False).
+ * Control a Plex player directly or by proxying commands through a Plex server.
+ *
+ * See https://github.com/plexinc/plex-media-player/wiki/Remote-control-API for the
+ * remote-control commands players understand.
  */
 export class PlexClient {
-  /**
-   * HTTP address of the client
-   */
-  _baseurl: string | null = null;
-  /**
-   * Token used to access this client
-   */
-  _token: string | null = null;
-  TAG = 'Player';
-  key = '/resources';
-
+  readonly key = '/resources';
+  /** HTTP address of the client, without a trailing slash. */
+  readonly baseurl: string;
+  /** Request timeout in milliseconds. */
   timeout: number;
+  /** Server this client was found on, used for proxying commands. */
+  server?: PlexServer;
 
+  declare address?: string;
+  /** Best guess on the type of device (PS4, iPhone, Linux). */
+  declare device?: string;
+  /** Device class (pc, phone, stb). */
   declare deviceClass?: string;
+  declare local?: boolean;
   declare machineIdentifier?: string;
-  declare product?: string;
-  declare protocol?: string;
-  declare protocolCapabilities?: string[];
-  declare protocolVersion?: string;
+  declare model?: string;
   declare platform?: string;
   declare platformVersion?: string;
+  /** Product name (Plex for iOS, Plex Web). */
+  declare product?: string;
+  declare profile?: string;
+  declare protocol?: string;
+  /** Controllers the client supports (navigation, playback, timeline, mirror, playqueues). */
+  declare protocolCapabilities: string[];
+  declare protocolVersion?: string;
+  declare relayed?: boolean;
+  declare remotePublicAddress?: string;
+  declare secure?: boolean;
+  declare state?: string;
+  /** Display name of the client (Johns iPhone). */
   declare title?: string;
+  declare userID?: number;
+  declare vendor?: string;
+  declare version?: string;
 
-  _server: PlexServer | null = null;
-  _proxyThroughServer = false;
-  private _commandId = 0;
+  readonly #identifier?: string;
+  readonly #token?: string;
+  #commandId = 0;
+  #proxyThroughServer = false;
 
-  constructor(options: PlexOptions = {}) {
-    if (options.baseurl) {
-      if (options.baseurl.endsWith('/')) {
-        this._baseurl = options.baseurl.slice(0, -1);
-      } else {
-        this._baseurl = options.baseurl;
-      }
-    }
-
-    this._baseurl = options.baseurl ?? 'http://localhost:32400';
-    this._token = options.token ?? null;
-    this._server = options.server ?? null;
-    this.timeout = options.timeout ?? TIMEOUT;
-    if (options.data) {
-      this._loadData({ ...options.data, title: options.data.title ?? options.data.name });
+  constructor({ server, data, baseurl, identifier, token, timeout }: PlexClientOptions = {}) {
+    this.baseurl = (baseurl ?? 'http://localhost:32400').replace(/\/+$/, '');
+    this.server = server;
+    this.timeout = timeout ?? TIMEOUT;
+    this.#identifier = identifier;
+    this.#token = token;
+    this.protocolCapabilities = [];
+    if (data) {
+      this._loadData(data);
     }
   }
 
-  /**
-   * Alias of reload as any subsequent requests to this client will be
-   * made directly to the device even if the object attributes were initially
-   * populated from a PlexServer.
-   * @param timeout
-   */
-  async connect(): Promise<void> {
-    const data = await this.query<MediaContainer<{ Player: Player }>>(this.key);
-    this._loadData(data.MediaContainer.Player);
+  /** True when commands are sent through {@link PlexClient.server} instead of the client. */
+  get isProxied(): boolean {
+    return this.#proxyThroughServer;
   }
 
   /**
-   * @alias PlexClient.connect
+   * Load attributes directly from the client. Later commands go straight to the device
+   * even if this object was first populated from a server's client list.
    */
-  async reload() {
+  async connect(): Promise<this> {
+    const data = await this.query<PlayerContainer | undefined>({ path: this.key });
+    const players = [data?.MediaContainer?.Player ?? []].flat();
+    const player = this.#identifier
+      ? players.find(candidate => candidate.machineIdentifier === this.#identifier)
+      : players[0];
+    if (!player) {
+      throw new NotFound(
+        this.#identifier
+          ? `Client ${this.#identifier} not found at ${this.baseurl}`
+          : `Client not found at ${this.baseurl}`,
+      );
+    }
+
+    this._loadData(player);
+    return this;
+  }
+
+  /** Alias for {@link PlexClient.connect}. */
+  async reload(): Promise<this> {
     return this.connect();
   }
 
   /**
-   * Main method used to handle HTTPS requests to the Plex client. This method helps
-   * by encoding the response to utf-8 and parsing the returned XML into and
-   * ElementTree object. Returns None if no data exists in the response.
-   * TODO: use headers
-   * @param path
-   * @param method
-   * @param headers
-   * @param timeout
+   * Send a request to the client. Players answer in JSON, XML, or plain text depending on
+   * the product, so XML is converted to the same shape as Plex JSON responses.
    */
-  async query<T>(
-    path: string,
-    method: 'get' | 'post' | 'put' | 'patch' | 'head' | 'delete' = 'get',
-    headers?: Record<string, string>,
-  ): Promise<T> {
-    const headersObj = this._headers(headers);
-    const response = await ofetch<T>(this.url(path).toString(), {
+  async query<T = unknown>({ path, method = 'get', headers }: PlexClientQueryOptions): Promise<T> {
+    const body = await ofetch<string, 'text'>(this.url(path).toString(), {
       method,
-      timeout: this.timeout ?? TIMEOUT,
-      headers: headersObj,
-      responseType: 'json',
+      timeout: this.timeout,
+      headers: this.#headers(headers),
+      responseType: 'text',
       retry: 0,
     });
-
-    return response;
+    return (await parseClientResponse(body)) as T;
   }
 
-  /**
-   * Build a URL string with proper token argument. Token will be appended to the URL
-   * if either includeToken is True or TODO: CONFIG.log.show_secrets is 'true'.
-   * @param key
-   * @param options
-   */
+  /** Build a URL for this client, optionally including its token. */
   url(key: string, { includeToken = false }: { includeToken?: boolean } = {}): URL {
-    if (!this._baseurl) {
-      throw new Error('PlexClient object missing baseurl.');
-    }
-
-    const url = new URL(key, this._baseurl);
-    if (this._token && includeToken) {
-      const searchParams = new URLSearchParams();
-      searchParams.append('X-Plex-Token', this._token);
-      url.search = searchParams.toString();
-      return url;
+    const url = new URL(key, this.baseurl);
+    if (this.#token && includeToken) {
+      url.searchParams.set('X-Plex-Token', this.#token);
     }
 
     return url;
   }
 
-  // --------------- Proxy Support ---------------
-
   /**
-   * Toggle or set proxy-through-server mode. When enabled, commands are sent
-   * through the Plex server rather than directly to the client.
-   * @param value Enable or disable proxy mode. If omitted, toggles current state.
-   * @param server The PlexServer to proxy through. Required if not already set.
+   * Send future commands through the Plex server instead of directly to the client.
+   * Useful when the client is not reachable from this machine.
    */
-  proxyThroughServer(value?: boolean, server?: PlexServer): void {
+  proxyThroughServer({ enabled = true, server }: ProxyThroughServerOptions = {}): this {
     if (server) {
-      this._server = server;
+      this.server = server;
     }
 
-    if (value !== undefined) {
-      this._proxyThroughServer = value;
-    } else {
-      this._proxyThroughServer = !this._proxyThroughServer;
+    if (enabled && !this.server) {
+      throw new BadRequest('A PlexServer is required to proxy client commands.');
     }
 
-    if (this._proxyThroughServer && !this._server) {
-      throw new Error('PlexServer is required for proxy mode. Pass server or set _server.');
-    }
+    this.#proxyThroughServer = enabled;
+    return this;
   }
 
-  // --------------- Send Command ---------------
-
   /**
-   * Send a command to the client, either directly or via the server proxy.
-   * @param command The player command path (e.g. 'playback/play').
-   * @param params Additional parameters for the command.
+   * Send a remote-control command such as `playback/play` to the client.
+   * @param command Command in the form `<controller>/<command>`.
    */
-  async sendCommand(command: string, params: SendCommandParams = {}): Promise<any> {
-    const commandId = this._nextCommandId();
-    const allParams: Record<string, string> = {
-      commandID: commandId.toString(),
-    };
-    for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined) {
-        allParams[k] = v.toString();
+  async sendCommand(
+    command: string,
+    params: SendCommandParams = {},
+    { proxy = this.#proxyThroughServer }: SendCommandOptions = {},
+  ): Promise<unknown> {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        search.set(key, value.toString());
       }
     }
+    search.set('commandID', this.#nextCommandId().toString());
 
-    const search = new URLSearchParams(allParams).toString();
-    const path = `/player/${command}${search ? `?${search}` : ''}`;
+    const path = `/player/${command.replaceAll(/^\/+|\/+$/g, '')}?${search.toString()}`;
+    const headers: Record<string, string> = this.machineIdentifier
+      ? { 'X-Plex-Target-Client-Identifier': this.machineIdentifier }
+      : {};
 
-    if (this._proxyThroughServer && this._server) {
-      const proxyHeaders: Record<string, string> = {};
-      if (this.machineIdentifier) {
-        proxyHeaders['X-Plex-Target-Client-Identifier'] = this.machineIdentifier;
+    if (proxy) {
+      if (!this.server) {
+        throw new BadRequest('A PlexServer is required to proxy client commands.');
       }
 
-      return this._server.query({ path, headers: proxyHeaders });
+      return this.server.query({ path, headers });
     }
 
-    return this.query(
-      path,
-      'get',
-      this.machineIdentifier ? { 'X-Plex-Target-Client-Identifier': this.machineIdentifier } : {},
-    );
+    return this.query({ path, headers });
   }
 
   // --------------- Navigation Commands ---------------
 
   /** Open the context menu on the client. */
-  async contextMenu(): Promise<any> {
-    return this.sendCommand('navigation/contextMenu');
+  async contextMenu(): Promise<void> {
+    await this.sendCommand('navigation/contextMenu');
   }
 
   /** Navigate back on the client. */
-  async goBack(): Promise<any> {
-    return this.sendCommand('navigation/back');
+  async goBack(): Promise<void> {
+    await this.sendCommand('navigation/back');
   }
 
   /** Navigate to home on the client. */
-  async goToHome(): Promise<any> {
-    return this.sendCommand('navigation/home');
+  async goToHome(): Promise<void> {
+    await this.sendCommand('navigation/home');
   }
 
   /** Navigate to music on the client. */
-  async goToMusic(): Promise<any> {
-    return this.sendCommand('navigation/music');
+  async goToMusic(): Promise<void> {
+    await this.sendCommand('navigation/music');
   }
 
   /** Move selection down. */
-  async moveDown(): Promise<any> {
-    return this.sendCommand('navigation/moveDown');
+  async moveDown(): Promise<void> {
+    await this.sendCommand('navigation/moveDown');
   }
 
   /** Move selection left. */
-  async moveLeft(): Promise<any> {
-    return this.sendCommand('navigation/moveLeft');
+  async moveLeft(): Promise<void> {
+    await this.sendCommand('navigation/moveLeft');
   }
 
   /** Move selection right. */
-  async moveRight(): Promise<any> {
-    return this.sendCommand('navigation/moveRight');
+  async moveRight(): Promise<void> {
+    await this.sendCommand('navigation/moveRight');
   }
 
   /** Move selection up. */
-  async moveUp(): Promise<any> {
-    return this.sendCommand('navigation/moveUp');
+  async moveUp(): Promise<void> {
+    await this.sendCommand('navigation/moveUp');
   }
 
   /** Jump to next letter in lists. */
-  async nextLetter(): Promise<any> {
-    return this.sendCommand('navigation/nextLetter');
+  async nextLetter(): Promise<void> {
+    await this.sendCommand('navigation/nextLetter');
   }
 
   /** Page down in lists. */
-  async pageDown(): Promise<any> {
-    return this.sendCommand('navigation/pageDown');
+  async pageDown(): Promise<void> {
+    await this.sendCommand('navigation/pageDown');
   }
 
   /** Page up in lists. */
-  async pageUp(): Promise<any> {
-    return this.sendCommand('navigation/pageUp');
+  async pageUp(): Promise<void> {
+    await this.sendCommand('navigation/pageUp');
   }
 
   /** Jump to previous letter in lists. */
-  async previousLetter(): Promise<any> {
-    return this.sendCommand('navigation/previousLetter');
+  async previousLetter(): Promise<void> {
+    await this.sendCommand('navigation/previousLetter');
   }
 
   /** Select the current item. */
-  async select(): Promise<any> {
-    return this.sendCommand('navigation/select');
+  async select(): Promise<void> {
+    await this.sendCommand('navigation/select');
   }
 
   /** Toggle the on-screen display. */
-  async toggleOSD(): Promise<any> {
-    return this.sendCommand('navigation/toggleOSD');
+  async toggleOSD(): Promise<void> {
+    await this.sendCommand('navigation/toggleOSD');
   }
 
-  // --------------- Playback Commands ---------------
-
-  /**
-   * Start or resume playback.
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async play(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/play', params);
-  }
-
-  /** Navigate to a metadata item on its owning server. */
+  /** Show the details page for a media item on the client. */
   async goToMedia(
     media: { key: string; server: PlexServer },
     params: SendCommandParams = {},
   ): Promise<void> {
-    const url = new URL(media.server.baseurl);
     const token = await media.server.createToken();
     await this.sendCommand('mirror/details', {
+      ...serverAddressParams(media.server),
       machineIdentifier: media.server.machineIdentifier,
-      address: url.hostname,
-      port: url.port || (url.protocol === 'https:' ? '443' : '80'),
-      protocol: url.protocol.slice(0, -1),
       key: media.key,
       ...params,
       ...(token ? { token } : {}),
     });
   }
 
-  async refreshPlayQueue(
-    playQueueID: number,
-    { type = 'video' }: { type?: string } = {},
-  ): Promise<void> {
-    await this.sendCommand('playback/refreshPlayQueue', { playQueueID, type });
+  // --------------- Playback Commands ---------------
+
+  /** Start or resume playback. */
+  async play({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/play', { type });
   }
 
-  /** Pause playback, optionally filtering by media type (video, music, or photo). */
-  async pause(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/pause', params);
+  /** Pause playback. */
+  async pause({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/pause', { type });
   }
 
-  /**
-   * Stop playback.
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async stop(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/stop', params);
+  /** Stop playback. */
+  async stop({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/stop', { type });
   }
 
   /**
-   * Seek to the specified offset in milliseconds.
+   * Seek to a position in the current item.
    * @param offset Position in milliseconds.
-   * @param mtype Media type filter (video, music, photo).
    */
-  async seekTo(offset: number, mtype?: string): Promise<any> {
-    const params: SendCommandParams = { offset };
-    if (mtype) {
-      params.type = mtype;
-    }
+  async seekTo(offset: number, { type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/seekTo', { offset, type });
+  }
 
-    return this.sendCommand('playback/seekTo', params);
+  /** Skip to the next item. */
+  async skipNext({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/skipNext', { type });
+  }
+
+  /** Skip to the previous item. */
+  async skipPrevious({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/skipPrevious', { type });
   }
 
   /**
-   * Skip to the next item.
-   * @param mtype Media type filter (video, music, photo).
+   * Skip to an item in the current play queue.
+   * @param key Key of the item to play.
    */
-  async skipNext(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
+  async skipTo(key: string, { type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/skipTo', { key, type });
+  }
 
-    return this.sendCommand('playback/skipNext', params);
+  /** Step back a few seconds. */
+  async stepBack({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/stepBack', { type });
+  }
+
+  /** Step forward a few seconds. */
+  async stepForward({ type }: ClientCommandOptions = {}): Promise<void> {
+    await this.sendCommand('playback/stepForward', { type });
+  }
+
+  /** Set the repeat mode. */
+  async setRepeat(repeat: ClientRepeatMode, options: ClientCommandOptions = {}): Promise<void> {
+    await this.setParameters({ repeat, ...options });
+  }
+
+  /** Turn shuffle on or off. */
+  async setShuffle(shuffle: boolean, options: ClientCommandOptions = {}): Promise<void> {
+    await this.setParameters({ shuffle, ...options });
   }
 
   /**
-   * Skip to the previous item.
-   * @param mtype Media type filter (video, music, photo).
+   * Set the volume.
+   * @param volume Volume level from 0 to 100.
    */
-  async skipPrevious(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/skipPrevious', params);
+  async setVolume(volume: number, options: ClientCommandOptions = {}): Promise<void> {
+    await this.setParameters({ volume, ...options });
   }
 
-  /**
-   * Skip to a specific item by key.
-   * @param key The key of the item to skip to.
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async skipTo(key: string, mtype?: string): Promise<any> {
-    const params: SendCommandParams = { key };
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/skipTo', params);
+  /** Set several playback parameters at once. */
+  async setParameters({ volume, shuffle, repeat, type }: SetParametersOptions): Promise<void> {
+    await this.sendCommand('playback/setParameters', {
+      volume,
+      shuffle: shuffle === undefined ? undefined : Number(shuffle),
+      repeat,
+      type,
+    });
   }
 
-  /**
-   * Step back (small rewind).
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async stepBack(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/stepBack', params);
+  /** Set the active audio, subtitle, or video stream. */
+  async setStreams({
+    audioStreamID,
+    subtitleStreamID,
+    videoStreamID,
+    type,
+  }: SetStreamsOptions): Promise<void> {
+    await this.sendCommand('playback/setStreams', {
+      audioStreamID,
+      subtitleStreamID,
+      videoStreamID,
+      type,
+    });
   }
 
-  /**
-   * Step forward (small fast-forward).
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async stepForward(mtype?: string): Promise<any> {
-    const params: SendCommandParams = {};
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/stepForward', params);
-  }
-
-  /**
-   * Set repeat mode.
-   * @param repeat Repeat mode (0=off, 1=repeat one, 2=repeat all).
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async setRepeat(repeat: number, mtype?: string): Promise<any> {
-    const params: SendCommandParams = { repeat };
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/setParameters', params);
-  }
-
-  /**
-   * Set shuffle mode.
-   * @param shuffle Shuffle mode (0=off, 1=on).
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async setShuffle(shuffle: number, mtype?: string): Promise<any> {
-    const params: SendCommandParams = { shuffle };
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/setParameters', params);
-  }
-
-  /**
-   * Set volume level.
-   * @param volume Volume level (0-100).
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async setVolume(volume: number, mtype?: string): Promise<any> {
-    const params: SendCommandParams = { volume };
-    if (mtype) {
-      params.type = mtype;
-    }
-
-    return this.sendCommand('playback/setParameters', params);
-  }
-
-  /**
-   * Set multiple playback parameters at once.
-   * @param options Parameters to set.
-   */
-  async setParameters(options: SetParametersOptions): Promise<any> {
-    const params: SendCommandParams = {};
-    if (options.volume !== undefined) {
-      params.volume = options.volume;
-    }
-
-    if (options.shuffle !== undefined) {
-      params.shuffle =
-        typeof options.shuffle === 'boolean' ? (options.shuffle ? 1 : 0) : options.shuffle;
-    }
-
-    if (options.repeat !== undefined) {
-      params.repeat = options.repeat;
-    }
-
-    if (options.mtype) {
-      params.type = options.mtype;
-    }
-
-    return this.sendCommand('playback/setParameters', params);
-  }
-
-  /**
-   * Set the active audio, subtitle, or video stream.
-   * @param options Stream selection options.
-   */
-  async setStreams(options: SetStreamsOptions): Promise<any> {
-    const params: SendCommandParams = {};
-    if (options.audioStreamID !== undefined) {
-      params.audioStreamID = options.audioStreamID;
-    }
-
-    if (options.subtitleStreamID !== undefined) {
-      params.subtitleStreamID = options.subtitleStreamID;
-    }
-
-    if (options.videoStreamID !== undefined) {
-      params.videoStreamID = options.videoStreamID;
-    }
-
-    if (options.mtype) {
-      params.type = options.mtype;
-    }
-
-    return this.sendCommand('playback/setStreams', params);
-  }
-
-  /**
-   * Set the active audio stream.
-   * @param audioStreamID ID of the audio stream.
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async setAudioStream(audioStreamID: number, mtype?: string): Promise<any> {
-    return this.setStreams({ audioStreamID, mtype });
+  /** Set the active audio stream. */
+  async setAudioStream(audioStreamID: number, options: ClientCommandOptions = {}): Promise<void> {
+    await this.setStreams({ audioStreamID, ...options });
   }
 
   /**
    * Set the active subtitle stream.
-   * @param subtitleStreamID ID of the subtitle stream. Use 0 to disable subtitles.
-   * @param mtype Media type filter (video, music, photo).
+   * @param subtitleStreamID Subtitle stream id, or 0 to disable subtitles.
    */
-  async setSubtitleStream(subtitleStreamID: number, mtype?: string): Promise<any> {
-    return this.setStreams({ subtitleStreamID, mtype });
+  async setSubtitleStream(
+    subtitleStreamID: number,
+    options: ClientCommandOptions = {},
+  ): Promise<void> {
+    await this.setStreams({ subtitleStreamID, ...options });
   }
 
-  /**
-   * Set the active video stream.
-   * @param videoStreamID ID of the video stream.
-   * @param mtype Media type filter (video, music, photo).
-   */
-  async setVideoStream(videoStreamID: number, mtype?: string): Promise<any> {
-    return this.setStreams({ videoStreamID, mtype });
+  /** Set the active video stream. */
+  async setVideoStream(videoStreamID: number, options: ClientCommandOptions = {}): Promise<void> {
+    await this.setStreams({ videoStreamID, ...options });
   }
 
-  /** Create a play queue on a Plex client and begin playback. */
+  /** Ask the client to reload a play queue after it changed on the server. */
+  async refreshPlayQueue(
+    playQueue: PlayQueue | number,
+    { type = 'video' }: ClientCommandOptions = {},
+  ): Promise<void> {
+    const playQueueID = typeof playQueue === 'number' ? playQueue : playQueue.playQueueID;
+    await this.sendCommand('playback/refreshPlayQueue', { playQueueID, type });
+  }
+
+  /** Create a play queue on the client and start playing it. Preferred over playMedia. */
   async createPlayQueue(
-    server: PlexServer,
     items: Playable | Playable[] | Playlist,
-    options: CreateClientPlayQueueOptions = {},
-  ): Promise<any> {
-    const { offset = 0, paused = false, ...playQueueOptions } = options;
-    const args = await PlayQueue.createArgs(server, items, playQueueOptions);
-    const serverUrl = new URL(server.baseurl);
+    { offset = 0, paused = false, ...playQueueOptions }: CreateClientPlayQueueOptions = {},
+  ): Promise<void> {
+    const server = [items].flat()[0]?.server;
+    if (!server) {
+      throw new BadRequest('Cannot create a client play queue without items.');
+    }
 
-    return this.sendCommand('playback/createPlayQueue', {
+    const args = await PlayQueue.createArgs(server, items, playQueueOptions);
+    await this.sendCommand('playback/createPlayQueue', {
       ...args,
-      address: serverUrl.hostname,
+      ...serverAddressParams(server),
       machineIdentifier: server.machineIdentifier,
       offset,
-      paused: paused ? 1 : 0,
-      port: Number(serverUrl.port || (serverUrl.protocol === 'https:' ? 443 : 80)),
-      protocol: serverUrl.protocol.slice(0, -1),
+      paused: Number(paused),
       source: server.machineIdentifier,
     });
   }
 
   /**
-   * Start playback of media using a play queue.
-   * @param media A Playable media item with a playlistItemID or ratingKey.
-   * @param options Playback options.
+   * Play a media item, playlist, or play queue on the client.
+   * This is the legacy command; prefer {@link PlexClient.createPlayQueue} for modern players.
    */
-  async playMedia(media: any, options: PlayMediaOptions = {}): Promise<any> {
-    if (!this._server) {
-      throw new Error('A PlexServer is required for playMedia.');
-    }
-
-    const { offset = 0, params: extraParams = {} } = options;
-    const playQueue = await PlayQueue.create(this._server, media);
-
-    const commandParams: SendCommandParams = {
+  async playMedia(
+    media: PlayableMedia,
+    { offset = 0, params = {} }: PlayMediaOptions = {},
+  ): Promise<void> {
+    const { server } = media;
+    const playQueue = media instanceof PlayQueue ? media : await PlayQueue.create(server, media);
+    const key =
+      media instanceof PlayQueue
+        ? (playQueue.selectedItem?.key ?? playQueue.items[0]?.key)
+        : (media as { key?: string }).key;
+    const token = await server.createToken();
+    await this.sendCommand('playback/playMedia', {
       providerIdentifier: 'com.plexapp.plugins.library',
-      machineIdentifier: this._server.machineIdentifier,
-      containerKey: `/playQueues/${playQueue.playQueueID}?window=100&own=1`,
-      key: media.key,
+      machineIdentifier: server.machineIdentifier,
+      ...serverAddressParams(server),
       offset,
-      ...extraParams,
-    };
-
-    return this.sendCommand('playback/playMedia', commandParams);
+      key,
+      type: clientMediaType(media),
+      containerKey: `/playQueues/${playQueue.playQueueID}?window=100&own=1`,
+      ...params,
+      ...(token ? { token } : {}),
+    });
   }
 
   // --------------- Timeline Commands ---------------
 
-  /**
-   * Poll the client for timeline data (what is currently playing).
-   * @param wait Time in seconds to wait for a response.
-   */
-  async timelines(wait?: number): Promise<ClientTimeline[]> {
-    const params: SendCommandParams = {};
-    if (wait !== undefined) {
-      params.wait = wait;
-    }
-
-    const commandId = this._nextCommandId();
-    params.commandID = commandId;
-
-    const search = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined) {
-        search.set(k, v.toString());
-      }
-    }
-
-    const path = `/player/timeline/poll?${search.toString()}`;
-    let data: any;
-
-    if (this._proxyThroughServer && this._server) {
-      const proxyHeaders: Record<string, string> = {};
-      if (this.machineIdentifier) {
-        proxyHeaders['X-Plex-Target-Client-Identifier'] = this.machineIdentifier;
-      }
-
-      data = await this._server.query({ path, headers: proxyHeaders });
-    } else {
-      data = await this.query(path);
-    }
-
-    const timelineEntries = data?.MediaContainer?.Timeline ?? data?.Timeline ?? [];
-    return timelineEntries.map((entry: ClientTimelineData) => new ClientTimeline(entry));
+  /** Poll the client for what it is currently playing. */
+  async timelines({ wait = 0 }: TimelinesOptions = {}): Promise<ClientTimeline[]> {
+    const data = (await this.sendCommand('timeline/poll', { wait })) as
+      | TimelineContainer
+      | undefined;
+    return (data?.MediaContainer?.Timeline ?? []).map(entry => new ClientTimeline(entry));
   }
 
-  /**
-   * Returns the active (non-stopped) timeline, or undefined if nothing is playing.
-   */
+  /** Returns the active (non-stopped) timeline, or undefined if nothing is playing. */
   async timeline(): Promise<ClientTimeline | undefined> {
-    const tls = await this.timelines();
-    return tls.find(tl => tl.state !== 'stopped');
+    return (await this.timelines()).find(timeline => timeline.state !== 'stopped');
   }
 
-  /**
-   * Returns true if the client is currently playing media.
-   * @param includePaused If true, paused media counts as playing.
-   */
-  async isPlayingMedia(includePaused = false): Promise<boolean> {
-    const tls = await this.timelines();
-    for (const tl of tls) {
-      if (tl.state === 'playing') {
-        return true;
-      }
-
-      if (includePaused && tl.state === 'paused') {
-        return true;
-      }
-    }
-
-    return false;
+  /** Returns true if the client is playing media. */
+  async isPlayingMedia({ includePaused = true }: IsPlayingMediaOptions = {}): Promise<boolean> {
+    const state = (await this.timeline())?.state;
+    return state === 'playing' || (includePaused && state === 'paused');
   }
 
-  protected _loadData(data: Partial<Player>) {
+  protected _loadData(data: Partial<Player>): void {
+    this.address = data.address;
+    this.device = data.device;
     this.deviceClass = data.deviceClass;
+    this.local = data.local === undefined ? undefined : parsePlexBoolean(data.local);
     this.machineIdentifier = data.machineIdentifier;
-    this.product = data.product;
-    this.protocol = data.protocol;
-    this.protocolCapabilities = data.protocolCapabilities?.split(',') ?? [];
-    this.protocolVersion = data.protocolVersion;
+    this.model = data.model;
     this.platform = data.platform;
     this.platformVersion = data.platformVersion;
-    this.title = data.title;
+    this.product = data.product;
+    this.profile = data.profile;
+    this.protocol = data.protocol;
+    this.protocolCapabilities = data.protocolCapabilities?.split(',').filter(Boolean) ?? [];
+    this.protocolVersion = data.protocolVersion;
+    this.relayed = data.relayed === undefined ? undefined : parsePlexBoolean(data.relayed);
+    this.remotePublicAddress = data.remotePublicAddress;
+    this.secure = data.secure === undefined ? undefined : parsePlexBoolean(data.secure);
+    this.state = data.state;
+    this.title = data.title ?? data.name;
+    this.userID = parseOptionalNumber(data.userID);
+    this.vendor = data.vendor;
+    this.version = data.version;
   }
 
-  private _nextCommandId(): number {
-    this._commandId += 1;
-    return this._commandId;
+  #nextCommandId(): number {
+    this.#commandId += 1;
+    return this.#commandId;
   }
 
-  /**
-   * Returns a dict of all default headers for Client requests.
-   */
-  private _headers(headers: Record<string, string> = {}) {
-    const headersObj: Record<string, string> = {
+  #headers(headers: Record<string, string> = {}): Record<string, string> {
+    return {
       ...BASE_HEADERS,
       ...headers,
       accept: 'application/json',
+      ...(this.#token ? { 'X-Plex-Token': this.#token } : {}),
     };
-    if (this._token) {
-      headersObj['X-Plex-Token'] = this._token;
-    }
+  }
+}
 
-    return headersObj;
+function clientMediaType(media: PlayableMedia): ClientMediaType {
+  const item = media instanceof PlayQueue ? media.items[0] : media;
+  const type =
+    item && 'playlistType' in item && typeof item.playlistType === 'string'
+      ? item.playlistType
+      : (item as { listType?: string } | undefined)?.listType;
+  if (type === 'audio' || type === 'music') {
+    return 'music';
+  }
+
+  if (type === 'photo') {
+    return 'photo';
+  }
+
+  return 'video';
+}
+
+type XmlNode = { $?: Record<string, string> } & Record<string, unknown>;
+
+/** Convert xml2js output into the attribute and child-array shape Plex uses for JSON. */
+function normalizeXml(node: XmlNode): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...node.$ };
+  for (const [key, value] of Object.entries(node)) {
+    if (key !== '$' && Array.isArray(value)) {
+      result[key] = value.map(child =>
+        typeof child === 'object' && child !== null ? normalizeXml(child as XmlNode) : child,
+      );
+    }
+  }
+
+  return result;
+}
+
+async function parseClientResponse(body: string | undefined): Promise<unknown> {
+  const text = body?.trim() ?? '';
+  if (text === '') {
+    return undefined;
+  }
+
+  if (text.startsWith('<')) {
+    const xml = (await parseStringPromise(text)) as Record<string, XmlNode>;
+    return Object.fromEntries(
+      Object.entries(xml).map(([key, value]) => [key, normalizeXml(value)]),
+    );
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Some players (Plexamp, Plex for Android) answer successful commands with plain `OK`.
+    return text;
   }
 }

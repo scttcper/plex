@@ -89,6 +89,44 @@ describe('MyPlexResource IPv6 connections', () => {
     ]);
     expect(resource.connections[1].ipv6).toBe(true);
     expect(resource.connections[2].relay).toBe(true);
+    expect(resource.publicAddress).toBe('203.0.113.2');
+    expect(resource.httpsRequired).toBe(false);
+    expect(resource.relay).toBe(true);
+    expect(resource.ownerId).toBeNull();
+  });
+
+  it('connects to player resources as clients', async () => {
+    const resource = new MyPlexResource(new MyPlexAccount({ token: 'account-token' }), {
+      ...resourceData,
+      clientIdentifier: 'player-id',
+      provides: 'player,pubsub-player',
+      connections: [resourceData.connections[0]],
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        MediaContainer: {
+          Player: [
+            { machineIdentifier: 'other-player', title: 'Other' },
+            {
+              machineIdentifier: 'player-id',
+              title: 'Living Room',
+              protocolCapabilities: 'playback,timeline',
+            },
+          ],
+        },
+      }),
+    );
+
+    try {
+      const client = await resource.connectClient({ timeout: 1000 });
+      expect(client.baseurl).toBe('https://ipv4-local.example:32400');
+      expect(client.title).toBe('Living Room');
+      expect(client.protocolCapabilities).toEqual(['playback', 'timeline']);
+      const [request] = fetchMock.mock.calls[0];
+      expect(String(request)).toBe('https://ipv4-local.example:32400/resources');
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });
 

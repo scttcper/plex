@@ -60,3 +60,19 @@ it('should return strongly typed video streams', () => {
   expect(stream.streamIdentifier).toBe(1);
   expect(stream.width).toBe(1920);
 });
+
+it('should update progress and timeline position', async () => {
+  await movie.markUnplayed();
+  try {
+    await movie.updateProgress({ time: 90_000 });
+    await movie.reload();
+    expect(movie.viewOffset).toBe(90_000);
+    await movie.updateTimeline({ time: 120_000 });
+    await movie.reload();
+    expect(movie.viewOffset).toBe(120_000);
+  } finally {
+    await movie.markUnplayed();
+  }
+
+  expect(movie.viewOffset).toBe(0);
+});

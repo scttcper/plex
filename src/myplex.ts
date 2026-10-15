@@ -8,6 +8,7 @@ import {
   type GeoLocationData,
 } from './account-settings.ts';
 import { PlexObject } from './base/plexObject.ts';
+import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
 import { BadRequest, NotFound, TwoFactorRequiredError } from './exceptions.ts';
 import type { Hub, LibrarySection } from './library.ts';
@@ -210,13 +211,10 @@ export class MyPlexAccount {
   }
 
   /**
-   * Returns a new :class:`~server.PlexServer` or :class:`~client.PlexClient` object.
-   * Often times there is more than one address specified for a server or client.
-   * This function will prioritize local connections before remote and HTTPS before HTTP.
-   * After trying to connect to all available addresses for this resource and
-   * assuming at least one connection was successful, the PlexServer object is built and returned.
+   * Sign in with the username and password when no token was provided, then load the
+   * account details.
    */
-  async connect(): Promise<MyPlexAccount> {
+  async connect(): Promise<this> {
     if (!this.token) {
       const data = await this._signin(this.username, this.password);
       this._loadData(data);
@@ -1749,23 +1747,22 @@ function homeResponseAttribute(
 /**
  * Connects to the specified cls with url and token
  */
-async function connect(url: string, token: string, timeout?: number): Promise<PlexServer> {
-  const device = createPlexServer(url, token, timeout);
-  await device.connect();
-  return device;
+async function connectServer(url: string, token: string, timeout?: number): Promise<PlexServer> {
+  const server = createPlexServer(url, token, timeout);
+  await server.connect();
+  return server;
 }
 
 /**
  * Attempts connections to all candidate URLs concurrently and returns the first
  * successful result according to the original URL preference order.
  */
-async function connectInPreferredOrder(
-  urls: string[],
-  token: string,
-  timeout: number | undefined,
+async function connectInPreferredOrder<T>(
+  urls: readonly string[],
   resourceName: string,
-): Promise<PlexServer> {
-  const results = await Promise.allSettled(urls.map(async url => connect(url, token, timeout)));
+  connectTo: (url: string) => Promise<T>,
+): Promise<T> {
+  const results = await Promise.allSettled(urls.map(connectTo));
 
   for (const result of results) {
     if (result.status === 'fulfilled') {
@@ -1794,6 +1791,11 @@ export interface PreferredConnectionOptions {
 }
 
 export interface ResourceConnectOptions extends PreferredConnectionOptions {
+  /** Per-connection timeout in milliseconds. */
+  timeout?: number;
+}
+
+export interface DeviceConnectOptions {
   /** Per-connection timeout in milliseconds. */
   timeout?: number;
 }
@@ -1839,6 +1841,24 @@ export class MyPlexResource {
   declare provides: string;
   /** Unknown (possibly True if the resource has synced content?) */
   declare synced: boolean;
+  /** True if the server has DNS rebinding protection enabled. */
+  declare dnsRebindingProtection?: boolean;
+  /** True if the server requires secure connections. */
+  declare httpsRequired: boolean;
+  /** True if the server supports NAT loopback. */
+  declare natLoopbackSupported?: boolean;
+  /** Account id of the owner for shared resources, null when owned. */
+  declare ownerId: number | null;
+  /** Public IP address of the resource. */
+  declare publicAddress: string;
+  /** True if the public address matches the address this request came from. */
+  declare publicAddressMatches: boolean;
+  /** True if the resource allows relay connections. */
+  declare relay: boolean;
+  /** True if the resource is searchable from Plex's universal search. */
+  declare searchEnabled?: boolean;
+  /** Owner name for shared resources, null when owned. */
+  declare sourceTitle: string | null;
 
   constructor(account: MyPlexAccount, data: ResourcesResponse, baseUrl: string | null = null) {
     this.account = account;
@@ -1905,22 +1925,29 @@ export class MyPlexResource {
     return attemptUrls;
   }
 
-  async connect(options?: ResourceConnectOptions): Promise<PlexServer>;
-  async connect(ssl?: boolean | null, timeout?: number): Promise<PlexServer>;
-  async connect(
-    optionsOrSsl: ResourceConnectOptions | boolean | null = null,
-    legacyTimeout?: number,
-  ): Promise<PlexServer> {
-    let options: ResourceConnectOptions;
-    if (typeof optionsOrSsl === 'object' && optionsOrSsl !== null) {
-      options = optionsOrSsl;
-    } else {
-      options = { ssl: optionsOrSsl as boolean | null, timeout: legacyTimeout };
-    }
-    const { timeout, ...connectionOptions } = options;
-    const attemptUrls = this.preferredConnections(connectionOptions);
+  /** Connect to this resource as a Plex Media Server. */
+  async connect({
+    timeout,
+    ...connectionOptions
+  }: ResourceConnectOptions = {}): Promise<PlexServer> {
+    return connectInPreferredOrder(this.preferredConnections(connectionOptions), this.name, url =>
+      connectServer(url, this.accessToken, timeout),
+    );
+  }
 
-    return connectInPreferredOrder(attemptUrls, this.accessToken, timeout, this.name);
+  /** Connect to this resource as a player, such as Plex for iOS or Plexamp. */
+  async connectClient({
+    timeout,
+    ...connectionOptions
+  }: ResourceConnectOptions = {}): Promise<PlexClient> {
+    return connectInPreferredOrder(this.preferredConnections(connectionOptions), this.name, url =>
+      new PlexClient({
+        baseurl: url,
+        token: this.accessToken,
+        identifier: this.clientIdentifier,
+        timeout,
+      }).connect(),
+    );
   }
 
   /** Remove this device from your account */
@@ -1945,6 +1972,15 @@ export class MyPlexResource {
     this.presence = data.presence;
     this.product = data.product;
     this.productVersion = data.productVersion;
+    this.dnsRebindingProtection = data.dnsRebindingProtection;
+    this.httpsRequired = data.httpsRequired;
+    this.natLoopbackSupported = data.natLoopbackSupported;
+    this.ownerId = data.ownerId;
+    this.publicAddress = data.publicAddress;
+    this.publicAddressMatches = data.publicAddressMatches;
+    this.relay = data.relay;
+    this.searchEnabled = data.searchEnabled;
+    this.sourceTitle = data.sourceTitle;
     this.connections =
       data.connections?.map(connection => new ResourceConnection(connection)) ?? [];
   }
@@ -2018,10 +2054,23 @@ export class MyPlexDevice extends PlexObject {
   /** List of connection URIs for the device. */
   declare connections?: string[];
 
-  async connect(timeout?: number): Promise<PlexServer> {
-    // TODO: switch between PlexServer and PlexClient
+  /** Connect to this device as a Plex Media Server. */
+  async connect({ timeout }: DeviceConnectOptions = {}): Promise<PlexServer> {
+    return connectInPreferredOrder(this.connections ?? [], this.name, url =>
+      connectServer(url, this.token, timeout),
+    );
+  }
 
-    return connectInPreferredOrder(this.connections ?? [], this.token, timeout, this.name);
+  /** Connect to this device as a player, such as Plex for iOS or Plexamp. */
+  async connectClient({ timeout }: DeviceConnectOptions = {}): Promise<PlexClient> {
+    return connectInPreferredOrder(this.connections ?? [], this.name, url =>
+      new PlexClient({
+        baseurl: url,
+        token: this.token,
+        identifier: this.clientIdentifier,
+        timeout,
+      }).connect(),
+    );
   }
 
   /**

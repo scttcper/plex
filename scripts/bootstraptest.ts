@@ -381,14 +381,14 @@ async function main() {
     let resourceError: unknown;
     try {
       const resource = await account.resource(opts.hostname);
-      return await resource.connect(null, connectTimeoutMs);
+      return await resource.connect({ timeout: connectTimeoutMs });
     } catch (err) {
       resourceError = err;
     }
 
     try {
       const device = await account.device(opts.hostname);
-      return await device.connect(connectTimeoutMs);
+      return await device.connect({ timeout: connectTimeoutMs });
     } catch (deviceErr) {
       const resourceReason =
         resourceError instanceof Error ? resourceError.message : String(resourceError);

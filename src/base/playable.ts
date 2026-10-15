@@ -22,6 +22,21 @@ import type {
 import { PartialPlexObject } from './partialPlexObject.ts';
 
 /** Common transcoder parameters; Plex and plugins can accept additional parameters. */
+/** Playback states reported to Plex. */
+export type PlaybackState = 'playing' | 'paused' | 'stopped' | 'buffering';
+
+export interface UpdateProgressOptions {
+  /** Milliseconds watched. */
+  time: number;
+  /** Defaults to stopped. */
+  state?: PlaybackState;
+}
+
+export interface UpdateTimelineOptions extends UpdateProgressOptions {
+  /** Item duration in milliseconds. Defaults to the item's duration. */
+  duration?: number;
+}
+
 export interface StreamUrlOptions {
   /** Common values include hls and dash. Defaults to hls. */
   protocol?: string;
@@ -187,30 +202,38 @@ export abstract class Playable extends PartialPlexObject {
   }
 
   /**
-   * Update the play progress for this media item.
-   * @param time Current playback time in milliseconds.
-   * @param state Playback state ('playing', 'paused', 'stopped'). Default 'stopped'.
+   * Set the watched progress for this item. Plex ignores progress of 60 seconds or less,
+   * use {@link Playable.markUnplayed} to clear progress instead.
    */
-  async updateProgress(
-    time: number,
-    state: 'playing' | 'paused' | 'stopped' = 'stopped',
-  ): Promise<void> {
-    const key = `/:/progress?key=${this.ratingKey}&identifier=com.plexapp.plugins.library&time=${time}&state=${state}`;
-    await this.server.query({ path: key, method: 'post' });
+  async updateProgress({ time, state = 'stopped' }: UpdateProgressOptions): Promise<void> {
+    const params = new URLSearchParams({
+      key: this.ratingKey,
+      identifier: 'com.plexapp.plugins.library',
+      time: Math.trunc(time).toString(),
+      state,
+    });
+    await this.server.query({ path: `/:/progress?${params.toString()}`, method: 'post' });
   }
 
   /**
-   * Update the timeline for this media item.
-   * @param time Current playback time in milliseconds.
-   * @param state Playback state ('playing', 'paused', 'stopped').
-   * @param duration Total duration in milliseconds.
+   * Report playback progress for this item the way a player would.
+   * Duration defaults to the item's own duration.
    */
-  async updateTimeline(
-    time: number,
-    state: 'playing' | 'paused' | 'stopped',
-    duration: number,
-  ): Promise<void> {
-    const key = `/:/timeline?ratingKey=${this.ratingKey}&key=${this.key}&identifier=com.plexapp.plugins.library&time=${time}&state=${state}&duration=${duration}`;
-    await this.server.query({ path: key, method: 'post' });
+  async updateTimeline({
+    time,
+    state = 'stopped',
+    duration = (this as { duration?: number }).duration,
+  }: UpdateTimelineOptions): Promise<void> {
+    const params = new URLSearchParams({
+      ratingKey: this.ratingKey,
+      key: this.key,
+      identifier: 'com.plexapp.plugins.library',
+      time: Math.trunc(time).toString(),
+      state,
+    });
+    if (duration !== undefined) {
+      params.set('duration', duration.toString());
+    }
+    await this.server.query({ path: `/:/timeline?${params.toString()}`, method: 'post' });
   }
 }

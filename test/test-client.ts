@@ -28,6 +28,6 @@ export async function createClient(): Promise<PlexServer> {
     throw new Error('No servers found');
   }
 
-  const server = await plex.connect(undefined, 2000);
+  const server = await plex.connect({ timeout: 2000 });
   return server;
 }

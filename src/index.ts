@@ -3,12 +3,21 @@ export type { AlertTypes } from './alert.types.ts';
 export * from './artwork.ts';
 export * from './client.ts';
 export type {
+  ClientCommandOptions,
+  ClientMediaType,
+  ClientRepeatMode,
   ClientTimelineData,
   CreateClientPlayQueueOptions,
+  IsPlayingMediaOptions,
+  PlayMediaOptions,
+  PlexClientOptions,
+  PlexClientQueryOptions,
+  ProxyThroughServerOptions,
+  SendCommandOptions,
   SendCommandParams,
   SetParametersOptions,
   SetStreamsOptions,
-  PlayMediaOptions,
+  TimelinesOptions,
 } from './client.types.ts';
 export * from './exceptions.ts';
 export * from './library.ts';
@@ -88,7 +97,12 @@ export type {
   MetadataEditOptions,
   MetadataTagEditOptions,
 } from './metadata.ts';
-export type { StreamUrlOptions } from './base/playable.ts';
+export type {
+  PlaybackState,
+  StreamUrlOptions,
+  UpdateProgressOptions,
+  UpdateTimelineOptions,
+} from './base/playable.ts';
 export { discover } from './discovery.ts';
 export type { DiscoveryEntry, DiscoveryOptions } from './discovery.ts';
 export type { DownloadOptions, MediaDownload } from './download.ts';

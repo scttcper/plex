@@ -1,6 +1,7 @@
 import { stringToBase64 } from 'uint8array-extras';
 
 import type { Section } from './library.ts';
+import type { PlexServer } from './server.ts';
 
 export interface MediaContainer<T> {
   MediaContainer: T;
@@ -108,4 +109,18 @@ export function lowerFirst(str: string): string {
 
 export function encodeBase64(value: string): string {
   return stringToBase64(value);
+}
+
+/** Address parameters players need to fetch media from a server. */
+export function serverAddressParams(server: PlexServer): {
+  protocol: string;
+  address: string;
+  port: number;
+} {
+  const url = new URL(server.baseurl);
+  return {
+    protocol: url.protocol.slice(0, -1),
+    address: url.hostname,
+    port: Number(url.port || (url.protocol === 'https:' ? 443 : 80)),
+  };
 }

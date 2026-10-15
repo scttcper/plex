@@ -5,6 +5,7 @@ import { BadRequest } from './exceptions.ts';
 import type { MyPlexAccount } from './myplex.ts';
 import type { Playlist } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
+import { serverAddressParams } from './util.ts';
 
 export interface SonosPlayerData extends Partial<Player> {
   lanIP?: string;
@@ -35,7 +36,6 @@ export class PlexSonosClient extends PlexClient {
     }
     const server = media.server;
     const queue = media instanceof PlayQueue ? media : await server.createPlayQueue(media);
-    const url = new URL(server.baseurl);
     const token = await server.createToken();
     await this.sendCommand('playback/playMedia', {
       type: 'music',
@@ -44,9 +44,7 @@ export class PlexSonosClient extends PlexClient {
       key: item.key,
       offset,
       machineIdentifier: server.machineIdentifier,
-      protocol: url.protocol.slice(0, -1),
-      address: url.hostname,
-      port: url.port || (url.protocol === 'https:' ? '443' : '80'),
+      ...serverAddressParams(server),
       ...params,
       token,
       'X-Plex-Token': server.token,
