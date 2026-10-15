@@ -518,19 +518,16 @@ export class PlexClient {
     { offset = 0, params = {} }: PlayMediaOptions = {},
   ): Promise<void> {
     const { server } = media;
+    const item = media instanceof PlayQueue ? await selectedQueueItem(media) : media;
     const playQueue = media instanceof PlayQueue ? media : await PlayQueue.create(server, media);
-    const key =
-      media instanceof PlayQueue
-        ? (playQueue.selectedItem?.key ?? playQueue.items[0]?.key)
-        : (media as { key?: string }).key;
     const token = await server.createToken();
     await this.sendCommand('playback/playMedia', {
       providerIdentifier: 'com.plexapp.plugins.library',
       machineIdentifier: server.machineIdentifier,
       ...serverAddressParams(server),
       offset,
-      key,
-      type: clientMediaType(media),
+      key: item.key,
+      type: clientMediaType(item),
       containerKey: `/playQueues/${playQueue.playQueueID}?window=100&own=1`,
       ...params,
       ...(token ? { token } : {}),
@@ -552,10 +549,11 @@ export class PlexClient {
     return (await this.timelines()).find(timeline => timeline.state !== 'stopped');
   }
 
-  /** Returns true if the client is playing media. */
+  /** Returns true if any of the client's players (video, music, photo) is playing. */
   async isPlayingMedia({ includePaused = true }: IsPlayingMediaOptions = {}): Promise<boolean> {
-    const state = (await this.timeline())?.state;
-    return state === 'playing' || (includePaused && state === 'paused');
+    return (await this.timelines()).some(
+      ({ state }) => state === 'playing' || (includePaused && state === 'paused'),
+    );
   }
 
   protected _loadData(data: Partial<Player>): void {
@@ -597,12 +595,31 @@ export class PlexClient {
   }
 }
 
-function clientMediaType(media: PlayableMedia): ClientMediaType {
-  const item = media instanceof PlayQueue ? media.items[0] : media;
+/**
+ * The queue's selected item. A queue loaded with a narrow window may not contain its
+ * selection, so fetch the window around it instead of guessing.
+ */
+async function selectedQueueItem(playQueue: PlayQueue): Promise<Playable> {
+  const selected =
+    playQueue.selectedItem ??
+    (
+      await PlayQueue.get(playQueue.server, playQueue.playQueueID, {
+        center: playQueue.playQueueSelectedItemID,
+        window: 1,
+      })
+    ).selectedItem;
+  if (!selected) {
+    throw new BadRequest(`PlayQueue ${playQueue.playQueueID} has no selected item to play.`);
+  }
+
+  return selected;
+}
+
+function clientMediaType(item: Playable | Playlist): ClientMediaType {
   const type =
-    item && 'playlistType' in item && typeof item.playlistType === 'string'
+    'playlistType' in item && typeof item.playlistType === 'string'
       ? item.playlistType
-      : (item as { listType?: string } | undefined)?.listType;
+      : (item as { listType?: string }).listType;
   if (type === 'audio' || type === 'music') {
     return 'music';
   }

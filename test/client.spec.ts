@@ -180,6 +180,29 @@ describe('PlexClient', () => {
     await expect(client.isPlayingMedia({ includePaused: false })).resolves.toBe(false);
   });
 
+  it('should check every player timeline when deciding if media is playing', async () => {
+    const client = new PlexClient();
+    const timelines = vi.spyOn(client, 'timelines');
+
+    timelines.mockResolvedValueOnce([
+      new ClientTimeline({ type: 'photo', state: 'paused' }),
+      new ClientTimeline({ type: 'music', state: 'playing' }),
+    ]);
+    await expect(client.isPlayingMedia({ includePaused: false })).resolves.toBe(true);
+
+    timelines.mockResolvedValueOnce([
+      new ClientTimeline({ type: 'video', state: 'buffering' }),
+      new ClientTimeline({ type: 'music', state: 'playing' }),
+    ]);
+    await expect(client.isPlayingMedia()).resolves.toBe(true);
+
+    timelines.mockResolvedValueOnce([
+      new ClientTimeline({ type: 'video', state: 'buffering' }),
+      new ClientTimeline({ type: 'music', state: 'stopped' }),
+    ]);
+    await expect(client.isPlayingMedia()).resolves.toBe(false);
+  });
+
   it('should send a modern createPlayQueue command using the items server', async () => {
     const server = createServer();
     const client = new PlexClient();
@@ -256,6 +279,64 @@ describe('PlexClient', () => {
       'playback/playMedia',
       expect.objectContaining({ key: '/library/metadata/12' }),
     );
+  });
+
+  it('should fetch the selected item when the loaded window does not contain it', async () => {
+    const server = createServer();
+    vi.spyOn(server, 'createToken').mockResolvedValue('');
+    const query = vi.spyOn(server, 'query').mockResolvedValue({
+      MediaContainer: {
+        playQueueID: 7,
+        playQueueSelectedItemID: 101,
+        Metadata: [
+          { type: 'track', key: '/library/metadata/11', ratingKey: '11', playQueueItemID: 101 },
+          { type: 'track', key: '/library/metadata/12', ratingKey: '12', playQueueItemID: 102 },
+        ],
+      },
+    });
+    const client = new PlexClient();
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+    const window = new PlayQueue(server, {
+      playQueueID: 7,
+      playQueueSelectedItemID: 101,
+      playQueueSelectedItemOffset: 0,
+      Metadata: [
+        { type: 'track', key: '/library/metadata/13', ratingKey: '13', playQueueItemID: 103 },
+      ],
+    });
+
+    await client.playMedia(window);
+
+    expect(query).toHaveBeenCalledExactlyOnceWith({
+      path: '/playQueues/7?own=0&window=1&includeBefore=1&includeAfter=1&center=101',
+    });
+    expect(sendCommand).toHaveBeenCalledWith(
+      'playback/playMedia',
+      expect.objectContaining({
+        key: '/library/metadata/11',
+        type: 'music',
+        containerKey: '/playQueues/7?window=100&own=1',
+      }),
+    );
+  });
+
+  it('should refuse to guess when a play queue has no selected item', async () => {
+    const server = createServer();
+    vi.spyOn(server, 'query').mockResolvedValue({
+      MediaContainer: { playQueueID: 7, playQueueSelectedItemID: 101, Metadata: [] },
+    });
+    const client = new PlexClient();
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+    const window = new PlayQueue(server, {
+      playQueueID: 7,
+      playQueueSelectedItemID: 101,
+      Metadata: [
+        { type: 'track', key: '/library/metadata/13', ratingKey: '13', playQueueItemID: 103 },
+      ],
+    });
+
+    await expect(client.playMedia(window)).rejects.toThrow('has no selected item');
+    expect(sendCommand).not.toHaveBeenCalled();
   });
 });
 

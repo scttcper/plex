@@ -1,10 +1,11 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   type Episode,
   type Movie,
   type MovieSection,
   PlayQueue,
+  PlexClient,
   type PlexServer,
   Playlist,
   type ShowSection,
@@ -123,6 +124,27 @@ describe('PlayQueue Retrieval', () => {
 });
 
 describe('PlayQueue Items Management', () => {
+  it('should play the selected item from a window that does not contain it', async () => {
+    const created = await PlayQueue.create(plex, episodes);
+    const [selected, middle] = created.items;
+    const window = await PlayQueue.get(plex, created.playQueueID, {
+      center: middle.playQueueItemID,
+      window: 1,
+      includeBefore: false,
+    });
+    expect(window.items.map(item => item.ratingKey)).toEqual([episodes[2].ratingKey]);
+    expect(window.selectedItem).toBeUndefined();
+    const client = new PlexClient({ server: plex });
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+
+    await client.playMedia(window);
+
+    expect(sendCommand).toHaveBeenCalledWith(
+      'playback/playMedia',
+      expect.objectContaining({ key: selected.key, type: 'video' }),
+    );
+  });
+
   it('should get items from PlayQueue', async () => {
     playQueue = await PlayQueue.create(plex, movie);
 
