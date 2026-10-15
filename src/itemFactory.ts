@@ -21,23 +21,29 @@ export type HydratedPlexItem =
   | Show
   | Track;
 
-const ITEM_CLASSES = {
-  album: Album,
-  artist: Artist,
-  clip: Clip,
-  episode: Episode,
-  movie: Movie,
-  photo: Photo,
-  photoalbum: Photoalbum,
-  season: Season,
-  show: Show,
-  track: Track,
-} satisfies Record<string, Class<HydratedPlexItem>>;
+// Built on first use. The model modules import each other, so reading these classes while
+// the modules are still evaluating can see them before they are defined.
+let itemClasses: Record<string, Class<HydratedPlexItem>> | undefined;
+
+function itemClassesByType(): Record<string, Class<HydratedPlexItem>> {
+  itemClasses ??= {
+    album: Album,
+    artist: Artist,
+    clip: Clip,
+    episode: Episode,
+    movie: Movie,
+    photo: Photo,
+    photoalbum: Photoalbum,
+    season: Season,
+    show: Show,
+    track: Track,
+  };
+  return itemClasses;
+}
 
 export function classForPlexType(type: string): Class<HydratedPlexItem> | undefined {
-  return Object.hasOwn(ITEM_CLASSES, type)
-    ? ITEM_CLASSES[type as keyof typeof ITEM_CLASSES]
-    : undefined;
+  const classes = itemClassesByType();
+  return Object.hasOwn(classes, type) ? classes[type] : undefined;
 }
 
 export function createPlexItem(

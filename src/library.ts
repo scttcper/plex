@@ -752,22 +752,28 @@ export class LibraryMediaTag extends PlexObject implements LibraryTagItems {
   }
 }
 
-const LIBRARY_TAG_CLASSES: Partial<Record<LibraryTagName, Class<MediaTag>>> = {
-  tag: Tag,
-  genre: Genre,
-  collection: Collection,
-  director: Director,
-  writer: Writer,
-  role: Role,
-  producer: Producer,
-  country: Country,
-  label: Label,
-  mood: Mood,
-  style: Style,
-  format: Format,
-  subformat: Subformat,
-  similar: Similar,
-};
+// Built on first use so circular model imports can't capture classes before they exist.
+let libraryTagClasses: Partial<Record<LibraryTagName, Class<MediaTag>>> | undefined;
+
+function libraryTagClassesByName(): Partial<Record<LibraryTagName, Class<MediaTag>>> {
+  libraryTagClasses ??= {
+    tag: Tag,
+    genre: Genre,
+    collection: Collection,
+    director: Director,
+    writer: Writer,
+    role: Role,
+    producer: Producer,
+    country: Country,
+    label: Label,
+    mood: Mood,
+    style: Style,
+    format: Format,
+    subformat: Subformat,
+    similar: Similar,
+  };
+  return libraryTagClasses;
+}
 
 export interface SearchArgs {
   [key: string]: SearchArgValue;
@@ -1186,7 +1192,7 @@ function classForLibraryTag(tag: LibraryTagType): Class<LibraryMediaTag | MediaT
     return LibraryMediaTag;
   }
 
-  return LIBRARY_TAG_CLASSES[tag] ?? LibraryMediaTag;
+  return libraryTagClassesByName()[tag] ?? LibraryMediaTag;
 }
 
 function classForLibtype(libtype?: string): Class<LibrarySearchItem> | undefined {
