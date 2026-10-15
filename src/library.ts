@@ -1696,7 +1696,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
   /**
    * Run an analysis on all of the items in this library section.
-   * See {@link PartialPlexObject.analyze} for more details.
+   * See `analyze()` on library items for more details.
    */
   async analyze(): Promise<void> {
     const key = `/library/sections/${this.key}/analyze`;
