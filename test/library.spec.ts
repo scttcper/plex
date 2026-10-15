@@ -87,9 +87,24 @@ it('should get a list of movies and mark one watched', async () => {
   const section = await library.section<MovieSection>('Movies');
   const results = await section.search({ title: 'Bunny' });
   expect(results.length).toBeGreaterThanOrEqual(1);
-  results[0].isChildOf(Movie);
+  expect(results[0].isChildOf(MovieSection)).toBe(true);
+  expect(results[0].isChildOf(Movie)).toBe(false);
   await results[0].markWatched();
   await results[0].markUnwatched();
+});
+
+it('should reload a library section without dropping its metadata', async () => {
+  const library = await plex.library();
+  const section = await library.section<MovieSection>('Movies');
+  const { key, title, uuid } = section;
+
+  await section.reload();
+
+  expect(section.key).toBe(key);
+  expect(section.title).toBe(title);
+  expect(section.uuid).toBe(uuid);
+  expect(section.updatedAt).toBeInstanceOf(Date);
+  expect((await section.search({ title: 'Bunny' })).length).toBeGreaterThan(0);
 });
 
 it('should search for movies matching a title', async () => {
@@ -156,17 +171,10 @@ it('should get movie section plex url', async () => {
   expect(url).toContain(base);
 });
 
-// TODO: Not sure yet why this fails
-it.skip('should list all clients connected to the Server.', async () => {
+it('should list all clients connected to the Server.', async () => {
+  // No clients are connected during normal test runs.
   const clients = await plex.clients();
-  expect(clients.length).toBeGreaterThanOrEqual(0);
-
-  // There's no clients currently during normal test conditions
-  // Manually start watching something for client tests
-  if (clients.length > 0) {
-    const client = clients[0];
-    await client.reload();
-  }
+  expect(Array.isArray(clients)).toBe(true);
 });
 
 it('should get library on deck items', async () => {

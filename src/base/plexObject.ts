@@ -56,11 +56,10 @@ export abstract class PlexObject {
   }
 
   /**
-   * Returns True if this object is a child of the given class.
+   * Returns true if this object was built from a parent of the given class.
    */
-  isChildOf(cls: any): boolean {
-    const parent = this.parent?.deref();
-    return (parent && parent.constructor === cls.constructor) || false;
+  isChildOf(cls: abstract new (...args: any[]) => PlexObject): boolean {
+    return this.parent?.deref() instanceof cls;
   }
 
   protected _buildDetailsKey(args: Record<string, boolean | number> = {}) {

@@ -157,7 +157,7 @@ export abstract class Video extends Playable {
    * the most specific thumbnail for that item.
    */
   get thumbUrl(): URL {
-    const thumb = this.thumb ?? (this as any).parentThumb ?? (this as any).granparentThumb;
+    const thumb = this.thumb ?? (this as any).parentThumb ?? (this as any).grandparentThumb;
     return this.server.url(thumb, { includeToken: true });
   }
 
@@ -791,8 +791,8 @@ export class Season extends Video {
     this.viewedLeafCount = data.viewedLeafCount;
   }
 
-  protected _loadFullData(data: ShowData): void {
-    this._loadData(data);
+  protected _loadFullData(data: FullShowData): void {
+    this._loadData(data.Metadata[0]);
   }
 }
 

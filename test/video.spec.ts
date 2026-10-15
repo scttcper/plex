@@ -57,6 +57,20 @@ describe('Shows', () => {
     await expect(show.editions()).resolves.toEqual([]);
   });
 
+  it('should reload a season without dropping its metadata', async () => {
+    const [season] = await show.seasons();
+    const { ratingKey, key, title, index } = season;
+
+    await season.reload();
+
+    expect(season.ratingKey).toBe(ratingKey);
+    expect(season.key).toBe(key);
+    expect(season.title).toBe(title);
+    expect(season.index).toBe(index);
+    expect(season.parentRatingKey).toBe(show.ratingKey);
+    expect((await season.episodes()).length).toBeGreaterThan(0);
+  });
+
   it("should get a season's episodes", async () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();

@@ -2337,6 +2337,22 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     this.scannedAt = new Date(data.scannedAt * 1000);
   }
 
+  /** Reload this section from the server's library section list. */
+  override async reload(): Promise<void> {
+    const data = await this.server.query<MediaContainer<SectionsResponse>>({
+      path: '/library/sections',
+    });
+    const section = data.MediaContainer.Directory?.find(directory => directory.key === this.key);
+    if (!section) {
+      throw new NotFound(`Library section ${this.key} no longer exists.`);
+    }
+
+    this._filterTypes = undefined;
+    this._fieldTypes = undefined;
+    this._durationStorageCache = undefined;
+    this._loadData(section);
+  }
+
   private async _loadFilters() {
     const key = `/library/sections/${this.key}/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0`;
     const data = await this.server.query<
@@ -3756,8 +3772,8 @@ export class Collections<
     await this.reload();
   }
 
-  protected _loadFullData(data: CollectionData) {
-    this._loadData(data);
+  protected _loadFullData(data: MediaContainer<{ Metadata: CollectionData[] }>['MediaContainer']) {
+    this._loadData(data.Metadata[0]);
   }
 
   protected _loadData(data: CollectionData) {
