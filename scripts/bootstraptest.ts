@@ -384,7 +384,7 @@ async function main() {
     }
 
     try {
-      const device = await account.device(opts.hostname);
+      const device = await account.device({ name: opts.hostname });
       return await device.connect({ timeout: connectTimeoutMs });
     } catch (deviceErr) {
       const resourceReason =

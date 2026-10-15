@@ -1,5 +1,6 @@
 import { beforeAll, expect, it } from 'vitest';
 
+import { NotFound } from '../src/exceptions.ts';
 import type { MovieSection } from '../src/library.ts';
 import { DiscoverMovie, DiscoverShow, MyPlexAccount, PlexUserState } from '../src/myplex.ts';
 import type { Movie } from '../src/video.ts';
@@ -66,7 +67,13 @@ it("lists the server's own device with its version and token", async () => {
   expect(typeof device.presence).toBe('boolean');
   expect(device.connections.length).toBeGreaterThan(0);
   expect(device.createdAt.getTime()).toBeLessThan(Date.now());
-});
+
+  const byIdentifier = await account.device({ clientIdentifier: device.clientIdentifier });
+  const byName = await account.device({ name: device.name.toUpperCase() });
+  expect(byIdentifier.id).toBe(device.id);
+  expect(byName.name).toBe(device.name);
+  await expect(account.device({ name: '__missing_device__' })).rejects.toBeInstanceOf(NotFound);
+}, 20_000);
 
 it('searches Plex Discover and reads account watch state', async () => {
   const [movie] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'movie' });

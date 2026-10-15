@@ -850,19 +850,15 @@ export class MyPlexAccount {
     });
   }
 
-  /**
-   * @param name Name to match against.
-   * @param clientId clientIdentifier to match against.
-   */
-  async device(name = '', clientId?: string): Promise<MyPlexDevice> {
-    const devices = await this.devices();
-    const device = devices.find(
-      candidate =>
-        candidate.name?.toLowerCase() === name.toLowerCase() ||
-        candidate.clientIdentifier === clientId,
+  /** Find one of the account's devices by name (case-insensitive) or client identifier. */
+  async device({ name, clientIdentifier }: DeviceLookupOptions): Promise<MyPlexDevice> {
+    const device = (await this.devices()).find(candidate =>
+      name === undefined
+        ? candidate.clientIdentifier === clientIdentifier
+        : candidate.name.toLowerCase() === name.toLowerCase(),
     );
     if (!device) {
-      throw new Error('Unable to find device');
+      throw new NotFound(`Device ${name ?? clientIdentifier} not found.`);
     }
 
     return device;
@@ -1796,6 +1792,10 @@ export interface ResourceConnectOptions extends PreferredConnectionOptions {
   /** Per-connection timeout in milliseconds. */
   timeout?: number;
 }
+
+export type DeviceLookupOptions =
+  | { name: string; clientIdentifier?: never }
+  | { clientIdentifier: string; name?: never };
 
 export interface DeviceConnectOptions {
   /** Per-connection timeout in milliseconds. */
