@@ -37,7 +37,7 @@ describe('Audio Class Tests', () => {
     expect(track.title).toBe('Seventeen');
   });
 
-  it('loads analyzed audio stream values for tracks', async () => {
+  it('loads audio stream values for tracks', async () => {
     const library = await plex.library();
     const musicSection = await library.section('Music');
     const [artist] = await musicSection.search({ title: 'Ladytron', libtype: 'artist' }, Artist);
@@ -51,9 +51,6 @@ describe('Audio Class Tests', () => {
     expect(stream.channels).toBe(2);
     expect(stream.samplingRate).toBe(48_000);
     expect(stream.audioChannelLayout).toBe('stereo');
-    expect(typeof stream.gain).toBe('number');
-    expect(typeof stream.loudness).toBe('number');
-    expect(typeof stream.peak).toBe('number');
     expect(typeof stream.canNormalizeLoudness).toBe('boolean');
   });
 

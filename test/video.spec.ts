@@ -256,12 +256,8 @@ describe('Movies', () => {
     const [media] = movie.media;
     expect(media.container).toBe('mp4');
     expect(media.videoResolution).toBe('1080');
-    expect(media.audioProfile).toBe('lc');
-    expect(media.optimizedForStreaming).toBe(true);
-    const [part] = media.parts;
-    expect(part.audioProfile).toBe('lc');
-    expect(part.has64bitOffsets).toBe(false);
-    const [audio] = part.audioStreams();
+    expect(typeof media.optimizedForStreaming).toBe('boolean');
+    const [audio] = media.parts[0].audioStreams();
     expect(audio.channels).toBe(2);
     expect(audio.samplingRate).toBe(44_100);
   });

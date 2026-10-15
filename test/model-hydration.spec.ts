@@ -109,4 +109,80 @@ describe('model hydration', () => {
     expect(item).toBeInstanceOf(Movie);
     expect(item).toMatchObject({ playlistItemID: 10 });
   });
+
+  it('parses analyzed media, part, and stream values from Plex payloads', () => {
+    const movie = new Movie(server, {
+      ratingKey: '1',
+      key: '/library/metadata/1',
+      guid: 'plex://movie/5d7768352e80df001ebde4c9',
+      type: 'movie',
+      title: 'Big Buck Bunny',
+      year: 2008,
+      addedAt: 1_760_236_778,
+      updatedAt: 1_786_325_163,
+      Media: [
+        {
+          id: 1,
+          duration: 300_299,
+          container: 'mp4',
+          videoResolution: '1080',
+          audioProfile: 'lc',
+          optimizedForStreaming: 1,
+          has64bitOffsets: false,
+          Part: [
+            {
+              id: 1,
+              key: '/library/parts/1/1760236778/file.mp4',
+              container: 'mp4',
+              duration: 300_299,
+              size: 18_184_197,
+              accessible: true,
+              audioProfile: 'lc',
+              has64bitOffsets: false,
+              hasThumbnail: '1',
+              optimizedForStreaming: true,
+              Stream: [
+                {
+                  id: 247,
+                  streamType: 2,
+                  codec: 'mp3',
+                  displayTitle: 'MP3 (Stereo)',
+                  channels: 2,
+                  samplingRate: 48_000,
+                  audioChannelLayout: 'stereo',
+                  albumGain: '-7.19',
+                  gain: '0',
+                  loudness: '-10.81',
+                  lra: '14.18',
+                  peak: '1.000000',
+                  canNormalizeLoudness: '1',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    } as never);
+
+    const [media] = movie.media;
+    expect(media.container).toBe('mp4');
+    expect(media.videoResolution).toBe('1080');
+    expect(media.audioProfile).toBe('lc');
+    expect(media.optimizedForStreaming).toBe(true);
+    expect(media.has64bitOffsets).toBe(false);
+    const [part] = media.parts;
+    expect(part.accessible).toBe(true);
+    expect(part.audioProfile).toBe('lc');
+    expect(part.hasThumbnail).toBe(true);
+    expect(part.optimizedForStreaming).toBe(true);
+    const [stream] = part.audioStreams();
+    expect(stream.channels).toBe(2);
+    expect(stream.samplingRate).toBe(48_000);
+    expect(stream.albumGain).toBe(-7.19);
+    expect(stream.gain).toBe(0);
+    expect(stream.loudness).toBe(-10.81);
+    expect(stream.peak).toBe(1);
+    expect(stream.canNormalizeLoudness).toBe(true);
+    expect(movie.updatedAt).toEqual(new Date(1_786_325_163_000));
+  });
 });
