@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import { Album, Artist, Track } from './audio.ts';
 import { Playable } from './base/playable.ts';
 import { fetchItems } from './baseFunctionality.ts';

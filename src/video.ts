@@ -1,5 +1,3 @@
-import type { URL } from 'node:url';
-
 import { Playable } from './base/playable.ts';
 import { fetchItem, fetchItems, type ItemFilterValue } from './baseFunctionality.ts';
 import { BadRequest } from './exceptions.ts';

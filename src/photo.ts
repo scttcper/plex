@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import { PartialPlexObject } from './base/partialPlexObject.ts';
 import { Playable } from './base/playable.ts';
 import { PlexObject } from './base/plexObject.ts';

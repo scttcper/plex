@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import type { PlexClient } from '../client.ts';
 import type { PlayMediaOptions } from '../client.types.ts';
 import { BadRequest } from '../exceptions.ts';

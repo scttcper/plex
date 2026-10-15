@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import { buildQueryKey, type QueryParamValue } from '../baseFunctionality.ts';
 import { BadRequest } from '../exceptions.ts';
 import type { PlexServer } from '../server.ts';

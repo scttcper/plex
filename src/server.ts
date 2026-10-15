@@ -1,5 +1,3 @@
-import { URL, URLSearchParams } from 'node:url';
-
 import { FetchError, ofetch } from 'ofetch';
 
 import { AlertListener, type AlertListenerOptions } from './alert.ts';

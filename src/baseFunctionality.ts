@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import type { PlexObject } from './base/plexObject.ts';
 import { X_PLEX_CONTAINER_SIZE } from './config.ts';
 import { NotFound } from './exceptions.ts';

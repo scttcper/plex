@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import { Album, Artist, Track } from './audio.ts';
 import { PartialPlexObject } from './base/partialPlexObject.ts';
 import { PlexObject } from './base/plexObject.ts';

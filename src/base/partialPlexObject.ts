@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { URLSearchParams } from 'node:url';
 
 import { ArtworkManager } from '../artwork.ts';
 import { fetchItems } from '../baseFunctionality.ts';

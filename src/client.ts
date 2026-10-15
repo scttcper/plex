@@ -1,5 +1,3 @@
-import { URL, URLSearchParams } from 'node:url';
-
 import { ofetch } from 'ofetch';
 
 import type { Playable } from './base/playable.ts';
