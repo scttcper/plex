@@ -27,7 +27,7 @@ import type {
 import { searchType } from './search.ts';
 import type { PlexServer } from './server.ts';
 import { smartFilterParams } from './smart-filter.ts';
-import { firstMetadata, parsePlexBoolean } from './util.ts';
+import { firstMetadata, parseOptionalDate, parsePlexBoolean } from './util.ts';
 import { Episode, Movie, Season, Show } from './video.ts';
 
 /**
@@ -283,8 +283,10 @@ export class Playlist extends Playable {
 
   TYPE = 'playlist';
 
-  declare addedAt: Date;
-  declare updatedAt: Date;
+  /** Missing on generated radio stations. */
+  declare addedAt?: Date;
+  /** Missing on generated radio stations. */
+  declare updatedAt?: Date;
   declare composite: string;
   declare guid: string;
   declare fields: Field[];
@@ -495,8 +497,8 @@ export class Playlist extends Playable {
     this.ratingKey = data.ratingKey;
     this.title = data.title;
     this.type = data.type;
-    this.addedAt = new Date(data.addedAt);
-    this.updatedAt = new Date(data.updatedAt);
+    this.addedAt = parseOptionalDate(data.addedAt);
+    this.updatedAt = parseOptionalDate(data.updatedAt);
     this.composite = data.composite;
     this.guid = data.guid;
     this.fields = (data.Field ?? []).map(field => new Field(this.server, field, undefined, this));

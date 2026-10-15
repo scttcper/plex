@@ -1,19 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  Artist,
   BadRequest,
+  Collections,
+  Episode,
   Library,
   ManagedHub,
   Movie,
   MovieSection,
+  MusicSection,
   NotFound,
+  Photo,
+  PhotoSection,
   Playlist,
   Setting,
   ShowSection,
+  Track,
   type EditableLibraryItem,
   type PlexServer,
 } from '../src/index.ts';
 import type {
+  CollectionData,
   LibraryFilterMetaData,
   LibraryRootResponse,
   Location as LocationData,
@@ -54,6 +62,95 @@ const movieSectionData = {
   scanner: 'Plex Movie',
   title: 'Movies',
   type: 'movie',
+};
+
+const musicSectionData = {
+  ...showSectionData,
+  uuid: 'music-section-uuid',
+  key: '3',
+  agent: 'tv.plex.agents.music',
+  composite: '/library/sections/3/composite',
+  scanner: 'Plex Music',
+  title: 'Music',
+  type: 'artist',
+};
+
+const photoSectionData = {
+  ...showSectionData,
+  uuid: 'photo-section-uuid',
+  key: '6',
+  agent: 'com.plexapp.agents.none',
+  composite: '/library/sections/6/composite',
+  scanner: 'Plex Photo Scanner',
+  title: 'Photos',
+  type: 'photo',
+};
+
+// Row shapes from the music section root, on deck, and collection children.
+const artistRowData = {
+  addedAt: 1_760_236_796,
+  guid: 'plex://artist/5d07bbfc403c6402904a5ec6',
+  key: '/library/metadata/94/children',
+  ratingKey: '94',
+  summary: '',
+  title: 'Ladytron',
+  type: 'artist',
+  updatedAt: 1_792_038_727,
+};
+
+const trackRowData = {
+  addedAt: 1_760_236_796,
+  duration: 234_960,
+  grandparentRatingKey: '94',
+  grandparentTitle: 'Ladytron',
+  index: 1,
+  key: '/library/metadata/96',
+  parentRatingKey: '95',
+  parentTitle: 'Light & Magic',
+  ratingKey: '96',
+  title: 'Seventeen',
+  type: 'track',
+  updatedAt: 1_786_330_905,
+};
+
+const episodeRowData = {
+  addedAt: 1_760_236_791,
+  duration: 300_299,
+  grandparentTitle: 'The 100',
+  index: 3,
+  key: '/library/metadata/79',
+  parentIndex: 2,
+  ratingKey: '79',
+  summary: '',
+  thumb: '/library/metadata/79/thumb',
+  title: 'Reapercussions',
+  type: 'episode',
+  viewOffset: 120_000,
+};
+
+const trackCollectionData: CollectionData = {
+  addedAt: 1_792_042_038,
+  contentRating: '',
+  guid: 'collection://5e2b8f0c-7d1a-4c1e-9f3b-2a6d8c4e1f70',
+  index: 1323,
+  key: '/library/collections/200/children',
+  ratingKey: '200',
+  subtype: 'track',
+  summary: '',
+  thumb: '/library/collections/200/composite/1792042038?width=400&height=600',
+  title: 'Test Tracks',
+  type: 'collection',
+  updatedAt: 1_792_042_038,
+};
+
+const photoRowData = {
+  addedAt: 1_760_236_800,
+  key: '/library/metadata/120',
+  ratingKey: '120',
+  summary: '',
+  thumb: '/library/metadata/120/thumb',
+  title: 'Photo',
+  type: 'photo',
 };
 
 const libraryRootData: LibraryRootResponse = {
@@ -529,6 +626,18 @@ function createShowSection() {
     Promise.resolve(responses.get(path) ?? { MediaContainer: { Metadata: [] } }),
   );
   const section = new ShowSection({ query } as unknown as PlexServer, showSectionData);
+  return { query, section };
+}
+
+function createItemSection<T>(
+  Section: new (server: PlexServer, data: typeof showSectionData) => T,
+  data: typeof showSectionData,
+  responses: Record<string, unknown[]>,
+) {
+  const query = vi.fn(({ path }: { path: string }) =>
+    Promise.resolve({ MediaContainer: { Metadata: responses[first(path.split('?', 1))] ?? [] } }),
+  );
+  const section = new Section({ query } as unknown as PlexServer, data);
   return { query, section };
 }
 
@@ -1182,5 +1291,82 @@ describe('LibrarySection search filters', () => {
     const { section } = createMovieSection();
 
     await expect(section.search({ filters: { 'genre>>': 'Animation' } })).rejects.toThrow(NotFound);
+  });
+});
+
+describe('LibrarySection item classes', () => {
+  it('lists artists from the music section root', async () => {
+    const { query, section } = createItemSection(MusicSection, musicSectionData, {
+      '/library/sections/3/all': [artistRowData],
+    });
+
+    const artists = await section.all();
+    const artist = first(artists);
+
+    expect(artist).toBeInstanceOf(Artist);
+    expect(artist.key).toBe('/library/metadata/94');
+    expect(lastQueryPath(query)).toBe('/library/sections/3/all?includeGuids=1');
+    expect(first(await section.search())).toBeInstanceOf(Artist);
+  });
+
+  it('still lists tracks from a music section when asked for tracks', async () => {
+    const { query, section } = createItemSection(MusicSection, musicSectionData, {
+      '/library/sections/3/all': [trackRowData],
+    });
+
+    const tracks = await section.all({ libtype: 'track' });
+
+    expect(first(tracks)).toBeInstanceOf(Track);
+    expect(first(tracks).key).toBe('/library/metadata/96');
+    expect(lastQueryEntries(query)).toContainEqual(['type', '10']);
+  });
+
+  it('builds on deck rows as the playable item for each section', async () => {
+    const music = createItemSection(MusicSection, musicSectionData, {
+      '/library/sections/3/onDeck': [trackRowData],
+    });
+    const shows = createItemSection(ShowSection, showSectionData, {
+      '/library/sections/2/onDeck': [episodeRowData],
+    });
+    const photos = createItemSection(PhotoSection, photoSectionData, {
+      '/library/sections/6/onDeck': [photoRowData],
+    });
+
+    const tracks = await music.section.onDeck();
+    const episodes = await shows.section.onDeck();
+    const photoItems = await photos.section.onDeck();
+
+    expect(first(tracks)).toBeInstanceOf(Track);
+    expect(first(episodes)).toBeInstanceOf(Episode);
+    expect(first(episodes).viewOffset).toBe(120_000);
+    expect(first(photoItems)).toBeInstanceOf(Photo);
+    expect(lastQueryPath(shows.query)).toBe('/library/sections/2/onDeck?includeGuids=1');
+  });
+
+  it('builds collection items from the collection subtype', async () => {
+    const { section } = createItemSection(MusicSection, musicSectionData, {
+      '/library/collections/200/children': [trackRowData],
+      '/library/collections/201/children': [artistRowData],
+    });
+    const trackCollection = new Collections(
+      section.server,
+      trackCollectionData,
+      undefined,
+      section,
+    );
+    const artistCollection = new Collections(
+      section.server,
+      {
+        ...trackCollectionData,
+        key: '/library/collections/201/children',
+        ratingKey: '201',
+        subtype: 'artist',
+      },
+      undefined,
+      section,
+    );
+
+    expect(first(await trackCollection.items())).toBeInstanceOf(Track);
+    expect(first(await artistCollection.items())).toBeInstanceOf(Artist);
   });
 });

@@ -41,6 +41,24 @@ describe('Audio Class Tests', () => {
     expect(track.title).toBe('Seventeen');
   });
 
+  it('lists artists from the music section root', async () => {
+    const library = await plex.library();
+    const musicSection = await library.section<MusicSection>('Music');
+
+    const artists = await musicSection.all();
+    const recentlyAdded = await musicSection.recentlyAdded();
+    const artist = await musicSection.get({ title: 'Ladytron' });
+
+    expect(artists.length).toBeGreaterThan(0);
+    expect(artists.every(item => item instanceof Artist)).toBe(true);
+    expect(recentlyAdded.every(item => item instanceof Artist)).toBe(true);
+    expect(artist).toBeInstanceOf(Artist);
+    expect(artist.key).toBe(`/library/metadata/${artist.ratingKey}`);
+    // Track objects built from artist rows sent these to `/children/...` and got a 400.
+    expect(Array.isArray(await artist.hubs())).toBe(true);
+    expect(Array.isArray(await artist.extras())).toBe(true);
+  });
+
   it('loads audio stream values for tracks', async () => {
     const library = await plex.library();
     const musicSection = await library.section('Music');
@@ -74,6 +92,8 @@ describe('Audio Class Tests', () => {
     expect(stations[0]).toBeInstanceOf(Playlist);
     expect(first(stations).radio).toBe(true);
     expect(first(stations).playlistType).toBe('audio');
+    // Generated stations have no timestamps.
+    expect(first(stations).addedAt).toBeUndefined();
   });
 
   it('track relations (track.album, track.artist, album.artist) resolve correctly', async () => {

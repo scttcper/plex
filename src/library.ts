@@ -2008,10 +2008,12 @@ export abstract class LibrarySection<SType extends RatingKeyItem = SectionType> 
 
   /**
    * Returns a list of items currently on deck (in progress) for this library section.
+   * On deck rows are playable items rather than the section listing type, so
+   * each row is built from its own Plex type.
    */
-  async onDeck(): Promise<SType[]> {
+  async onDeck(): Promise<LibrarySearchItem[]> {
     const key = this._buildQueryKey(`/library/sections/${this.key}/onDeck`);
-    return fetchItems(this.server, key, undefined, this.SECTION_TYPE, this);
+    return fetchLibrarySearchItems(this.server, key, this);
   }
 
   /**
@@ -2893,6 +2895,12 @@ export class MovieSection extends LibrarySection<Movie> {
   async recentlyAddedMovies(maxResults = 50): Promise<Movie[]> {
     return this.recentlyAdded(maxResults, 'movie');
   }
+
+  /** Returns the in-progress movies on deck for this library section. */
+  override async onDeck(): Promise<Movie[]> {
+    const key = this._buildQueryKey(`/library/sections/${this.key}/onDeck`);
+    return fetchItems(this.server, key, undefined, Movie, this);
+  }
 }
 
 export class ShowSection extends LibrarySection<Show> {
@@ -2980,14 +2988,31 @@ export class ShowSection extends LibrarySection<Show> {
   override async recentlyAdded(maxResults = 50): Promise<Show[]> {
     return this.recentlyAddedShows(maxResults);
   }
+
+  /** Returns the in-progress or next episodes on deck for this library section. */
+  override async onDeck(): Promise<Episode[]> {
+    const key = this._buildQueryKey(`/library/sections/${this.key}/onDeck`);
+    return fetchItems(this.server, key, undefined, Episode, this);
+  }
 }
 
-export class MusicSection extends LibrarySection<Track> {
+/**
+ * Music library section. Plex lists artists from the section root, so `all()`,
+ * `get()`, `search()`, and `recentlyAdded()` return {@link Artist} unless a
+ * `libtype` such as `album` or `track` is passed.
+ */
+export class MusicSection extends LibrarySection<Artist> {
   static override TYPE = 'artist';
   static override TAG = 'Directory';
   override METADATA_TYPE = 'track' as const;
   override CONTENT_TYPE = 'audio';
-  override readonly SECTION_TYPE = Track;
+  override readonly SECTION_TYPE = Artist;
+
+  /** Returns the in-progress tracks on deck for this library section. */
+  override async onDeck(): Promise<Track[]> {
+    const key = this._buildQueryKey(`/library/sections/${this.key}/onDeck`);
+    return fetchItems(this.server, key, undefined, Track, this);
+  }
 
   /** Returns a list of Album objects in this section. */
   async albums(): Promise<Album[]> {
@@ -3460,8 +3485,8 @@ export class Collections<
   declare ratingCount?: number;
   declare userRating?: number;
   declare thumb: string;
-  declare addedAt: number;
-  declare updatedAt: number;
+  declare addedAt: Date;
+  declare updatedAt: Date;
   declare childCount: number;
   declare maxYear?: string;
   declare minYear?: string;
@@ -3572,7 +3597,11 @@ export class Collections<
    * Returns a list of all items in the collection.
    */
   async items(): Promise<CollectionVideoType[]> {
-    const { itemClass } = this;
+    // Music collections hold artists, albums, or tracks, so the subtype is more
+    // specific than the section listing class.
+    const itemClass =
+      (classForLibtype(this.subtype) as CollectionItemClass<CollectionVideoType> | undefined) ??
+      this.itemClass;
     if (!itemClass) {
       throw new Error('Cannot fetch collection items without a collection item class.');
     }
@@ -3821,8 +3850,8 @@ export class Collections<
     this.ratingCount = data.ratingCount;
     this.userRating = data.userRating;
     this.thumb = data.thumb;
-    this.addedAt = data.addedAt;
-    this.updatedAt = data.updatedAt;
+    this.addedAt = new Date(data.addedAt * 1000);
+    this.updatedAt = new Date(data.updatedAt * 1000);
     this.childCount = Number(data.childCount ?? data.size ?? '0');
     this.maxYear = data.maxYear;
     this.minYear = data.minYear;

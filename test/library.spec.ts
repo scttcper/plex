@@ -1,7 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   Common,
@@ -240,6 +240,42 @@ it('should get movie section on deck items', async () => {
   const onDeck = await section.onDeck();
   // On deck may be empty if nothing is in progress, that's OK
   expect(Array.isArray(onDeck)).toBe(true);
+});
+
+describe('show section on deck', () => {
+  let showSection: ShowSection;
+  let episode: Episode;
+
+  beforeAll(async () => {
+    const library = await plex.library();
+    showSection = await library.section<ShowSection>('TV Shows');
+    episode = first(await showSection.searchEpisodes({ title: 'Reapercussions' }));
+    assertDefined(episode.duration);
+    assertDefined(episode.ratingKey);
+    // Stop partway through so Plex puts the episode on deck.
+    const params = new URLSearchParams({
+      duration: episode.duration.toString(),
+      identifier: 'com.plexapp.plugins.library',
+      key: episode.key,
+      ratingKey: episode.ratingKey,
+      state: 'stopped',
+      time: '120000',
+    });
+    await plex.query({ path: `/:/timeline?${params.toString()}` });
+  });
+
+  afterAll(async () => {
+    await episode.markUnwatched();
+  });
+
+  it('should return on deck episodes instead of shows', async () => {
+    const onDeck = await showSection.onDeck();
+    const item = first(onDeck.filter(deckItem => deckItem.ratingKey === episode.ratingKey));
+
+    expect(item).toBeInstanceOf(Episode);
+    expect(item.viewOffset).toBe(120_000);
+    expect(item.grandparentTitle).toBe('The 100');
+  });
 });
 
 it('should get movie section recently added items', async () => {

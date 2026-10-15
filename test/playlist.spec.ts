@@ -35,6 +35,9 @@ afterEach(async () => {
 it('should create a playlist and add/remove an item', async () => {
   playlist = await Playlist.create(plex, 'my playlist', { items: [buckBunny] });
   expect(playlist.ratingKey).toBeDefined();
+  // Plex sends unix seconds; parsing them as milliseconds lands in 1970.
+  assertDefined(playlist.addedAt);
+  expect(Math.abs(playlist.addedAt.getTime() - Date.now())).toBeLessThan(86_400_000);
 
   await playlist.addItems([ghostbusters]);
 

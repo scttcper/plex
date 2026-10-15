@@ -1,18 +1,29 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { Collections, type MovieSection, PlexServer } from '../src/index.ts';
+import {
+  Artist,
+  Collections,
+  type MovieSection,
+  type MusicSection,
+  PlexServer,
+  Track,
+} from '../src/index.ts';
 
-import { assertDefined } from './assertions.ts';
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
 let movieSection: MovieSection;
+let musicSection: MusicSection;
 
 const TEST_COLLECTION_NAME = '__test_collection__';
 
 /** Clean up any leftover test collections */
 async function cleanupTestCollections() {
-  const collections = await movieSection.collections();
+  const collections = [
+    ...(await movieSection.collections()),
+    ...(await musicSection.collections()),
+  ];
   for (const c of collections) {
     if (c.title === TEST_COLLECTION_NAME) {
       await plex.query({
@@ -27,6 +38,7 @@ beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
   movieSection = await library.section<MovieSection>('Movies');
+  musicSection = await library.section<MusicSection>('Music');
   await cleanupTestCollections();
 });
 
@@ -49,6 +61,10 @@ describe('Collections', () => {
     expect(collection.title).toBeTruthy();
     expect(typeof collection.smart).toBe('boolean');
     expect(typeof collection.childCount).toBe('number');
+    // Plex sends unix seconds, other models expose them as dates.
+    expect(collection.addedAt).toBeInstanceOf(Date);
+    expect(collection.addedAt.getFullYear()).toBeGreaterThan(2000);
+    expect(collection.updatedAt.getTime()).toBeGreaterThanOrEqual(collection.addedAt.getTime());
   });
 
   it('should get items from a collection', async () => {
@@ -106,6 +122,45 @@ describe('Collections', () => {
     const remaining = await movieSection.collections();
     const found = remaining.find(c => c.title === TEST_COLLECTION_NAME);
     expect(found).toBeUndefined();
+  });
+
+  it('should return artists from a music artist collection', async () => {
+    const artist = first(await musicSection.searchArtists({ title: 'Ladytron' }));
+    const collection = await musicSection.createCollection(TEST_COLLECTION_NAME, [artist]);
+
+    try {
+      const items = await collection.items();
+
+      expect(collection.subtype).toBe('artist');
+      expect(first(items)).toBeInstanceOf(Artist);
+      expect(first(items).ratingKey).toBe(artist.ratingKey);
+    } finally {
+      await cleanupTestCollections();
+    }
+  });
+
+  it('should return tracks from a music track collection', async () => {
+    const track = first(await musicSection.searchTracks({ title: 'Evil' }));
+    // createCollection uses the section type, so build a track collection directly.
+    const params = new URLSearchParams({
+      sectionId: musicSection.key,
+      smart: '0',
+      title: TEST_COLLECTION_NAME,
+      type: '10',
+      uri: `${plex._uriRoot()}/library/metadata/${track.ratingKey}`,
+    });
+    await plex.query({ path: `/library/collections?${params.toString()}`, method: 'post' });
+
+    try {
+      const collection = await musicSection.collection(TEST_COLLECTION_NAME);
+      const items = await collection.items();
+
+      expect(collection.subtype).toBe('track');
+      expect(first(items)).toBeInstanceOf(Track);
+      expect(first(items).ratingKey).toBe(track.ratingKey);
+    } finally {
+      await cleanupTestCollections();
+    }
   });
 
   it('should reject creating a collection with no items', async () => {
