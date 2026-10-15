@@ -285,10 +285,7 @@ const CONTAINER_SECTION_FIELDS = [
  * Child listings such as `/library/metadata/:id/children` put the library section on the
  * container instead of each item. Copy it down so items can still find their section.
  */
-function withContainerSection(
-  items: PlexItemData[],
-  container: PlexItemContainer,
-): PlexItemData[] {
+function withContainerSection(items: PlexItemData[], container: PlexItemContainer): PlexItemData[] {
   const inherited: PlexItemData = {};
   for (const field of CONTAINER_SECTION_FIELDS) {
     if (container[field] !== undefined) {
