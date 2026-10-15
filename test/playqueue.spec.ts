@@ -125,6 +125,21 @@ describe('PlayQueue Retrieval', () => {
 });
 
 describe('PlayQueue Items Management', () => {
+  it('should play the start item of a new PlayQueue', async () => {
+    const startItem = itemAt(episodes, 1);
+    const created = await PlayQueue.create(plex, episodes, { startItem });
+    expect(created.playQueueSelectedItemOffset).toBe(1);
+    const client = new PlexClient({ server: plex });
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+
+    await client.playMedia(created);
+
+    expect(sendCommand).toHaveBeenCalledWith(
+      'playback/playMedia',
+      expect.objectContaining({ key: startItem.key, type: 'video' }),
+    );
+  });
+
   it('should play the selected item from a window that does not contain it', async () => {
     const created = await PlayQueue.create(plex, episodes);
     const selected = first(created.items);

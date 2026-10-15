@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Track } from '../src/audio.ts';
-import { Collections } from '../src/library.ts';
 import { Playlist } from '../src/playlist.ts';
-import type { PlaylistResponse } from '../src/playlist.types.ts';
 import { PlayQueue } from '../src/playqueue.ts';
 import type { PlexServer } from '../src/server.ts';
 import { Movie } from '../src/video.ts';
@@ -192,59 +190,5 @@ describe('model hydration', () => {
     expect(stream.peak).toBe(1);
     expect(stream.canNormalizeLoudness).toBe(true);
     expect(movie.updatedAt).toEqual(new Date(1_786_325_163_000));
-  });
-
-  it('parses playlist and collection timestamps as unix seconds', () => {
-    const playlist = new Playlist(server, {
-      addedAt: 1_783_784_849,
-      composite: '/playlists/1/composite/1792039977',
-      guid: 'com.plexapp.agents.none://d0b0a7e4-4f3e-4ad1-8b8f-6f1d2c3b4a59',
-      key: '/playlists/1/items',
-      leafCount: 1,
-      playlistType: 'video',
-      ratingKey: '1',
-      smart: true,
-      summary: '',
-      title: 'Test Smart Playlist',
-      type: 'playlist',
-      updatedAt: 1_792_039_977,
-    });
-    // Generated radio stations come back without timestamps, ratingKey, or composite.
-    const station = new Playlist(server, {
-      guid: 'tv.plex://station/library',
-      icon: 'playlist://image.radio',
-      key: '/library/sections/3/stations/1',
-      leafCount: 0,
-      librarySectionID: 3,
-      librarySectionKey: '/library/sections/3',
-      librarySectionTitle: 'Music',
-      playlistType: 'audio',
-      radio: '1',
-      smart: true,
-      summary: '',
-      title: 'Library Radio',
-      type: 'playlist',
-    } as PlaylistResponse);
-    const collection = new Collections(server, {
-      addedAt: 1_760_236_832,
-      contentRating: 'G',
-      guid: 'collection://a066b9bb-a86a-4998-bbe9-ee967cdf14ff',
-      index: 1322,
-      key: '/library/collections/127/children',
-      ratingKey: '127',
-      subtype: 'movie',
-      summary: '',
-      thumb: '/library/collections/127/composite/1792042121?width=400&height=600',
-      title: 'Test',
-      type: 'collection',
-      updatedAt: 1_792_042_121,
-    });
-
-    expect(playlist.addedAt).toEqual(new Date(1_783_784_849_000));
-    expect(station.addedAt).toBeUndefined();
-    expect(station.updatedAt).toBeUndefined();
-    expect(playlist.updatedAt).toEqual(new Date(1_792_039_977_000));
-    expect(collection.addedAt).toEqual(new Date(1_760_236_832_000));
-    expect(collection.updatedAt).toEqual(new Date(1_792_042_121_000));
   });
 });

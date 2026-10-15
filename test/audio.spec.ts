@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { Artist } from '../src/audio.ts';
+import { Artist, Track } from '../src/audio.ts';
 import type { MusicSection } from '../src/library.ts';
 import { Playlist } from '../src/playlist.ts';
 import type { PlexServer } from '../src/server.ts';
@@ -54,6 +54,9 @@ describe('Audio Class Tests', () => {
     expect(recentlyAdded.every(item => item instanceof Artist)).toBe(true);
     expect(artist).toBeInstanceOf(Artist);
     expect(artist.key).toBe(`/library/metadata/${artist.ratingKey}`);
+    const tracks = await musicSection.all({ libtype: 'track' });
+    expect(tracks.length).toBeGreaterThan(0);
+    expect(tracks.every(item => item instanceof Track)).toBe(true);
     // Track objects built from artist rows sent these to `/children/...` and got a 400.
     expect(Array.isArray(await artist.hubs())).toBe(true);
     expect(Array.isArray(await artist.extras())).toBe(true);
@@ -89,7 +92,7 @@ describe('Audio Class Tests', () => {
     const stations = await musicSection.stations();
 
     expect(stations.length).toBeGreaterThan(0);
-    expect(stations[0]).toBeInstanceOf(Playlist);
+    expect(first(stations)).toBeInstanceOf(Playlist);
     expect(first(stations).radio).toBe(true);
     expect(first(stations).playlistType).toBe('audio');
     // Generated stations have no timestamps.

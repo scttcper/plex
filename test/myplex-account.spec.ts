@@ -48,6 +48,26 @@ it('reads account users, pending invites, and sharing sections', async () => {
   expect(typeof userState.viewOffset).toBe('number');
 }, 20_000);
 
+it("lists the server's own device with its version and token", async () => {
+  const plex = await createClient();
+
+  const device = (await account.devices()).find(
+    candidate => candidate.clientIdentifier === plex.machineIdentifier,
+  );
+
+  assertDefined(device);
+  expect(device.product).toBe('Plex Media Server');
+  expect(typeof device.id).toBe('number');
+  // The v2 device list leaves versions out, they come from devices.json.
+  expect(device.version).toBe(plex.version);
+  expect(device.productVersion).toBe(plex.version);
+  expect(typeof device.token).toBe('string');
+  expect(Object.keys(device)).not.toContain('token');
+  expect(typeof device.presence).toBe('boolean');
+  expect(device.connections.length).toBeGreaterThan(0);
+  expect(device.createdAt.getTime()).toBeLessThan(Date.now());
+});
+
 it('searches Plex Discover and reads account watch state', async () => {
   const [movie] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'movie' });
   assertDefined(movie);

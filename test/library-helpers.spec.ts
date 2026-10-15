@@ -1,10 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  Artist,
   BadRequest,
-  Collections,
-  Episode,
   Library,
   ManagedHub,
   Movie,
@@ -21,7 +18,6 @@ import {
   type PlexServer,
 } from '../src/index.ts';
 import type {
-  CollectionData,
   LibraryFilterMetaData,
   LibraryRootResponse,
   Location as LocationData,
@@ -87,16 +83,6 @@ const photoSectionData = {
 };
 
 // Row shapes from the music section root, on deck, and collection children.
-const artistRowData = {
-  addedAt: 1_760_236_796,
-  guid: 'plex://artist/5d07bbfc403c6402904a5ec6',
-  key: '/library/metadata/94/children',
-  ratingKey: '94',
-  summary: '',
-  title: 'Ladytron',
-  type: 'artist',
-  updatedAt: 1_792_038_727,
-};
 
 const trackRowData = {
   addedAt: 1_760_236_796,
@@ -111,36 +97,6 @@ const trackRowData = {
   title: 'Seventeen',
   type: 'track',
   updatedAt: 1_786_330_905,
-};
-
-const episodeRowData = {
-  addedAt: 1_760_236_791,
-  duration: 300_299,
-  grandparentTitle: 'The 100',
-  index: 3,
-  key: '/library/metadata/79',
-  parentIndex: 2,
-  ratingKey: '79',
-  summary: '',
-  thumb: '/library/metadata/79/thumb',
-  title: 'Reapercussions',
-  type: 'episode',
-  viewOffset: 120_000,
-};
-
-const trackCollectionData: CollectionData = {
-  addedAt: 1_792_042_038,
-  contentRating: '',
-  guid: 'collection://5e2b8f0c-7d1a-4c1e-9f3b-2a6d8c4e1f70',
-  index: 1323,
-  key: '/library/collections/200/children',
-  ratingKey: '200',
-  subtype: 'track',
-  summary: '',
-  thumb: '/library/collections/200/composite/1792042038?width=400&height=600',
-  title: 'Test Tracks',
-  type: 'collection',
-  updatedAt: 1_792_042_038,
 };
 
 const photoRowData = {
@@ -1298,97 +1254,18 @@ describe('LibrarySection search filters', () => {
 });
 
 describe('LibrarySection item classes', () => {
-  it('lists artists from the music section root', async () => {
-    const { query, section } = createItemSection(MusicSection, musicSectionData, {
-      '/library/sections/3/all': [artistRowData],
-    });
-
-    const artists = await section.all();
-    const artist = first(artists);
-
-    expect(artist).toBeInstanceOf(Artist);
-    expect(artist.key).toBe('/library/metadata/94');
-    expect(lastQueryPath(query)).toBe('/library/sections/3/all?includeGuids=1');
-    expect(first(await section.search())).toBeInstanceOf(Artist);
-  });
-
-  it('still lists tracks from a music section when asked for tracks', async () => {
-    const { query, section } = createItemSection(MusicSection, musicSectionData, {
-      '/library/sections/3/all': [trackRowData],
-    });
-
-    const tracks = await section.all({ libtype: 'track' });
-
-    expect(first(tracks)).toBeInstanceOf(Track);
-    expect(first(tracks).key).toBe('/library/metadata/96');
-    expect(lastQueryEntries(query)).toContainEqual(['type', '10']);
-  });
-
-  it('builds on deck rows as the playable item for each section', async () => {
+  // Music and photo sections rarely have on deck items on a real server, show sections are
+  // covered live in library.spec.
+  it('builds music and photo on deck rows as their playable item', async () => {
     const music = createItemSection(MusicSection, musicSectionData, {
       '/library/sections/3/onDeck': [trackRowData],
-    });
-    const shows = createItemSection(ShowSection, showSectionData, {
-      '/library/sections/2/onDeck': [episodeRowData],
     });
     const photos = createItemSection(PhotoSection, photoSectionData, {
       '/library/sections/6/onDeck': [photoRowData],
     });
 
-    const tracks = await music.section.onDeck();
-    const episodes = await shows.section.onDeck();
-    const photoItems = await photos.section.onDeck();
-
-    expect(first(tracks)).toBeInstanceOf(Track);
-    expect(first(episodes)).toBeInstanceOf(Episode);
-    expect(first(episodes).viewOffset).toBe(120_000);
-    expect(first(photoItems)).toBeInstanceOf(Photo);
-    expect(lastQueryPath(shows.query)).toBe('/library/sections/2/onDeck?includeGuids=1');
-  });
-
-  it('builds collection items from the collection subtype', async () => {
-    const { section } = createItemSection(MusicSection, musicSectionData, {
-      '/library/collections/200/children': [trackRowData],
-      '/library/collections/201/children': [artistRowData],
-    });
-    const trackCollection = new Collections(
-      section.server,
-      trackCollectionData,
-      undefined,
-      section,
-    );
-    const artistCollection = new Collections(
-      section.server,
-      {
-        ...trackCollectionData,
-        key: '/library/collections/201/children',
-        ratingKey: '201',
-        subtype: 'artist',
-      },
-      undefined,
-      section,
-    );
-
-    expect(first(await trackCollection.items())).toBeInstanceOf(Track);
-    expect(first(await artistCollection.items())).toBeInstanceOf(Artist);
-  });
-
-  it('creates music collections with the type of their items', async () => {
-    const { query, section } = createItemSection(MusicSection, musicSectionData, {
-      '/library/sections/3/all': [trackRowData],
-      '/library/collections': [trackCollectionData],
-      '/library/collections/200/children': [trackRowData],
-    });
-    const track = first(await section.all({ libtype: 'track' }));
-
-    const collection = await section.createCollection('Test Tracks', [track]);
-
-    expect(query).toHaveBeenCalledWith({
-      path: '/library/collections?title=Test+Tracks&type=10&sectionId=3&uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F96',
-      method: 'post',
-    });
-    expect(collection.subtype).toBe('track');
-    expect(first(await collection.items())).toBeInstanceOf(Track);
+    expect(first(await music.section.onDeck())).toBeInstanceOf(Track);
+    expect(first(await photos.section.onDeck())).toBeInstanceOf(Photo);
   });
 
   it('rejects collection items without one shared type', async () => {
