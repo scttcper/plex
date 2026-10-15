@@ -1,5 +1,4 @@
 import { FetchError, ofetch } from 'ofetch';
-import { parseStringPromise } from 'xml2js';
 
 import {
   AccountOptOut,
@@ -47,6 +46,7 @@ import {
   type MediaContainer,
   parseOptionalNumber,
   parsePlexBoolean,
+  parsePlexXml,
 } from './util.ts';
 
 export interface AccountQueryOptions {
@@ -885,7 +885,7 @@ export class MyPlexAccount {
 
   /**
    * Send an authenticated request to plex.tv or another Plex service. JSON responses are
-   * parsed, XML responses go through xml2js, and `responseType: 'text'` returns the body.
+   * parsed, XML responses are converted to the same shape, and `responseType: 'text'` returns the body.
    */
   async query(options: AccountQueryOptions & { responseType: 'text' }): Promise<string>;
   async query<T = any>(options: AccountQueryOptions & { responseType?: never }): Promise<T>;
@@ -930,14 +930,12 @@ export class MyPlexAccount {
       return undefined;
     }
 
-    const trimmedBody = responseBody.trimStart();
-    if (url.includes('xml') || trimmedBody.startsWith('<')) {
-      const xml = await parseStringPromise(responseBody);
-      return xml;
+    // Friends, invites and shared servers only exist on plex.tv's XML endpoints.
+    if (responseBody.trimStart().startsWith('<')) {
+      return parsePlexXml(responseBody);
     }
 
-    const res = JSON.parse(responseBody);
-    return res;
+    return JSON.parse(responseBody);
   }
 
   private async _setPlayed(item: WatchlistTarget, played: boolean): Promise<this> {
@@ -1393,16 +1391,16 @@ export class MyPlexServerShare {
 
   constructor(account: MyPlexAccount, data: MyPlexServerShareData, accountID?: number) {
     this.account = account;
-    this.id = parseOptionalNumber(data.$.id);
-    this.accountID = accountID ?? parseOptionalNumber(data.$.accountID);
-    this.serverId = parseOptionalNumber(data.$.serverId);
-    this.machineIdentifier = data.$.machineIdentifier;
-    this.name = data.$.name;
-    this.lastSeenAt = data.$.lastSeenAt ? new Date(data.$.lastSeenAt) : undefined;
-    this.numLibraries = parseOptionalNumber(data.$.numLibraries);
-    this.allLibraries = parsePlexBoolean(data.$.allLibraries);
-    this.owned = parsePlexBoolean(data.$.owned);
-    this.pending = parsePlexBoolean(data.$.pending);
+    this.id = parseOptionalNumber(data.id);
+    this.accountID = accountID ?? parseOptionalNumber(data.accountID);
+    this.serverId = parseOptionalNumber(data.serverId);
+    this.machineIdentifier = data.machineIdentifier;
+    this.name = data.name;
+    this.lastSeenAt = data.lastSeenAt ? new Date(data.lastSeenAt) : undefined;
+    this.numLibraries = parseOptionalNumber(data.numLibraries);
+    this.allLibraries = parsePlexBoolean(data.allLibraries);
+    this.owned = parsePlexBoolean(data.owned);
+    this.pending = parsePlexBoolean(data.pending);
   }
   /** History for this user on the shared server. */
   async history(options: HistoryOptions = {}): Promise<HistoryResult[]> {
@@ -1424,11 +1422,11 @@ export class MyPlexServerShare {
     ).replace('{serverId}', String(this.id));
     const data = await this.account.query<{
       MediaContainer?: {
-        SharedServer?: Array<{ Section?: Array<{ $: SharedLibrarySectionData }> }>;
+        SharedServer?: Array<{ Section?: SharedLibrarySectionData[] }>;
       };
     }>({ url });
     return (data.MediaContainer?.SharedServer?.[0]?.Section ?? []).map(
-      section => new SharedLibrarySection(this, section.$),
+      section => new SharedLibrarySection(this, section),
     );
   }
 
@@ -1469,26 +1467,26 @@ export class MyPlexUser {
 
   constructor(account: MyPlexAccount, data: MyPlexUserData) {
     this.account = account;
-    this.allowCameraUpload = parsePlexBoolean(data.$.allowCameraUpload);
-    this.allowChannels = parsePlexBoolean(data.$.allowChannels);
-    this.allowSync = parsePlexBoolean(data.$.allowSync);
-    this.email = data.$.email;
-    this.filterAll = data.$.filterAll;
-    this.filterMovies = data.$.filterMovies;
-    this.filterMusic = data.$.filterMusic;
-    this.filterPhotos = data.$.filterPhotos;
-    this.filterTelevision = data.$.filterTelevision;
-    this.home = parsePlexBoolean(data.$.home);
-    this.id = parseOptionalNumber(data.$.id);
-    this.protected = parsePlexBoolean(data.$.protected);
-    this.recommendationsPlaylistId = data.$.recommendationsPlaylistId;
-    this.restricted = data.$.restricted;
+    this.allowCameraUpload = parsePlexBoolean(data.allowCameraUpload);
+    this.allowChannels = parsePlexBoolean(data.allowChannels);
+    this.allowSync = parsePlexBoolean(data.allowSync);
+    this.email = data.email;
+    this.filterAll = data.filterAll;
+    this.filterMovies = data.filterMovies;
+    this.filterMusic = data.filterMusic;
+    this.filterPhotos = data.filterPhotos;
+    this.filterTelevision = data.filterTelevision;
+    this.home = parsePlexBoolean(data.home);
+    this.id = parseOptionalNumber(data.id);
+    this.protected = parsePlexBoolean(data.protected);
+    this.recommendationsPlaylistId = data.recommendationsPlaylistId;
+    this.restricted = data.restricted;
     this.servers = (data.Server ?? []).map(
       server => new MyPlexServerShare(account, server, this.id),
     );
-    this.thumb = data.$.thumb;
-    this.title = data.$.title;
-    this.username = data.$.username;
+    this.thumb = data.thumb;
+    this.title = data.title;
+    this.username = data.username;
   }
 
   /** Find a server shared with this user by name or machine identifier. */
@@ -1523,10 +1521,10 @@ export class MyPlexUser {
       encodeURIComponent(machineIdentifier),
     );
     const data = await this.account.query<{
-      MediaContainer?: { SharedServer?: Array<{ $: { userID?: string; accessToken?: string } }> };
+      MediaContainer?: { SharedServer?: Array<{ userID?: string; accessToken?: string }> };
     }>({ url });
-    return data.MediaContainer?.SharedServer?.find(server => Number(server.$.userID) === this.id)?.$
-      .accessToken;
+    return data.MediaContainer?.SharedServer?.find(server => Number(server.userID) === this.id)
+      ?.accessToken;
   }
 
   /** Remove this user from the account's friends. */
@@ -1560,18 +1558,18 @@ export class MyPlexInvite {
   constructor(account: MyPlexAccount, data: MyPlexInviteData, direction: MyPlexInviteDirection) {
     this.account = account;
     this.direction = direction;
-    this.createdAt = data.$.createdAt ? new Date(data.$.createdAt) : undefined;
-    this.email = data.$.email;
-    this.friend = parsePlexBoolean(data.$.friend);
-    this.friendlyName = data.$.friendlyName;
-    this.home = parsePlexBoolean(data.$.home);
-    this.id = parseOptionalNumber(data.$.id);
-    this.server = parsePlexBoolean(data.$.server);
+    this.createdAt = data.createdAt ? new Date(data.createdAt) : undefined;
+    this.email = data.email;
+    this.friend = parsePlexBoolean(data.friend);
+    this.friendlyName = data.friendlyName;
+    this.home = parsePlexBoolean(data.home);
+    this.id = parseOptionalNumber(data.id);
+    this.server = parsePlexBoolean(data.server);
     this.servers = (data.Server ?? []).map(
       server => new MyPlexServerShare(account, server, this.id),
     );
-    this.thumb = data.$.thumb;
-    this.username = data.$.username;
+    this.thumb = data.thumb;
+    this.username = data.username;
   }
 
   /** Accept this received invite. */

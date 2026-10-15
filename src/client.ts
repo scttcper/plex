@@ -1,7 +1,6 @@
 import { URL, URLSearchParams } from 'node:url';
 
 import { ofetch } from 'ofetch';
-import { parseStringPromise } from 'xml2js';
 
 import type { Playable } from './base/playable.ts';
 import type {
@@ -28,7 +27,12 @@ import type { Playlist } from './playlist.ts';
 import { PlayQueue } from './playqueue.ts';
 import type { PlayQueueSource } from './playqueue.types.ts';
 import type { PlexServer } from './server.ts';
-import { parseOptionalNumber, parsePlexBoolean, serverAddressParams } from './util.ts';
+import {
+  parseOptionalNumber,
+  parsePlexBoolean,
+  parsePlexXml,
+  serverAddressParams,
+} from './util.ts';
 
 /**
  * A single timeline entry reported by a Plex player.
@@ -210,7 +214,7 @@ export class PlexClient {
       responseType: 'text',
       retry: 0,
     });
-    return (await parseClientResponse(body)) as T;
+    return parseClientResponse(body) as T;
   }
 
   /** Build a URL for this client, optionally including its token. */
@@ -631,32 +635,15 @@ function clientMediaType(item: Playable | Playlist): ClientMediaType {
   return 'video';
 }
 
-type XmlNode = { $?: Record<string, string> } & Record<string, unknown>;
-
-/** Convert xml2js output into the attribute and child-array shape Plex uses for JSON. */
-function normalizeXml(node: XmlNode): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...node.$ };
-  for (const [key, value] of Object.entries(node)) {
-    if (key !== '$' && Array.isArray(value)) {
-      result[key] = value.map(child =>
-        typeof child === 'object' && child !== null ? normalizeXml(child as XmlNode) : child,
-      );
-    }
-  }
-
-  return result;
-}
-
-async function parseClientResponse(body: string | undefined): Promise<unknown> {
+function parseClientResponse(body: string | undefined): unknown {
   const text = body?.trim() ?? '';
   if (text === '') {
     return undefined;
   }
 
   if (text.startsWith('<')) {
-    let xml: Record<string, XmlNode>;
     try {
-      xml = (await parseStringPromise(text)) as Record<string, XmlNode>;
+      return parsePlexXml(text);
     } catch (error) {
       // Plex for Samsung answers successful commands with an unclosed `<Response code="200">`.
       if (/^(?:<\?xml[^>]*>\s*)?<Response\b[^>]*\bcode="200"/.test(text)) {
@@ -664,10 +651,6 @@ async function parseClientResponse(body: string | undefined): Promise<unknown> {
       }
       throw error;
     }
-
-    return Object.fromEntries(
-      Object.entries(xml).map(([key, value]) => [key, normalizeXml(value)]),
-    );
   }
 
   try {

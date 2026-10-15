@@ -1,3 +1,4 @@
+import { parseXml, XmlElement } from '@rgrove/parse-xml';
 import { stringToBase64 } from 'uint8array-extras';
 
 import { NotFound } from './exceptions.ts';
@@ -131,4 +132,29 @@ export function serverAddressParams(server: PlexServer): {
     address: url.hostname,
     port: Number(url.port || (url.protocol === 'https:' ? 443 : 80)),
   };
+}
+
+/**
+ * Parse an XML body into the shape Plex uses for JSON: attributes become properties and child
+ * elements become arrays keyed by tag name. Attribute values stay strings.
+ */
+export function parsePlexXml(text: string): Record<string, unknown> {
+  const { root } = parseXml(text);
+  return root ? { [root.name]: xmlElementToJson(root) } : {};
+}
+
+function xmlElementToJson(element: XmlElement): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...element.attributes };
+  for (const child of element.children) {
+    if (child instanceof XmlElement) {
+      const siblings = result[child.name];
+      if (Array.isArray(siblings)) {
+        siblings.push(xmlElementToJson(child));
+      } else {
+        result[child.name] = [xmlElementToJson(child)];
+      }
+    }
+  }
+
+  return result;
 }

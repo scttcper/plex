@@ -39,8 +39,8 @@ describe('shared media controls', () => {
   it('retains the user ID on shares for scoped history queries', () => {
     const account = new MyPlexAccount({ token: 'test' });
     const user = new MyPlexUser(account, {
-      $: { id: '42' },
-      Server: [{ $: { id: '7', machineIdentifier: 'server-id' } }],
+      id: '42',
+      Server: [{ id: '7', machineIdentifier: 'server-id' }],
     });
     expect(first(user.servers).accountID).toBe(42);
   });

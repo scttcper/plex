@@ -1,3 +1,4 @@
+import { XmlError } from '@rgrove/parse-xml';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ClientTimeline, PlexClient } from '../src/client.ts';
@@ -166,7 +167,7 @@ describe('PlexClient', () => {
       .mockResolvedValue(new Response('<MediaContainer><Timeline state="playing">'));
 
     try {
-      await expect(client.timelines()).rejects.toThrow('Unclosed root tag');
+      await expect(client.timelines()).rejects.toBeInstanceOf(XmlError);
     } finally {
       fetchMock.mockRestore();
     }

@@ -37,7 +37,7 @@ describe('account response parsing', () => {
     vi.mocked(ofetch).mockResolvedValue('<MediaContainer size="0"/>');
     const account = new MyPlexAccount({ token: 'test' });
     expect(await account.query({ url: 'https://plex.tv/devices.xml' })).toEqual({
-      MediaContainer: { $: { size: '0' } },
+      MediaContainer: { size: '0' },
     });
   });
 });

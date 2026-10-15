@@ -170,68 +170,62 @@ export interface WebLogin {
 }
 
 export interface MyPlexServerShareData {
-  $: {
-    id?: string;
-    accountID?: string;
-    serverId?: string;
-    machineIdentifier?: string;
-    name?: string;
-    lastSeenAt?: string;
-    numLibraries?: string;
-    allLibraries?: PlexBoolean;
-    owned?: PlexBoolean;
-    pending?: PlexBoolean;
-  };
+  id?: string;
+  accountID?: string;
+  serverId?: string;
+  machineIdentifier?: string;
+  name?: string;
+  lastSeenAt?: string;
+  numLibraries?: string;
+  allLibraries?: PlexBoolean;
+  owned?: PlexBoolean;
+  pending?: PlexBoolean;
 }
 
 export interface MyPlexUserData {
-  $: {
-    allowCameraUpload?: PlexBoolean;
-    allowChannels?: PlexBoolean;
-    allowSync?: PlexBoolean;
-    email?: string;
-    filterAll?: string;
-    filterMovies?: string;
-    filterMusic?: string;
-    filterPhotos?: string;
-    filterTelevision?: string;
-    home?: PlexBoolean;
-    id?: string;
-    protected?: PlexBoolean;
-    recommendationsPlaylistId?: string;
-    restricted?: string;
-    thumb?: string;
-    title?: string;
-    username?: string;
-  };
+  allowCameraUpload?: PlexBoolean;
+  allowChannels?: PlexBoolean;
+  allowSync?: PlexBoolean;
+  email?: string;
+  filterAll?: string;
+  filterMovies?: string;
+  filterMusic?: string;
+  filterPhotos?: string;
+  filterTelevision?: string;
+  home?: PlexBoolean;
+  id?: string;
+  protected?: PlexBoolean;
+  recommendationsPlaylistId?: string;
+  restricted?: string;
+  thumb?: string;
+  title?: string;
+  username?: string;
   Server?: MyPlexServerShareData[];
 }
 
 export interface MyPlexInviteData {
-  $: {
-    createdAt?: string;
-    email?: string;
-    friend?: PlexBoolean;
-    friendlyName?: string;
-    home?: PlexBoolean;
-    id?: string;
-    server?: PlexBoolean;
-    thumb?: string;
-    username?: string;
-  };
+  createdAt?: string;
+  email?: string;
+  friend?: PlexBoolean;
+  friendlyName?: string;
+  home?: PlexBoolean;
+  id?: string;
+  server?: PlexBoolean;
+  thumb?: string;
+  username?: string;
   Server?: MyPlexServerShareData[];
 }
 
 export interface MyPlexUsersResponse {
   MediaContainer: {
-    $: Record<string, string>;
+    size?: string;
     User?: MyPlexUserData[];
   };
 }
 
 export interface MyPlexInvitesResponse {
   MediaContainer: {
-    $: Record<string, string>;
+    size?: string;
     Invite?: MyPlexInviteData[];
   };
 }

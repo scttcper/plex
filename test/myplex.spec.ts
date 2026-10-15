@@ -134,30 +134,26 @@ describe('MyPlexResource IPv6 connections', () => {
 
 const usersResponse = {
   MediaContainer: {
-    $: { size: '1' },
+    size: '1',
     User: [
       {
-        $: {
-          allowCameraUpload: '0',
-          allowChannels: '1',
-          allowSync: '1',
-          email: 'friend@example.com',
-          home: '0',
-          id: '42',
-          protected: '0',
-          title: 'Friendly Name',
-          username: 'friend',
-        },
+        allowCameraUpload: '0',
+        allowChannels: '1',
+        allowSync: '1',
+        email: 'friend@example.com',
+        home: '0',
+        id: '42',
+        protected: '0',
+        title: 'Friendly Name',
+        username: 'friend',
         Server: [
           {
-            $: {
-              id: '7',
-              machineIdentifier: 'machine-id',
-              name: 'Shared Server',
-              allLibraries: '0',
-              owned: '1',
-              pending: '0',
-            },
+            id: '7',
+            machineIdentifier: 'machine-id',
+            name: 'Shared Server',
+            allLibraries: '0',
+            owned: '1',
+            pending: '0',
           },
         ],
       },
@@ -167,18 +163,16 @@ const usersResponse = {
 
 const sentInvitesResponse = {
   MediaContainer: {
-    $: { size: '1' },
+    size: '1',
     Invite: [
       {
-        $: {
-          createdAt: '2026-07-11T00:00:00Z',
-          email: 'sent@example.com',
-          friend: '1',
-          home: '0',
-          id: '51',
-          server: '1',
-          username: 'sent-user',
-        },
+        createdAt: '2026-07-11T00:00:00Z',
+        email: 'sent@example.com',
+        friend: '1',
+        home: '0',
+        id: '51',
+        server: '1',
+        username: 'sent-user',
       },
     ],
   },
@@ -186,17 +180,15 @@ const sentInvitesResponse = {
 
 const receivedInvitesResponse = {
   MediaContainer: {
-    $: { size: '1' },
+    size: '1',
     Invite: [
       {
-        $: {
-          email: 'received@example.com',
-          friend: '1',
-          friendlyName: 'Received User',
-          home: '0',
-          id: '52',
-          server: '0',
-        },
+        email: 'received@example.com',
+        friend: '1',
+        friendlyName: 'Received User',
+        home: '0',
+        id: '52',
+        server: '0',
       },
     ],
   },
@@ -454,7 +446,7 @@ describe('MyPlexAccount users and invites', () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const responses = new Map<string, unknown>([
       ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
-      ['https://plex.tv/api/home/users?title=Kid+One', { User: { $: { id: '77' } } }],
+      ['https://plex.tv/api/home/users?title=Kid+One', { User: { id: '77' } }],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
