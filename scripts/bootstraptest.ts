@@ -20,7 +20,6 @@ import {
   requiredShows,
 } from './create-media.ts';
 
-const __dirname = new URL('.', import.meta.url).pathname;
 const cliArgs = process.argv.slice(2).filter(arg => arg !== '--');
 
 const { values: argv } = parseArgs({
@@ -231,10 +230,7 @@ function waitForScanCompletion({
   server: PlexServer;
 }): { listener: AlertListener; promise: Promise<void> } {
   let processedMedia = 0;
-  let resolveScan: () => void;
-  const promise = new Promise<void>(resolve => {
-    resolveScan = resolve;
-  });
+  const { promise, resolve: resolveScan } = Promise.withResolvers<void>();
 
   const listener = new AlertListener(server, data => {
     const [entry] = data.type === 'timeline' ? data.TimelineEntry : [];
@@ -291,7 +287,10 @@ async function setupAudio(audioPath: string): Promise<number> {
 
 async function setupPhotos(photoPath: string): Promise<number> {
   await mkdir(photoPath, { recursive: true });
-  await copyFile(join(__dirname, '..', 'test/data/cute_cat.jpg'), join(photoPath, 'Cute Cat.jpg'));
+  await copyFile(
+    join(import.meta.dirname, '..', 'test/data/cute_cat.jpg'),
+    join(photoPath, 'Cute Cat.jpg'),
+  );
   return 1;
 }
 
@@ -327,7 +326,7 @@ async function main() {
     const reason = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to authenticate with Plex account credentials/token: ${reason}`);
   }
-  const destination = join(__dirname, '..', argv.destination);
+  const destination = join(import.meta.dirname, '..', argv.destination);
   const mediaPath = join(destination, 'media');
   await mkdir(mediaPath, { recursive: true });
   console.log({ mediaPath });
@@ -550,9 +549,5 @@ async function main() {
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
+await main();
+process.exit(0);

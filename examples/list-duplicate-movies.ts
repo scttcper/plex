@@ -167,4 +167,5 @@ async function listDuplicateMovies() {
   console.log(`\nTotal folders recommended for removal: ${totalFoldersToRemove}`);
 }
 
-listDuplicateMovies().then(() => console.log('done'));
+await listDuplicateMovies();
+console.log('done');

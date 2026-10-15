@@ -26,10 +26,10 @@
     "build": "tsc",
     "build:docs": "pnpm --filter @ctrl/plex-typedoc exec typedoc --options ../../typedoc.json --tsconfig ../../tsconfig.json",
     "test": "vitest run",
-    "bootstraptest": "node scripts/bootstraptest.ts --create-photos",
-    "teardowntest": "node scripts/teardowntest.ts",
-    "add-media": "node scripts/add-media.ts",
-    "test-cleanup": "node scripts/test-cleanup.ts",
+    "bootstraptest": "node --env-file-if-exists=.env scripts/bootstraptest.ts --create-photos",
+    "teardowntest": "node --env-file-if-exists=.env scripts/teardowntest.ts",
+    "add-media": "node --env-file-if-exists=.env scripts/add-media.ts",
+    "test-cleanup": "node --env-file-if-exists=.env scripts/test-cleanup.ts",
     "test:types": "tsc --project test/types/tsconfig.json"
   },
   "dependencies": {

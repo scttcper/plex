@@ -14,10 +14,6 @@ async function cleanup(): Promise<void> {
 }
 
 if (import.meta.main) {
-  cleanup()
-    .then(() => process.exit(0))
-    .catch(err => {
-      console.error(err);
-      process.exit(1);
-    });
+  await cleanup();
+  process.exit(0);
 }

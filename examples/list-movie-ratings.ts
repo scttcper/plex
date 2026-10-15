@@ -28,4 +28,5 @@ async function listMovies() {
   }
 }
 
-listMovies().then(() => console.log('done'));
+await listMovies();
+console.log('done');

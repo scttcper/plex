@@ -51,10 +51,6 @@ export async function addMedia(): Promise<void> {
 }
 
 if (import.meta.main) {
-  addMedia()
-    .then(() => process.exit(0))
-    .catch(err => {
-      console.error(err);
-      process.exit(1);
-    });
+  await addMedia();
+  process.exit(0);
 }
