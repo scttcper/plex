@@ -8,6 +8,8 @@
 npm install @ctrl/plex
 ```
 
+Requires Node.js 24 or newer.
+
 ### Docs
 
 https://plex.ep.workers.dev
@@ -39,6 +41,19 @@ const library = await plex.library();
 
 // List all libraries (Movies, TV Shows, Music, etc.)
 const sections = await library.sections();
+```
+
+Identify your app. Plex lists every client by its product name and client identifier, so set
+your own before connecting and persist the identifier so Plex keeps seeing the same device.
+
+```ts
+import { setPlexHeaders } from '@ctrl/plex';
+
+setPlexHeaders({
+  product: 'My App',
+  version: '1.0.0',
+  identifier: 'replace-with-a-persisted-client-identifier',
+});
 ```
 
 Authenticate without collecting a Plex username or password. Persist the client identifier so it
@@ -94,11 +109,11 @@ const results = await section.search({ title: 'Rush Hour' });
 ###### Example 3: List all content containing a specific query
 
 ```ts
-const results = await plex.search('Arnold');
-// Each hub represents a single Hub (or category) in the PlexServer search (movie, actor, etc)
-for (const hub of results) {
-  // Log first result in each category
-  console.log(hub?.Metadata?.[0]);
+const hubs = await plex.search('Arnold');
+// Each hub is one category of results (movies, episodes, actors, ...)
+for (const hub of hubs) {
+  const [first] = await hub.items();
+  console.log(hub.title, first?.title);
 }
 ```
 
@@ -119,28 +134,46 @@ const episodes = await results[0].episodes();
 ```ts
 import { Playlist } from '@ctrl/plex';
 
-// Search for all movies with rating > 8
-const topMovies = await section.search({ hasRating: true, sort: 'rating' });
+// The ten highest rated movies
+const topMovies = await section.search({ sort: 'rating:desc', maxresults: 10 });
 
 // Create a new playlist
 const bestMovies = await Playlist.create(plex, 'Best Movies', { items: topMovies });
 ```
 
+### Upgrading from v7
+
+v8 is a large release. The full list is in the release notes, the changes most likely to affect you:
+
+- Node.js 24 or newer is required.
+- Types are strict: fields Plex can omit are optional, and `PlexServer.query()` /
+  `MyPlexAccount.query()` return `unknown` unless you pass a type argument.
+- Positional arguments became options objects, for example `connect({ timeout })`,
+  `removeItem(item, { refresh })`, `updateProgress({ time })` and `account.device({ name })`.
+- `PlexClient` commands take `{ type }` instead of a positional `mtype`, and
+  `proxyThroughServer({ server })` replaces the `_server` / `_proxyThroughServer` fields.
+- Music sections list artists by default and `onDeck()` returns episodes and tracks.
+- Audio `art` and `thumb` are server paths, use `artUrl` / `thumbUrl` for token URLs.
+- plex.tv devices come from the JSON API, `MyPlexDevice.id` is a number.
+
 ### Differences from python plex client
 
 JS is a different language and some methods of the api were not possible.
 Chaining functions with requests must be awaited mostly individually. Constructors in JS don't typically make requests
-and accessing properties normally cannot make requests either.
+and accessing properties normally cannot make requests either. Methods take options objects instead of python style
+keyword arguments, and responses are requested as JSON.
 
 ### Testing
 
 Tests are run against a real instance of plex.
 
-Setup test environment variables, create a plex account just for testing. Using a real account will break everything
+Create a plex account just for testing, using a real account will break everything. Put its credentials in a `.env`
+file at the root of the repo, the tests and scripts load it automatically.
 
 ```sh
-export PLEX_USERNAME=email
-export PLEX_PASSWORD=password
+PLEX_USERNAME=email
+PLEX_PASSWORD=password
+PLEXAPI_AUTH_SERVER_TOKEN=token
 ```
 
 Setup test content (once)
@@ -168,11 +201,9 @@ pnpm run test-cleanup
 get a claim token from https://www.plex.tv/claim/
 export PLEX_CLAIM_TOKEN=claim-token
 
-Start plex container for testing. Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
-
 #### Step 2
 
-Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
+Start the plex container for testing. Replace `/Users/scooper/gh/plex` with the path to this repo's directory.
 
 ```console
 docker run -d \
@@ -207,8 +238,8 @@ Pull latest plex container if needed
 docker pull lscr.io/linuxserver/plex:latest
 ```
 
-bootstrap plex server with test media. This assumes you have set the `PLEX_PASSWORD` and `PLEX_USERNAME` environment variables.
+bootstrap plex server with test media. This uses `PLEXAPI_AUTH_SERVER_TOKEN` from `.env`.
 
 ```console
-npx tsx scripts/bootstraptest.ts --no-docker --server-name=orbstack --password=$PLEX_PASSWORD --username=$PLEX_USERNAME
+pnpm run bootstraptest -- --no-docker --server-name=orbstack
 ```
