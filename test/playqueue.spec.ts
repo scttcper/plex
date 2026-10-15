@@ -127,13 +127,13 @@ describe('PlayQueue Retrieval', () => {
 describe('PlayQueue Items Management', () => {
   it('should play the selected item from a window that does not contain it', async () => {
     const created = await PlayQueue.create(plex, episodes);
-    const [selected, middle] = created.items;
+    const selected = first(created.items);
     const window = await PlayQueue.get(plex, created.playQueueID, {
-      center: middle.playQueueItemID,
+      center: itemAt(created.items, 1).playQueueItemID,
       window: 1,
       includeBefore: false,
     });
-    expect(window.items.map(item => item.ratingKey)).toEqual([episodes[2].ratingKey]);
+    expect(window.items.map(item => item.ratingKey)).toEqual([itemAt(episodes, 2).ratingKey]);
     expect(window.selectedItem).toBeUndefined();
     const client = new PlexClient({ server: plex });
     const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
