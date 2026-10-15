@@ -13,7 +13,7 @@ beforeAll(async () => {
   account = await createAccount();
 });
 
-it('reads account users and pending invites from Plex XML endpoints', async () => {
+it('reads account users, pending invites, and sharing sections', async () => {
   const plex = await createClient();
   const users = await account.users();
   const sentInvites = await account.pendingInvites({ includeReceived: false });

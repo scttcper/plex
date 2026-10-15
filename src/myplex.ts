@@ -23,7 +23,7 @@ import type {
   MyPlexInviteData,
   MyPlexInvitesResponse,
   MyPlexServerShareData,
-  MyPlexServerSectionsResponse,
+  MyPlexServerResponse,
   MyPlexUserData,
   MyPlexUsersResponse,
   ResourcesResponse,
@@ -96,7 +96,7 @@ export class MyPlexAccount {
   HOMEUSERCREATE = 'https://plex.tv/api/home/users?title={title}'; // post with data
   EXISTINGUSER = 'https://plex.tv/api/home/users?invitedEmail={username}'; // post with data
   FRIENDSERVERS = 'https://plex.tv/api/servers/{machineId}/shared_servers/{serverId}'; // put with data
-  PLEXSERVERS = 'https://plex.tv/api/servers/{machineId}'; // get
+  PLEXSERVERS = 'https://plex.tv/api/v2/servers/{machineId}'; // get
   FRIENDUPDATE = 'https://plex.tv/api/v2/sharings/{userId}'; // put with args, delete
   HOMEUSER = 'https://plex.tv/api/home/users/{userId}'; // delete, put
   MANAGEDHOMEUSER = 'https://plex.tv/api/v2/home/users/restricted/{userId}'; // post
@@ -450,14 +450,14 @@ export class MyPlexAccount {
   /** Return the server libraries available to account-sharing APIs. */
   async sharingSections(server: PlexServer | string): Promise<MyPlexLibraryShareSection[]> {
     const machineIdentifier = serverIdentifier(server);
-    const data = await this.query<MyPlexServerSectionsResponse>({
-      url: this.PLEXSERVERS.replace('{machineId}', machineIdentifier),
+    const data = await this.query<MyPlexServerResponse>({
+      url: this.PLEXSERVERS.replace('{machineId}', encodeURIComponent(machineIdentifier)),
     });
-    return (data.MediaContainer.Server?.[0]?.Section ?? []).map(section => ({
-      id: Number(section.$.id),
-      key: Number(section.$.key),
-      title: section.$.title,
-      type: section.$.type,
+    return (data.librarySections ?? []).map(({ id, key, title, type }) => ({
+      id,
+      key,
+      title,
+      type,
     }));
   }
 

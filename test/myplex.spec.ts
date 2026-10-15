@@ -10,7 +10,7 @@ import {
 } from '../src/myplex.ts';
 import type {
   MyPlexInvitesResponse,
-  MyPlexServerSectionsResponse,
+  MyPlexServerResponse,
   MyPlexUsersResponse,
   ResourcesResponse,
   UserStateResponse,
@@ -202,19 +202,13 @@ const receivedInvitesResponse = {
   },
 } satisfies MyPlexInvitesResponse;
 
-const serverSectionsResponse: MyPlexServerSectionsResponse = {
-  MediaContainer: {
-    $: { size: '1' },
-    Server: [
-      {
-        $: { machineIdentifier: 'machine-id' },
-        Section: [
-          { $: { id: '10', key: '1', title: 'Movies', type: 'movie' } },
-          { $: { id: '20', key: '2', title: 'TV Shows', type: 'show' } },
-        ],
-      },
-    ],
-  },
+const serverSectionsResponse: MyPlexServerResponse = {
+  machineIdentifier: 'machine-id',
+  name: 'Test Server',
+  librarySections: [
+    { id: 10, key: 1, title: 'Movies', type: 'movie' },
+    { id: 20, key: 2, title: 'TV Shows', type: 'show' },
+  ],
 };
 
 const watchlistResponse: WatchlistResponse = {
@@ -342,7 +336,7 @@ describe('MyPlexAccount users and invites', () => {
   it('invites a friend with resolved sections, permissions, and filters', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -359,7 +353,7 @@ describe('MyPlexAccount users and invites', () => {
     });
 
     expect(account.query).toHaveBeenNthCalledWith(1, {
-      url: 'https://plex.tv/api/servers/machine-id',
+      url: 'https://plex.tv/api/v2/servers/machine-id',
     });
     expect(account.query).toHaveBeenNthCalledWith(2, {
       url: 'https://plex.tv/api/servers/machine-id/shared_servers',
@@ -386,7 +380,7 @@ describe('MyPlexAccount users and invites', () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -420,7 +414,7 @@ describe('MyPlexAccount users and invites', () => {
       Server: [],
     });
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -459,7 +453,7 @@ describe('MyPlexAccount users and invites', () => {
   it('creates a managed home user and assigns library access', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
       ['https://plex.tv/api/home/users?title=Kid+One', { User: { $: { id: '77' } } }],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
@@ -528,7 +522,7 @@ describe('MyPlexAccount users and invites', () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),

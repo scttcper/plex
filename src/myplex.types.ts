@@ -236,23 +236,11 @@ export interface MyPlexInvitesResponse {
   };
 }
 
-export interface MyPlexServerSectionData {
-  $: {
-    id: string;
-    key: string;
-    type: string;
-    title: string;
-  };
-}
-
-export interface MyPlexServerSectionsResponse {
-  MediaContainer: {
-    $: Record<string, string>;
-    Server?: Array<{
-      $: Record<string, string>;
-      Section?: MyPlexServerSectionData[];
-    }>;
-  };
+/** Server from plex.tv `/api/v2/servers/{machineId}`. */
+export interface MyPlexServerResponse {
+  machineIdentifier: string;
+  name: string;
+  librarySections?: Array<{ id: number; key: number; title: string; type: string }>;
 }
 
 export interface WatchlistItemData {
