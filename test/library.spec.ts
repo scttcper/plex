@@ -104,6 +104,8 @@ it('should reload a library section without dropping its metadata', async () => 
   expect(section.title).toBe(title);
   expect(section.uuid).toBe(uuid);
   expect(section.updatedAt).toBeInstanceOf(Date);
+  expect(section.hidden).toBe(0);
+  expect(typeof section.contentChangedAt).toBe('number');
   expect((await section.search({ title: 'Bunny' })).length).toBeGreaterThan(0);
 });
 

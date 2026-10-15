@@ -12,6 +12,30 @@ export interface MetadataContainer<T extends { Metadata: unknown }> {
 
 export type PlexBoolean = boolean | 0 | 1 | '0' | '1' | 'false' | 'true';
 
+/** Parse an optional numeric Plex value. Missing and non-numeric values become undefined. */
+export function parseOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  const result = Number(value);
+  return Number.isNaN(result) ? undefined : result;
+}
+
+/** Parse a Plex unix timestamp in seconds or a date string. */
+export function parseOptionalDate(value: unknown): Date | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'number' || (typeof value === 'string' && /^\d+$/.test(value))) {
+    return new Date(Number(value) * 1000);
+  }
+
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 /** Parse the boolean shapes returned by Plex JSON APIs. */
 export function parsePlexBoolean(value: unknown, fallback = false): boolean {
   if (value === undefined || value === null || value === '') {

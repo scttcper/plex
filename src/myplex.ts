@@ -41,7 +41,12 @@ import type { PlexServer } from './server.ts';
 import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { createPlexServer } from './serverFactory.ts';
 import { PlexSonosClient, type SonosPlayerData } from './sonos.ts';
-import { encodeBase64, type MediaContainer, parsePlexBoolean } from './util.ts';
+import {
+  encodeBase64,
+  type MediaContainer,
+  parseOptionalNumber,
+  parsePlexBoolean,
+} from './util.ts';
 
 export interface AccountQueryOptions {
   url: string;
@@ -1386,13 +1391,13 @@ export class MyPlexServerShare {
 
   constructor(account: MyPlexAccount, data: MyPlexServerShareData, accountID?: number) {
     this.account = account;
-    this.id = optionalNumber(data.$.id);
-    this.accountID = accountID ?? optionalNumber(data.$.accountID);
-    this.serverId = optionalNumber(data.$.serverId);
+    this.id = parseOptionalNumber(data.$.id);
+    this.accountID = accountID ?? parseOptionalNumber(data.$.accountID);
+    this.serverId = parseOptionalNumber(data.$.serverId);
     this.machineIdentifier = data.$.machineIdentifier;
     this.name = data.$.name;
     this.lastSeenAt = data.$.lastSeenAt ? new Date(data.$.lastSeenAt) : undefined;
-    this.numLibraries = optionalNumber(data.$.numLibraries);
+    this.numLibraries = parseOptionalNumber(data.$.numLibraries);
     this.allLibraries = parsePlexBoolean(data.$.allLibraries);
     this.owned = parsePlexBoolean(data.$.owned);
     this.pending = parsePlexBoolean(data.$.pending);
@@ -1472,7 +1477,7 @@ export class MyPlexUser {
     this.filterPhotos = data.$.filterPhotos;
     this.filterTelevision = data.$.filterTelevision;
     this.home = parsePlexBoolean(data.$.home);
-    this.id = optionalNumber(data.$.id);
+    this.id = parseOptionalNumber(data.$.id);
     this.protected = parsePlexBoolean(data.$.protected);
     this.recommendationsPlaylistId = data.$.recommendationsPlaylistId;
     this.restricted = data.$.restricted;
@@ -1558,7 +1563,7 @@ export class MyPlexInvite {
     this.friend = parsePlexBoolean(data.$.friend);
     this.friendlyName = data.$.friendlyName;
     this.home = parsePlexBoolean(data.$.home);
-    this.id = optionalNumber(data.$.id);
+    this.id = parseOptionalNumber(data.$.id);
     this.server = parsePlexBoolean(data.$.server);
     this.servers = (data.Server ?? []).map(
       server => new MyPlexServerShare(account, server, this.id),
@@ -1576,10 +1581,6 @@ export class MyPlexInvite {
   async cancel(): Promise<void> {
     await this.account.cancelInvite(this);
   }
-}
-
-function optionalNumber(value: string | undefined): number | undefined {
-  return value === undefined || value === '' ? undefined : Number(value);
 }
 
 function requiredId(value: { id?: number }, model: string): string {
@@ -2078,8 +2079,8 @@ export class SharedLibrarySection {
 
   constructor(serverShare: MyPlexServerShare, data: SharedLibrarySectionData) {
     this.serverShare = serverShare;
-    this.id = optionalNumber(data.id);
-    this.key = optionalNumber(data.key);
+    this.id = parseOptionalNumber(data.id);
+    this.key = parseOptionalNumber(data.key);
     this.title = data.title;
     this.type = data.type;
     this.shared = parsePlexBoolean(data.shared);

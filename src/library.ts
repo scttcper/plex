@@ -84,7 +84,7 @@ import type { PlexServer } from './server.ts';
 import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { Setting, type SettingResponse, type SettingValue } from './settings.ts';
 import { smartFilterParams } from './smart-filter.ts';
-import { type MediaContainer, parsePlexBoolean } from './util.ts';
+import { type MediaContainer, parseOptionalNumber, parsePlexBoolean } from './util.ts';
 import { Clip, Episode, Movie, Season, Show } from './video.ts';
 
 export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
@@ -1019,14 +1019,6 @@ const CHOICE_FILTER_VALUE_TYPES = new Set<FilterValueType>([
   'tag',
 ]);
 
-function parseOptionalNumber(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-
-  return Number(value);
-}
-
 function settingValueToQueryValue(value: SettingValue): string {
   if (typeof value === 'boolean') {
     return value ? '1' : '0';
@@ -1422,6 +1414,12 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   declare scannedAt: Date;
   /** Unique id for this section (32258d7c-3e6c-4ac5-98ad-bad7a3b78c63) */
   declare uuid: string;
+  /** Counter Plex increments whenever content in this section changes. */
+  declare contentChangedAt?: number;
+  /** Visibility (0 visible, 1 hidden from home, 2 hidden from home and search). */
+  declare hidden?: number;
+  /** Metadata agent provider group used by this section. */
+  declare metadataAgentProviderGroupId?: number;
   declare CONTENT_TYPE: string;
   /** Default item type used by smart filters in this section. */
   declare METADATA_TYPE: Libtype;
@@ -2335,6 +2333,9 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     this.updatedAt = new Date(data.updatedAt * 1000);
     this.createdAt = new Date(data.createdAt * 1000);
     this.scannedAt = new Date(data.scannedAt * 1000);
+    this.contentChangedAt = parseOptionalNumber(data.contentChangedAt);
+    this.hidden = parseOptionalNumber(data.hidden);
+    this.metadataAgentProviderGroupId = parseOptionalNumber(data.metadataAgentProviderGroupId);
   }
 
   /** Reload this section from the server's library section list. */
@@ -3448,6 +3449,8 @@ export class Collections<
   declare summary: string;
   declare index: number;
   declare rating: number;
+  /** Number of ratings contributing to the collection rating. */
+  declare ratingCount?: number;
   declare userRating: number;
   declare thumb: string;
   declare addedAt: number;
@@ -3799,6 +3802,7 @@ export class Collections<
     this.summary = data.summary;
     this.index = data.index;
     this.rating = data.rating;
+    this.ratingCount = data.ratingCount;
     this.userRating = data.userRating;
     this.thumb = data.thumb;
     this.addedAt = data.addedAt;

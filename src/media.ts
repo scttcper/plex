@@ -12,12 +12,13 @@ import type {
   TalkingPointData,
 } from './media.types.ts';
 import { searchType } from './search.ts';
-import { type MediaContainer, parsePlexBoolean } from './util.ts';
+import { type MediaContainer, parseOptionalNumber, parsePlexBoolean } from './util.ts';
 import type {
   ChapterData,
   MarkerData,
   MediaData,
   MediaPartData,
+  AudioStreamData,
   MediaPartStreamData,
   VideoStreamData,
 } from './video.types.ts';
@@ -103,14 +104,26 @@ export class Media extends PlexObject {
   declare has64bitOffsets: boolean;
   declare optimizedForStreaming: boolean;
   declare title?: string;
+  /** Container format of the media (ex: mp4, mkv, mp3). */
+  declare container?: string;
+  /** Audio profile of the media (ex: lc, dts). */
+  declare audioProfile?: string;
   declare videoCodec: string;
   declare videoFrameRate: string;
   declare videoProfile: string;
+  /** Plex resolution bucket (ex: 4k, 1080, 720, 480, sd). */
+  declare videoResolution?: string;
   /** Width of the video in pixels */
   declare width: number;
   declare parts: MediaPart[];
   declare proxyType?: number;
   declare hasVoiceActivity?: boolean;
+  /** True if this media version is selected in a playback session. */
+  declare selected?: boolean;
+  /** Optimization target name for optimized versions. */
+  declare target?: string;
+  /** Unique id of this media version, when Plex provides one. */
+  declare uuid?: string;
 
   get isOptimizedVersion(): boolean {
     return this.proxyType === 42;
@@ -135,13 +148,19 @@ export class Media extends PlexObject {
     this.duration = data.duration;
     this.height = data.height;
     this.id = data.id;
-    this.has64bitOffsets = data.has64bitOffsets;
-    this.optimizedForStreaming = data.optimizedForStreaming;
+    this.has64bitOffsets = parsePlexBoolean(data.has64bitOffsets);
+    this.optimizedForStreaming = parsePlexBoolean(data.optimizedForStreaming);
     this.title = data.title;
+    this.container = data.container;
+    this.audioProfile = data.audioProfile;
     this.videoCodec = data.videoCodec;
     this.videoFrameRate = data.videoFrameRate;
     this.videoProfile = data.videoProfile;
+    this.videoResolution = data.videoResolution;
     this.width = data.width;
+    this.selected = data.selected === undefined ? undefined : parsePlexBoolean(data.selected);
+    this.target = data.target;
+    this.uuid = data.uuid;
     this.parts = data.Part.map(part => new MediaPart(this.server, part, undefined, this));
   }
 }
@@ -149,16 +168,36 @@ export class Media extends PlexObject {
 export class MediaPart extends PlexObject {
   static override TAG = 'Part' as const;
 
+  /** True if the file is readable by Plex. Only returned when checking files. */
+  declare accessible?: boolean;
+  /** Audio profile of the part (ex: lc). */
+  declare audioProfile?: string;
   declare container: string;
+  /** Transcode decision for this part in a playback session (ex: directplay). */
+  declare decision?: string;
+  /** Deep analysis version Plex used for this part. */
+  declare deepAnalysisVersion?: number;
   declare duration: number;
   /** Local path, absent for media without a file on this server. */
   declare file?: string;
+  /** True if the file uses 64 bit offsets. */
+  declare has64bitOffsets?: boolean;
+  /** True if the file has embedded artwork. */
+  declare hasThumbnail?: boolean;
   declare id: number;
   declare indexes?: string;
+  /** Packet length of the part, when Plex analyzed it. */
+  declare packetLength?: number;
+  /** Streaming protocol for this part in a playback session (ex: dash). */
+  declare protocol?: string;
+  /** Required bandwidths for streaming this part. */
+  declare requiredBandwidths?: string;
+  /** True if this part is selected in a playback session. */
+  declare selected?: boolean;
   declare size: number;
   declare optimizedForStreaming: boolean;
-  declare syncItemId: string;
-  declare syncState: string;
+  declare syncItemId?: string;
+  declare syncState?: string;
   declare videoProfile: string;
   declare streams: MediaPartStream[];
   declare exists?: boolean;
@@ -241,14 +280,28 @@ export class MediaPart extends PlexObject {
   }
 
   protected _loadData(data: MediaPartData) {
+    this.accessible = data.accessible === undefined ? undefined : parsePlexBoolean(data.accessible);
+    this.audioProfile = data.audioProfile;
     this.indexes = data.indexes;
     this.container = data.container;
+    this.decision = data.decision;
+    this.deepAnalysisVersion = parseOptionalNumber(data.deepAnalysisVersion);
     this.duration = data.duration;
     this.file = data.file;
+    this.has64bitOffsets =
+      data.has64bitOffsets === undefined ? undefined : parsePlexBoolean(data.has64bitOffsets);
+    this.hasThumbnail =
+      data.hasThumbnail === undefined ? undefined : parsePlexBoolean(data.hasThumbnail);
     this.id = data.id;
     this.key = data.key;
+    this.packetLength = parseOptionalNumber(data.packetLength);
+    this.protocol = data.protocol;
+    this.requiredBandwidths = data.requiredBandwidths;
+    this.selected = data.selected === undefined ? undefined : parsePlexBoolean(data.selected);
     this.size = data.size;
-    this.optimizedForStreaming = data.optimizedForStreaming;
+    this.optimizedForStreaming = parsePlexBoolean(data.optimizedForStreaming);
+    this.syncItemId = data.syncItemId;
+    this.syncState = data.syncState;
     this.videoProfile = data.videoProfile;
     this.exists = data.exists;
     this.streams = data.Stream?.map(stream => createMediaPartStream(this, stream)) ?? [];
@@ -881,43 +934,51 @@ export class AudioStream extends MediaPartStream {
   static override TAG = 'Stream' as const;
   static STREAMTYPE = 2;
   /** The audio channel layout of the audio stream (ex: 5.1(side)). */
-  audioChannelLayout?: string;
+  declare audioChannelLayout?: string;
   /** The bit depth of the audio stream (ex: 16). */
-  bitDepth?: number;
+  declare bitDepth?: number;
   /** The bitrate mode of the audio stream (ex: cbr). */
-  bitrateMode?: string;
+  declare bitrateMode?: string;
+  /** True if the audio stream can be normalized for loudness. */
+  declare canNormalizeLoudness: boolean;
   /** The number of audio channels of the audio stream (ex: 6). */
-  channels?: number;
+  declare channels?: number;
   /** The duration of audio stream in milliseconds. */
-  duration?: number;
+  declare duration?: number;
   /** The profile of the audio stream. */
-  profile?: string;
+  declare profile?: string;
   /** The sampling rate of the audio stream (ex: 48000) */
-  samplingRate?: number;
+  declare samplingRate?: number;
   /** The stream identifier of the audio stream. */
-  streamIdentifier?: number;
+  declare streamIdentifier?: number;
   /** True if this is a visually impaired (AD) audio stream. */
   declare visualImpaired: boolean;
 
   // Track only attributes
   /** The gain for the album. */
-  albumGain?: number;
+  declare albumGain?: number;
   /** The peak for the album. */
-  albumPeak?: number;
+  declare albumPeak?: number;
   /** The range for the album. */
-  albumRange?: number;
+  declare albumRange?: number;
   /** The end ramp for the track. */
-  endRamp?: string;
+  declare endRamp?: string;
   /** The gain for the track. */
-  gain?: number;
+  declare gain?: number;
+  /** The gain offset of the audio stream. */
+  declare gainOffset?: number;
   /** The loudness for the track. */
-  loudness?: number;
+  declare loudness?: number;
+  /** The loudness analysis version of the audio stream. */
+  declare loudnessAnalysisVersion?: number;
   /** The lra for the track. */
-  lra?: number;
+  declare lra?: number;
   /** The peak for the track. */
-  peak?: number;
+  declare peak?: number;
   /** The start ramp for the track. */
-  startRamp?: string;
+  declare startRamp?: string;
+  /** The loudness threshold of the audio stream. */
+  declare threshold?: number;
 
   /**
    * Returns evenly distributed loudness samples for this audio stream.
@@ -951,30 +1012,32 @@ export class AudioStream extends MediaPartStream {
     await parent.setSelectedAudioStream(this);
   }
 
-  protected override _loadData(data: any): void {
+  protected override _loadData(data: AudioStreamData): void {
     super._loadData(data);
     this.audioChannelLayout = data.audioChannelLayout;
-    this.bitDepth = data.bitDepth ? Number.parseInt(data.bitDepth, 10) : undefined;
+    this.bitDepth = parseOptionalNumber(data.bitDepth);
     this.bitrateMode = data.bitrateMode;
-    this.channels = data.channels ? Number.parseInt(data.channels, 10) : undefined;
-    this.duration = data.duration ? Number.parseInt(data.duration, 10) : undefined;
+    this.canNormalizeLoudness = parsePlexBoolean(data.canNormalizeLoudness);
+    this.channels = parseOptionalNumber(data.channels);
+    this.duration = parseOptionalNumber(data.duration);
     this.profile = data.profile;
-    this.samplingRate = data.samplingRate ? Number.parseInt(data.samplingRate, 10) : undefined;
-    this.streamIdentifier = data.streamIdentifier
-      ? Number.parseInt(data.streamIdentifier, 10)
-      : undefined;
+    this.samplingRate = parseOptionalNumber(data.samplingRate);
+    this.streamIdentifier = parseOptionalNumber(data.streamIdentifier);
     this.visualImpaired = parsePlexBoolean(data.visualImpaired);
 
     // Track only attributes
-    this.albumGain = data.albumGain ? Number.parseFloat(data.albumGain) : undefined;
-    this.albumPeak = data.albumPeak ? Number.parseFloat(data.albumPeak) : undefined;
-    this.albumRange = data.albumRange ? Number.parseFloat(data.albumRange) : undefined;
+    this.albumGain = parseOptionalNumber(data.albumGain);
+    this.albumPeak = parseOptionalNumber(data.albumPeak);
+    this.albumRange = parseOptionalNumber(data.albumRange);
     this.endRamp = data.endRamp;
-    this.gain = data.gain ? Number.parseFloat(data.gain) : undefined;
-    this.loudness = data.loudness ? Number.parseFloat(data.loudness) : undefined;
-    this.lra = data.lra ? Number.parseFloat(data.lra) : undefined;
-    this.peak = data.peak ? Number.parseFloat(data.peak) : undefined;
+    this.gain = parseOptionalNumber(data.gain);
+    this.gainOffset = parseOptionalNumber(data.gainOffset);
+    this.loudness = parseOptionalNumber(data.loudness);
+    this.loudnessAnalysisVersion = parseOptionalNumber(data.loudnessAnalysisVersion);
+    this.lra = parseOptionalNumber(data.lra);
+    this.peak = parseOptionalNumber(data.peak);
     this.startRamp = data.startRamp;
+    this.threshold = parseOptionalNumber(data.threshold);
   }
 }
 

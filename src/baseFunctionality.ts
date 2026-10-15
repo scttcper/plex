@@ -4,7 +4,7 @@ import type { PlexObject } from './base/plexObject.ts';
 import { X_PLEX_CONTAINER_SIZE } from './config.ts';
 import { NotFound } from './exceptions.ts';
 import type { PlexServer } from './server.ts';
-import type { MediaContainer } from './util.ts';
+import { type MediaContainer, parseOptionalNumber } from './util.ts';
 
 export type QueryParamValue = string | number | boolean | null | undefined;
 export type ItemFilterPrimitive = string | number | boolean;
@@ -158,8 +158,10 @@ export async function fetchItems<T = PlexItemData>(
 ): Promise<T[]> {
   const keyParams = new URLSearchParams(ekey.split('?', 2)[1] ?? '');
   let containerStart =
-    fetchOptions.containerStart ?? optionalNumber(keyParams.get('X-Plex-Container-Start')) ?? 0;
-  const keyContainerSize = optionalNumber(keyParams.get('X-Plex-Container-Size'));
+    fetchOptions.containerStart ??
+    parseOptionalNumber(keyParams.get('X-Plex-Container-Start')) ??
+    0;
+  const keyContainerSize = parseOptionalNumber(keyParams.get('X-Plex-Container-Size'));
   const requestedContainerSize = fetchOptions.containerSize ?? keyContainerSize;
   let inferredContainerSize: number | undefined;
   const maxResults = fetchOptions.maxResults;
@@ -188,8 +190,8 @@ export async function fetchItems<T = PlexItemData>(
     );
     results.push(...findItems(elems, options, Cls, server, parent, pageKey));
 
-    const totalSize = optionalNumber(MediaContainer.totalSize);
-    const rawPageSize = optionalNumber(MediaContainer.size) ?? elems.length;
+    const totalSize = parseOptionalNumber(MediaContainer.totalSize);
+    const rawPageSize = parseOptionalNumber(MediaContainer.size) ?? elems.length;
     inferredContainerSize ??= rawPageSize;
     containerStart += rawPageSize;
     firstPage = false;
@@ -298,15 +300,6 @@ function withContainerSection(items: PlexItemData[], container: PlexItemContaine
   }
 
   return items.map(item => ({ ...inherited, ...item }));
-}
-
-function optionalNumber(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
-  }
-
-  const result = Number(value);
-  return Number.isNaN(result) ? undefined : result;
 }
 
 function getAttrOperator(attr: string): [string[], keyof typeof OPERATORS, ItemOperator] {

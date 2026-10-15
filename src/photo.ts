@@ -19,28 +19,8 @@ import type {
   PhotoMetadataResponse,
   PhotoPartData,
 } from './photo.types.ts';
-import type { MediaContainer } from './util.ts';
+import { type MediaContainer, parseOptionalDate, parseOptionalNumber } from './util.ts';
 import { Clip } from './video.ts';
-
-function parseOptionalDate(value: number | string | undefined): Date | undefined {
-  if (value === undefined || value === '') {
-    return undefined;
-  }
-
-  if (typeof value === 'number' || /^\d+$/.test(value)) {
-    return new Date(Number(value) * 1000);
-  }
-
-  return new Date(value);
-}
-
-function parseOptionalNumber(value: number | string | undefined): number | undefined {
-  if (value === undefined || value === '') {
-    return undefined;
-  }
-
-  return Number(value);
-}
 
 function isAlbumMetadata(item: Record<string, unknown>): boolean {
   return item.type === 'photo' && String(item.key ?? '').endsWith('/children');

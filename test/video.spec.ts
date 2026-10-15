@@ -71,6 +71,24 @@ describe('Shows', () => {
     expect((await season.episodes()).length).toBeGreaterThan(0);
   });
 
+  it('should load show, season, and episode details', async () => {
+    await show.reload();
+    const season = await show.season(1);
+    const episode = await season.episode(1);
+    await episode.reload();
+
+    expect(typeof show.slug).toBe('string');
+    expect(show.seasonCount).toBe(2);
+    expect(show.originallyAvailableAt).toBeInstanceOf(Date);
+    expect(typeof season.guid).toBe('string');
+    expect(season.parentSlug).toBe(show.slug);
+    expect(season.parentThumb).toBe(show.thumb);
+    expect(episode.grandparentSlug).toBe(show.slug);
+    expect(episode.librarySectionTitle).toBe('TV Shows');
+    expect(episode.skipParent).toBe(false);
+    expect(episode.originallyAvailableAt).toBeInstanceOf(Date);
+  });
+
   it('should find the library section of episodes listed from a season', async () => {
     const [season] = await show.seasons();
     const [episode] = await season.episodes();
@@ -226,6 +244,26 @@ describe('Movies', () => {
   // Takes forever
   it.skip('should analyze movie', async () => {
     await movie.analyze();
+  });
+
+  it('should load movie, media, and part details', async () => {
+    await movie.reload();
+
+    expect(movie.slug).toBe('big-buck-bunny');
+    expect(movie.librarySectionTitle).toBe('Movies');
+    expect(movie.librarySectionKey).toBe(`/library/sections/${section.key}`);
+    expect(movie.updatedAt).toBeInstanceOf(Date);
+    const [media] = movie.media;
+    expect(media.container).toBe('mp4');
+    expect(media.videoResolution).toBe('1080');
+    expect(media.audioProfile).toBe('lc');
+    expect(media.optimizedForStreaming).toBe(true);
+    const [part] = media.parts;
+    expect(part.audioProfile).toBe('lc');
+    expect(part.has64bitOffsets).toBe(false);
+    const [audio] = part.audioStreams();
+    expect(audio.channels).toBe(2);
+    expect(audio.samplingRate).toBe(44_100);
   });
 
   it('should reutrn roles as actors', () => {

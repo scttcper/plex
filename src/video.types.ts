@@ -401,8 +401,11 @@ export interface EpisodeMetadata {
   parentRatingKey: string;
   parentThumb: string;
   parentTitle: string;
+  parentYear?: number;
   rating?: number;
   ratingKey: string;
+  skipParent?: PlexBoolean;
+  source?: string;
   studio?: string;
   summary: string;
   thumb: string;
@@ -443,26 +446,38 @@ export interface MediaData {
   videoResolution?: string;
   container?: string;
   videoFrameRate?: string;
-  optimizedForStreaming?: boolean;
+  optimizedForStreaming?: PlexBoolean;
   audioProfile?: string;
-  has64bitOffsets?: boolean;
+  has64bitOffsets?: PlexBoolean;
   hasVoiceActivity?: boolean;
   videoProfile?: string;
+  selected?: PlexBoolean;
+  target?: string;
+  uuid?: string;
   Part: MediaPartData[];
 }
 
 export interface MediaPartData {
+  accessible?: PlexBoolean;
   indexes?: string;
   id: number;
   key: string;
   audioProfile?: string;
   container: string;
+  decision?: string;
+  deepAnalysisVersion?: number | `${number}`;
   duration: number;
   file?: string;
-  has64bitOffsets?: boolean;
-  hasThumbnail?: boolean;
-  optimizedForStreaming?: boolean;
+  has64bitOffsets?: PlexBoolean;
+  hasThumbnail?: PlexBoolean;
+  optimizedForStreaming?: PlexBoolean;
+  packetLength?: number | `${number}`;
+  protocol?: string;
+  requiredBandwidths?: string;
+  selected?: PlexBoolean;
   size: number;
+  syncItemId?: string;
+  syncState?: string;
   videoProfile?: string;
   exists?: boolean;
   Stream?: MediaPartStreamData[];
@@ -502,6 +517,33 @@ export interface MediaPartStreamData {
   sourceKey?: string;
   transient?: string;
   userID?: number | string;
+}
+
+/** Numeric audio fields arrive as numbers for media streams and strings for analyzed tracks. */
+type NumericValue = number | `${number}`;
+
+export interface AudioStreamData extends MediaPartStreamData {
+  streamType: 2;
+  albumGain?: NumericValue;
+  albumPeak?: NumericValue;
+  albumRange?: NumericValue;
+  audioChannelLayout?: string;
+  bitDepth?: NumericValue;
+  bitrateMode?: string;
+  canNormalizeLoudness?: PlexBoolean;
+  duration?: NumericValue;
+  endRamp?: string;
+  gain?: NumericValue;
+  gainOffset?: NumericValue;
+  loudness?: NumericValue;
+  loudnessAnalysisVersion?: NumericValue;
+  lra?: NumericValue;
+  peak?: NumericValue;
+  profile?: string;
+  samplingRate?: NumericValue;
+  startRamp?: string;
+  threshold?: NumericValue;
+  visualImpaired?: PlexBoolean;
 }
 
 export interface VideoStreamData extends MediaPartStreamData {
