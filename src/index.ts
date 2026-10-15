@@ -37,7 +37,7 @@ export type {
   WaitForPlexPinOptions,
 } from './pin.types.ts';
 export { Conversion, Optimized, TranscodeJob } from './optimized.ts';
-export type { OptimizedMediaItem } from './optimized.ts';
+export type { CreateOptimizedVersionOptions, OptimizedMediaItem } from './optimized.ts';
 export type {
   CustomOptimizationTarget,
   OptimizeOptions,
@@ -46,10 +46,22 @@ export type {
 } from './optimized.types.ts';
 export * from './playlist.ts';
 export * from './playqueue.ts';
+export type {
+  AddPlayQueueItemOptions,
+  CreatePlayQueueOptions,
+  GetPlayQueueOptions,
+  MovePlayQueueItemOptions,
+  RemovePlayQueueItemOptions,
+} from './playqueue.types.ts';
 export * from './photo.ts';
 export type { PhotoalbumData, PhotoData, PhotoMediaData, PhotoPartData } from './photo.types.ts';
 export * from './server.ts';
-export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.ts';
+export type {
+  BandwidthOptions,
+  HistoryOptions,
+  HistoryResult,
+  TranscodeImageOptions,
+} from './server.types.ts';
 export type {
   PlexPlaybackSession,
   PlexSessionFields,
@@ -65,6 +77,7 @@ export * from './video.ts';
 export * from './audio.ts';
 export { X_PLEX_IDENTIFIER } from './config.ts';
 export { SearchResult, Agent, AgentMediaType, SEARCHTYPES } from './search.ts';
+export type { MatchSearchResult } from './search.types.ts';
 
 export type { ServerIdentity, ServerAccount, ServerRelease } from './server.types.ts';
 export { AccountOptOut, GeoLocation } from './account-settings.ts';

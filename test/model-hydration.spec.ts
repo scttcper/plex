@@ -41,7 +41,7 @@ describe('model hydration', () => {
         playQueueID: 1,
         playQueueSelectedItemID: 10,
         playQueueSelectedItemOffset: 0,
-        playQueueSelectedMetadataItemID: 20,
+        playQueueSelectedMetadataItemID: '20',
         playQueueShuffled: false,
         playQueueSourceURI: 'library://item',
         playQueueTotalCount: 1,

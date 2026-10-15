@@ -42,6 +42,43 @@ describe('buildQueryKey', () => {
 });
 
 describe('fetchItems', () => {
+  it('copies the container library section onto items that lack one', async () => {
+    const query = vi.fn().mockResolvedValue({
+      MediaContainer: {
+        librarySectionID: 2,
+        librarySectionTitle: 'TV Shows',
+        librarySectionUUID: 'show-uuid',
+        Metadata: [
+          { id: 1, title: 'episode' },
+          { id: 2, title: 'other', librarySectionID: 5, librarySectionTitle: 'Anime' },
+        ],
+        size: 2,
+      },
+    });
+
+    const items = await fetchItems(
+      { query } as unknown as PlexServer,
+      '/library/metadata/1/children',
+    );
+
+    expect(items).toEqual([
+      {
+        id: 1,
+        title: 'episode',
+        librarySectionID: 2,
+        librarySectionTitle: 'TV Shows',
+        librarySectionUUID: 'show-uuid',
+      },
+      {
+        id: 2,
+        title: 'other',
+        librarySectionID: 5,
+        librarySectionTitle: 'Anime',
+        librarySectionUUID: 'show-uuid',
+      },
+    ]);
+  });
+
   it('paginates MediaContainer results and hydrates every item', async () => {
     const query = vi
       .fn()

@@ -10,6 +10,7 @@ import type {
   MovePlayQueueItemOptions,
   PlayQueueContainerResponse,
   PlayQueueResponse,
+  RemovePlayQueueItemOptions,
 } from './playqueue.types.ts';
 import type { PlexServer } from './server.ts';
 
@@ -72,8 +73,8 @@ export class PlayQueue extends PlexObject {
   declare playQueueSelectedItemID: number;
   /** The offset of the selected item in the PlayQueue */
   declare playQueueSelectedItemOffset: number;
-  /** ID of the currently selected item, matches ratingKey */
-  declare playQueueSelectedMetadataItemID: number;
+  /** Rating key of the currently selected item. */
+  declare playQueueSelectedMetadataItemID?: string;
   /** True if the PlayQueue is shuffled */
   declare playQueueShuffled: boolean;
   /** Original URI used to create the PlayQueue */
@@ -241,7 +242,7 @@ export class PlayQueue extends PlexObject {
    * Get item at specific index.
    */
   getItem(index: number): Playable | null {
-    return this.items[index] || null;
+    return this.items[index] ?? null;
   }
 
   /**
@@ -365,7 +366,10 @@ export class PlayQueue extends PlexObject {
   /**
    * Remove an item from the PlayQueue.
    */
-  async removeItem(item: Playable, refresh = true): Promise<PlayQueue> {
+  async removeItem(
+    item: Playable,
+    { refresh = true }: RemovePlayQueueItemOptions = {},
+  ): Promise<PlayQueue> {
     if (refresh) {
       await this.refresh();
     }
@@ -380,20 +384,27 @@ export class PlayQueue extends PlexObject {
       throw new BadRequest(`${item.title} is missing a PlayQueue item id`);
     }
 
-    const path = `/playQueues/${this.playQueueID}/items/${queueItemID}`;
-    const data = await this.server.query<PlayQueueContainerResponse>({ path, method: 'delete' });
-    this._invalidateCacheAndLoadData(data.MediaContainer);
+    // Plex answers deletes with the new items but the previous totals and version.
+    await this.server.query({
+      path: `/playQueues/${this.playQueueID}/items/${queueItemID}`,
+      method: 'delete',
+    });
+    await this.refresh();
     return this;
   }
 
   /**
-   * Remove all items from the PlayQueue.
+   * Remove every item except the currently selected one from the PlayQueue.
    */
   async clear(): Promise<PlayQueue> {
-    const path = `/playQueues/${this.playQueueID}/items`;
-    const data = await this.server.query<PlayQueueContainerResponse>({ path, method: 'delete' });
-    this._invalidateCacheAndLoadData(data.MediaContainer);
+    await this.server.query({ path: `/playQueues/${this.playQueueID}/items`, method: 'delete' });
+    await this.refresh();
     return this;
+  }
+
+  /** Alias for {@link PlayQueue.refresh}. */
+  override async reload(): Promise<void> {
+    await this.refresh();
   }
 
   /**

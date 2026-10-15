@@ -73,27 +73,4 @@ describe('History API Tests', () => {
     // Filter should not increase results
     expect(validMusicHistory.length).toBeLessThanOrEqual(validAllHistory.length);
   }, 30_000);
-
-  // TODO: history endpoint returns empty despite beforeEach scrobble
-  it.skip('should filter history by ratingKey', async () => {
-    const allHistory = await plex.history({ maxResults: 100 });
-    const validHistory = allHistory.filter(h => h != null);
-    expect(validHistory.length).toBeGreaterThan(0);
-
-    const firstItem = validHistory[0];
-    const ratingKey = firstItem.ratingKey;
-    expect(ratingKey).toBeDefined();
-
-    const filteredHistory = await plex.history({ maxResults: 100, ratingKey });
-    const validFilteredHistory = filteredHistory.filter(h => h != null);
-
-    // All items should have the same ratingKey
-    const allSameKey = validFilteredHistory.every(item => item.ratingKey === ratingKey);
-    expect(allSameKey).toBe(true);
-
-    // Each history entry should have a unique historyKey
-    const historyKeys = validFilteredHistory.map(item => item.historyKey);
-    const uniqueHistoryKeys = new Set(historyKeys);
-    expect(uniqueHistoryKeys.size).toBe(validFilteredHistory.length);
-  }, 30_000);
 });

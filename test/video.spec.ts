@@ -71,6 +71,14 @@ describe('Shows', () => {
     expect((await season.episodes()).length).toBeGreaterThan(0);
   });
 
+  it('should find the library section of episodes listed from a season', async () => {
+    const [season] = await show.seasons();
+    const [episode] = await season.episodes();
+
+    expect(episode.librarySectionID).toBe(Number(showSection.key));
+    expect((await episode.section()).key).toBe(showSection.key);
+  });
+
   it("should get a season's episodes", async () => {
     const seasons = await show.seasons();
     const episodes = await seasons[0].episodes();

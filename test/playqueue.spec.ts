@@ -151,8 +151,7 @@ describe('PlayQueue Items Management', () => {
     expect(queueItem.ratingKey).toBe(movie.ratingKey);
   });
 
-  // TODO: Episode.section() fails because librarySectionID is undefined on episodes from a PlayQueue slice
-  it.skip('should add item to PlayQueue', async () => {
+  it('should add item to PlayQueue', async () => {
     playQueue = await PlayQueue.create(plex, episodes.slice(0, 1));
 
     const initialCount = playQueue.playQueueTotalCount;
@@ -161,8 +160,7 @@ describe('PlayQueue Items Management', () => {
     expect(playQueue.playQueueTotalCount).toBe(initialCount + 1);
   });
 
-  // TODO: Episode.section() fails because librarySectionID is undefined on episodes from a PlayQueue slice
-  it.skip('should add item with playNext option', async () => {
+  it('should add item with playNext option', async () => {
     playQueue = await PlayQueue.create(plex, episodes.slice(0, 1));
 
     await playQueue.addItem(episodes[1], { playNext: true });
@@ -171,16 +169,19 @@ describe('PlayQueue Items Management', () => {
     expect(items.length).toBe(2);
   });
 
-  // TODO: removeItem does not update playQueueTotalCount
-  it.skip('should remove item from PlayQueue', async () => {
-    playQueue = await PlayQueue.create(plex, episodes.slice(0, 2));
+  it('should remove item from PlayQueue', async () => {
+    playQueue = await PlayQueue.create(plex, episodes.slice(0, 3));
 
     const initialCount = playQueue.playQueueTotalCount;
-    const items = playQueue.items;
+    const initialVersion = playQueue.playQueueVersion;
+    const removed = playQueue.items[2];
 
-    await playQueue.removeItem(items[0]);
+    await playQueue.removeItem(removed);
 
     expect(playQueue.playQueueTotalCount).toBe(initialCount - 1);
+    expect(playQueue.items).toHaveLength(initialCount - 1);
+    expect(playQueue.playQueueVersion).toBeGreaterThan(initialVersion);
+    expect(playQueue.contains(removed)).toBe(false);
   });
 
   it('should move item in PlayQueue', async () => {
@@ -198,15 +199,16 @@ describe('PlayQueue Items Management', () => {
     expect(newItems[0].ratingKey).not.toBe(firstItem.ratingKey);
   });
 
-  // TODO: clear does not update playQueueTotalCount
-  it.skip('should clear all items from PlayQueue', async () => {
-    playQueue = await PlayQueue.create(plex, episodes.slice(0, 2));
+  it('should clear all but the selected item from PlayQueue', async () => {
+    playQueue = await PlayQueue.create(plex, episodes.slice(0, 3));
+    const selectedRatingKey = playQueue.playQueueSelectedMetadataItemID;
 
-    expect(playQueue.playQueueTotalCount).toBeGreaterThan(0);
+    expect(playQueue.playQueueTotalCount).toBe(3);
 
     await playQueue.clear();
 
-    expect(playQueue.playQueueTotalCount).toBe(0);
+    expect(playQueue.playQueueTotalCount).toBe(1);
+    expect(playQueue.items.map(item => item.ratingKey)).toEqual([selectedRatingKey]);
   });
 });
 

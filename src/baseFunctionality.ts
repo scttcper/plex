@@ -182,7 +182,10 @@ export async function fetchItems<T = PlexItemData>(
         : buildContainerKey(ekey, containerStart, containerSize);
     const response = await server.query<MediaContainer<PlexItemContainer>>({ path: pageKey });
     const { MediaContainer } = response;
-    const elems = containerItems(MediaContainer, Cls?.TAG ?? fetchOptions.containerTag);
+    const elems = withContainerSection(
+      containerItems(MediaContainer, Cls?.TAG ?? fetchOptions.containerTag),
+      MediaContainer,
+    );
     results.push(...findItems(elems, options, Cls, server, parent, pageKey));
 
     const totalSize = optionalNumber(MediaContainer.totalSize);
@@ -270,6 +273,34 @@ function buildContainerKey(key: string, start: number, size: number): string {
 function containerItems(container: PlexItemContainer, tag?: string | null): PlexItemData[] {
   const value = container[tag ?? 'Metadata'] ?? container.Metadata;
   return Array.isArray(value) ? (value as PlexItemData[]) : [];
+}
+
+const CONTAINER_SECTION_FIELDS = [
+  'librarySectionID',
+  'librarySectionTitle',
+  'librarySectionUUID',
+] as const;
+
+/**
+ * Child listings such as `/library/metadata/:id/children` put the library section on the
+ * container instead of each item. Copy it down so items can still find their section.
+ */
+function withContainerSection(
+  items: PlexItemData[],
+  container: PlexItemContainer,
+): PlexItemData[] {
+  const inherited: PlexItemData = {};
+  for (const field of CONTAINER_SECTION_FIELDS) {
+    if (container[field] !== undefined) {
+      inherited[field] = container[field];
+    }
+  }
+
+  if (Object.keys(inherited).length === 0) {
+    return items;
+  }
+
+  return items.map(item => ({ ...inherited, ...item }));
 }
 
 function optionalNumber(value: unknown): number | undefined {

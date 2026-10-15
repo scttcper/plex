@@ -141,3 +141,34 @@ describe('PlexServer playlists', () => {
     });
   });
 });
+
+describe('PlexServer.history', () => {
+  it('filters history by item, account, section, and date', async () => {
+    const server = new PlexServer('http://localhost:32400', 'test-token');
+    const query = vi.spyOn(server, 'query').mockResolvedValue({
+      MediaContainer: { size: 1, totalSize: 1, Metadata: [{ ratingKey: '12' }] },
+    });
+
+    const history = await server.history({
+      maxResults: 10,
+      ratingKey: '12',
+      accountId: 1,
+      librarySectionId: '3',
+      minDate: new Date('2026-01-01T00:00:00Z'),
+    });
+
+    expect(history).toEqual([{ ratingKey: '12' }]);
+    const path = query.mock.calls[0][0].path;
+    const params = new URLSearchParams(path.split('?')[1]);
+    expect(path.split('?')[0]).toBe('/status/sessions/history/all');
+    expect(Object.fromEntries(params)).toEqual({
+      sort: 'viewedAt:desc',
+      metadataItemID: '12',
+      accountID: '1',
+      librarySectionID: '3',
+      'viewedAt>': '1767225600',
+      'X-Plex-Container-Start': '0',
+      'X-Plex-Container-Size': '10',
+    });
+  });
+});
