@@ -637,7 +637,8 @@ function createItemSection<T>(
   const query = vi.fn(({ path }: { path: string }) =>
     Promise.resolve({ MediaContainer: { Metadata: responses[first(path.split('?', 1))] ?? [] } }),
   );
-  const section = new Section({ query } as unknown as PlexServer, data);
+  const server = { query, _uriRoot: () => 'server://machine' } as unknown as PlexServer;
+  const section = new Section(server, data);
   return { query, section };
 }
 
@@ -836,7 +837,9 @@ describe('LibrarySection edit helpers', () => {
   it('creates a typed collection in the section', async () => {
     const { query, section } = createMovieSection();
 
-    const collection = await section.createCollection('Test Collection', [{ ratingKey: 10 }]);
+    const collection = await section.createCollection('Test Collection', [
+      { ratingKey: 10, type: 'movie' },
+    ]);
 
     expect(collection.title).toBe('Test Collection');
     expect(collection.ratingKey).toBe(99);
@@ -1368,5 +1371,39 @@ describe('LibrarySection item classes', () => {
 
     expect(first(await trackCollection.items())).toBeInstanceOf(Track);
     expect(first(await artistCollection.items())).toBeInstanceOf(Artist);
+  });
+
+  it('creates music collections with the type of their items', async () => {
+    const { query, section } = createItemSection(MusicSection, musicSectionData, {
+      '/library/sections/3/all': [trackRowData],
+      '/library/collections': [trackCollectionData],
+      '/library/collections/200/children': [trackRowData],
+    });
+    const track = first(await section.all({ libtype: 'track' }));
+
+    const collection = await section.createCollection('Test Tracks', [track]);
+
+    expect(query).toHaveBeenCalledWith({
+      path: '/library/collections?title=Test+Tracks&type=10&sectionId=3&uri=server%3A%2F%2Fmachine%2Flibrary%2Fmetadata%2F96',
+      method: 'post',
+    });
+    expect(collection.subtype).toBe('track');
+    expect(first(await collection.items())).toBeInstanceOf(Track);
+  });
+
+  it('rejects collection items without one shared type', async () => {
+    const { query, section } = createItemSection(MusicSection, musicSectionData, {});
+
+    const mixed = section.createCollection('Mixed', [
+      { ratingKey: 96, type: 'track' },
+      { ratingKey: 94, type: 'artist' },
+    ]);
+    const untyped = section.createCollection('Untyped', [{ ratingKey: 96 }]);
+
+    await expect(mixed).rejects.toBeInstanceOf(BadRequest);
+    await expect(mixed).rejects.toThrow('Cannot mix items of different type: track and artist');
+    await expect(untyped).rejects.toBeInstanceOf(BadRequest);
+    await expect(untyped).rejects.toThrow('Collection items need a type to create a collection.');
+    expect(query).not.toHaveBeenCalled();
   });
 });

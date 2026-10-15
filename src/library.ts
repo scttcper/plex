@@ -875,6 +875,8 @@ export type SectionType = Movie | Show | Artist | Album | Track | Photoalbum;
 export type LibrarySearchItem = SectionType | Season | Episode | Clip | Photo | Collections;
 export type HubItem = LibrarySearchItem | Playlist;
 export type RatingKeyItem = { ratingKey?: number | string };
+/** Library item added to a regular collection. Plex picks the collection type from `type`. */
+export type CollectionItem = RatingKeyItem & { type?: string };
 type SearchTagValue = { id: number | string; tag?: string } | { id?: number | string; tag: string };
 export type SearchFilterPrimitive =
   | boolean
@@ -976,8 +978,8 @@ export interface SmartCollectionSearchOptions extends Omit<SmartPlaylistSearchOp
 export interface CreateRegularCollectionOptions<T extends RatingKeyItem> {
   /** Library section that will own the collection. */
   section: LibrarySection<T>;
-  /** Items in the regular collection. */
-  items: RatingKeyItem[];
+  /** Items in the regular collection. Every item must share the same Plex `type`. */
+  items: CollectionItem[];
   smart?: false;
 }
 
@@ -1959,9 +1961,10 @@ export abstract class LibrarySection<SType extends RatingKeyItem = SectionType> 
   }
 
   /**
-   * Create a regular collection in this library section.
+   * Create a regular collection in this library section. The collection type comes from the
+   * items, so a music section can hold artist, album, or track collections.
    */
-  async createCollection(title: string, items: RatingKeyItem[]): Promise<Collections<SType>>;
+  async createCollection(title: string, items: CollectionItem[]): Promise<Collections<SType>>;
   async createCollection(
     title: string,
     options:
@@ -1971,7 +1974,7 @@ export abstract class LibrarySection<SType extends RatingKeyItem = SectionType> 
   async createCollection(
     title: string,
     itemsOrOptions:
-      | RatingKeyItem[]
+      | CollectionItem[]
       | Omit<CreateRegularCollectionOptions<RatingKeyItem>, 'section'>
       | Omit<CreateSmartCollectionOptions<RatingKeyItem>, 'section'>,
   ): Promise<Collections<SType>> {
@@ -3730,7 +3733,7 @@ export class Collections<
    * @param server The PlexServer instance.
    * @param title Title of the new collection.
    * @param section The library section to create the collection in.
-   * @param items Items to add to the collection.
+   * @param items Items to add to the collection. They must share a Plex `type`.
    */
   static async create<T extends RatingKeyItem = SectionType>(
     server: PlexServer,
@@ -3741,13 +3744,13 @@ export class Collections<
     server: PlexServer,
     title: string,
     section: LibrarySection<T>,
-    items: RatingKeyItem[],
+    items: CollectionItem[],
   ): Promise<Collections<T>>;
   static async create<T extends RatingKeyItem = SectionType>(
     server: PlexServer,
     title: string,
     optionsOrSection: CreateCollectionOptions<T> | LibrarySection<T>,
-    legacyItems: RatingKeyItem[] = [],
+    legacyItems: CollectionItem[] = [],
   ): Promise<Collections<T>> {
     const options: CreateCollectionOptions<T> =
       optionsOrSection instanceof LibrarySection
@@ -3785,12 +3788,12 @@ export class Collections<
       throw new BadRequest('At least one item is required to create a collection.');
     }
 
+    const itemType = collectionItemType(items);
     const ratingKeys = collectionRatingKeys(items, `add item to collection "${title}"`);
     const uri = `${server._uriRoot()}/library/metadata/${ratingKeys.join(',')}`;
-    const sectionType = searchType(section.type);
     const params = new URLSearchParams({
       title,
-      type: sectionType.toString(),
+      type: searchType(itemType).toString(),
       sectionId: section.key,
       uri,
     });
@@ -3865,6 +3868,22 @@ function collectionItemClassFromParent<T extends RatingKeyItem>(
   return parent instanceof LibrarySection
     ? (parent.SECTION_TYPE as CollectionItemClass<T>)
     : undefined;
+}
+
+/** Plex creates an empty collection when `type` does not match the items, so it comes from them. */
+function collectionItemType(items: CollectionItem[]): string {
+  const itemType = items[0]?.type;
+  if (!itemType) {
+    throw new BadRequest('Collection items need a type to create a collection.');
+  }
+
+  for (const item of items) {
+    if (item.type !== itemType) {
+      throw new BadRequest(`Cannot mix items of different type: ${itemType} and ${item.type}`);
+    }
+  }
+
+  return itemType;
 }
 
 function collectionRatingKeys<T extends RatingKeyItem>(

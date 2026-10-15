@@ -139,23 +139,16 @@ describe('Collections', () => {
     }
   });
 
-  it('should return tracks from a music track collection', async () => {
+  it('should create a music track collection from tracks', async () => {
     const track = first(await musicSection.searchTracks({ title: 'Evil' }));
-    // createCollection uses the section type, so build a track collection directly.
-    const params = new URLSearchParams({
-      sectionId: musicSection.key,
-      smart: '0',
-      title: TEST_COLLECTION_NAME,
-      type: '10',
-      uri: `${plex._uriRoot()}/library/metadata/${track.ratingKey}`,
-    });
-    await plex.query({ path: `/library/collections?${params.toString()}`, method: 'post' });
+    const collection = await musicSection.createCollection(TEST_COLLECTION_NAME, [track]);
 
     try {
-      const collection = await musicSection.collection(TEST_COLLECTION_NAME);
       const items = await collection.items();
 
       expect(collection.subtype).toBe('track');
+      expect(collection.childCount).toBe(1);
+      expect(items).toHaveLength(1);
       expect(first(items)).toBeInstanceOf(Track);
       expect(first(items).ratingKey).toBe(track.ratingKey);
     } finally {
