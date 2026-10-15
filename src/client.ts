@@ -267,7 +267,9 @@ export class PlexClient {
         throw new BadRequest('A PlexServer is required to proxy client commands.');
       }
 
-      return this.server.query({ path, headers });
+      // The server forwards the player's body as is, so XML and plain text arrive as strings.
+      const response = await this.server.query<unknown>({ path, headers });
+      return typeof response === 'string' ? parseClientResponse(response) : response;
     }
 
     return this.query({ path, headers });

@@ -105,6 +105,19 @@ describe('PlexClient', () => {
     });
   });
 
+  it('should parse XML timeline responses proxied through the server', async () => {
+    const server = createServer();
+    vi.spyOn(server, 'query').mockResolvedValue(
+      '<MediaContainer><Timeline state="playing" type="video" time="2500"/></MediaContainer>',
+    );
+    const client = new PlexClient({ server }).proxyThroughServer();
+
+    const timeline = await client.timeline();
+
+    expect(timeline?.state).toBe('playing');
+    expect(timeline?.time).toBe(2500);
+  });
+
   it('should parse XML timeline responses', async () => {
     const client = new PlexClient({ baseurl: 'http://192.168.1.100:32500' });
     const fetchMock = vi
