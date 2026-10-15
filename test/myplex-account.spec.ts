@@ -4,6 +4,7 @@ import type { MovieSection } from '../src/library.ts';
 import { DiscoverMovie, DiscoverShow, MyPlexAccount, PlexUserState } from '../src/myplex.ts';
 import type { Movie } from '../src/video.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createAccount, createClient } from './test-client.ts';
 
 let account: MyPlexAccount;
@@ -27,17 +28,17 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   const webhooks = await account.webhooks();
   const library = await plex.library();
   const movieSection = await library.section<MovieSection>('Movies');
-  const [movie] = await movieSection.search<Movie>({ libtype: 'movie', maxresults: 1 });
+  const movie = first(await movieSection.search<Movie>({ libtype: 'movie', maxresults: 1 }));
   const userState = await account.userState(movie);
 
   expect(Array.isArray(users)).toBe(true);
   expect(Array.isArray(sentInvites)).toBe(true);
   expect(Array.isArray(receivedInvites)).toBe(true);
   expect(sharingSections.length).toBeGreaterThan(0);
-  expect(typeof sharingSections[0].id).toBe('number');
-  expect(typeof sharingSections[0].key).toBe('number');
-  expect(typeof sharingSections[0].title).toBe('string');
-  expect(typeof sharingSections[0].type).toBe('string');
+  expect(typeof first(sharingSections).id).toBe('number');
+  expect(typeof first(sharingSections).key).toBe('number');
+  expect(typeof first(sharingSections).title).toBe('string');
+  expect(typeof first(sharingSections).type).toBe('string');
   expect(Array.isArray(watchlist)).toBe(true);
   expect(Array.isArray(webhooks)).toBe(true);
   expect(userState).toBeInstanceOf(PlexUserState);
@@ -49,7 +50,9 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
 
 it('searches Plex Discover and reads account watch state', async () => {
   const [movie] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'movie' });
+  assertDefined(movie);
   const [show] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'show' });
+  assertDefined(show);
   const syncState = await account.viewStateSync();
   const isPlayed = await movie.isPlayed();
 

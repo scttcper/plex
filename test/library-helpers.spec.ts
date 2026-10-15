@@ -19,6 +19,8 @@ import type {
   Location as LocationData,
 } from '../src/library.types.ts';
 
+import { assertDefined, first, itemAt } from './assertions.ts';
+
 const showSectionData = {
   uuid: 'show-section-uuid',
   key: '2',
@@ -584,7 +586,7 @@ function lastQueryPath(query: ReturnType<typeof vi.fn>): string {
 }
 
 function lastQueryBase(query: ReturnType<typeof vi.fn>): string {
-  return lastQueryPath(query).split('?', 1)[0];
+  return first(lastQueryPath(query).split('?', 1));
 }
 
 function lastQueryEntries(query: ReturnType<typeof vi.fn>): Array<[string, string]> {
@@ -599,7 +601,7 @@ describe('Library root helpers', () => {
     const items = await library.search({ title: 'Bunny', libtype: 'movie', year: 1999 });
 
     expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Root Movie');
+    expect(first(items).title).toBe('Root Movie');
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
       ['year', '1999'],
@@ -617,8 +619,8 @@ describe('Library root helpers', () => {
       limit: 2,
     });
 
-    expect(hubs[0].title).toBe('Continue Watching');
-    expect(hubs[0].hubIdentifier).toBe('home.continue');
+    expect(first(hubs).title).toBe('Continue Watching');
+    expect(first(hubs).hubIdentifier).toBe('home.continue');
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
       ['limit', '2'],
@@ -942,11 +944,11 @@ describe('Hub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.hubs();
-    const items = await hubs[0].items();
-    const hubSection = await hubs[0].section();
+    const items = await first(hubs).items();
+    const hubSection = await first(hubs).section();
 
     expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Hub Movie');
+    expect(first(items).title).toBe('Hub Movie');
     expect(hubSection).toBe(section);
     expect(query).toHaveBeenCalledWith({
       path: '/hubs/sections/1?includeGuids=1&includeStations=1',
@@ -957,12 +959,12 @@ describe('Hub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.hubs();
-    const items = await hubs[1].items();
+    const items = await itemAt(hubs, 1).items();
 
     expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Fetched Hub Movie');
-    expect(hubs[1].more).toBe(false);
-    expect(hubs[1].size).toBe(1);
+    expect(first(items).title).toBe('Fetched Hub Movie');
+    expect(itemAt(hubs, 1).more).toBe(false);
+    expect(itemAt(hubs, 1).size).toBe(1);
     expect(query).toHaveBeenCalledWith({ path: '/hubs/sections/1/more?includeGuids=1' });
   });
 
@@ -970,10 +972,10 @@ describe('Hub helpers', () => {
     const { section } = createMovieSection();
 
     const hubs = await section.hubs();
-    const items = await hubs[2].items();
+    const items = await itemAt(hubs, 2).items();
 
     expect(items[0]).toBeInstanceOf(Playlist);
-    expect(items[0].title).toBe('Artist Radio');
+    expect(first(items).title).toBe('Artist Radio');
   });
 });
 
@@ -982,7 +984,7 @@ describe('ManagedHub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.managedHubs();
-    const hub = await hubs[0].updateVisibility({ recommended: true, shared: true });
+    const hub = await first(hubs).updateVisibility({ recommended: true, shared: true });
 
     expect(hub).toBeInstanceOf(ManagedHub);
     expect(hub.promotedToRecommended).toBe(true);
@@ -998,7 +1000,7 @@ describe('ManagedHub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.managedHubs();
-    const hub = await hubs[0].promoteShared();
+    const hub = await first(hubs).promoteShared();
 
     expect(hub.promotedToRecommended).toBe(false);
     expect(hub.promotedToOwnHome).toBe(true);
@@ -1106,7 +1108,9 @@ describe('LibrarySection search filters', () => {
         'having',
       ]),
     );
-    expect(fieldTypes.find(fieldType => fieldType.type === 'guid')?.operators[0].key).toBe('=');
+    const guidFieldType = fieldTypes.find(fieldType => fieldType.type === 'guid');
+    assertDefined(guidFieldType);
+    expect(first(guidFieldType.operators).key).toBe('=');
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
       ['guid', 'plex://movie/123'],

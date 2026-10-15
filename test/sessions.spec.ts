@@ -4,6 +4,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { Movie, type MovieSection, type PlexServer } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 const clientIdentifier = `plex-typescript-test-${randomUUID()}`;
@@ -20,11 +21,14 @@ let movie: Movie;
 let plex: PlexServer;
 
 async function updateTimeline(state: 'playing' | 'stopped'): Promise<void> {
+  const { duration, ratingKey } = movie;
+  assertDefined(duration);
+  assertDefined(ratingKey);
   const params = new URLSearchParams({
-    duration: movie.duration.toString(),
+    duration: duration.toString(),
     identifier: 'com.plexapp.plugins.library',
     key: movie.key,
-    ratingKey: movie.ratingKey,
+    ratingKey,
     state,
     time: '1000',
   });
@@ -39,7 +43,7 @@ beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
   const section = await library.section<MovieSection>('Movies');
-  [movie] = await section.search({ title: 'Bunny' });
+  movie = first(await section.search({ title: 'Bunny' }));
   await updateTimeline('playing');
 });
 

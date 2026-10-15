@@ -6,6 +6,8 @@ import { PlayQueue } from '../src/playqueue.ts';
 import type { PlexServer } from '../src/server.ts';
 import { Movie } from '../src/video.ts';
 
+import { assertDefined } from './assertions.ts';
+
 const server = {} as PlexServer;
 
 class CountingTrack extends Track {
@@ -64,6 +66,7 @@ describe('model hydration', () => {
     );
 
     const [item] = playQueue.items;
+    assertDefined(item);
     expect(item).toBeInstanceOf(Movie);
     expect(item.playQueueItemID).toBe(10);
     expect(typeof item.createPlayQueue).toBe('function');
@@ -165,17 +168,20 @@ describe('model hydration', () => {
     } as never);
 
     const [media] = movie.media;
+    assertDefined(media);
     expect(media.container).toBe('mp4');
     expect(media.videoResolution).toBe('1080');
     expect(media.audioProfile).toBe('lc');
     expect(media.optimizedForStreaming).toBe(true);
     expect(media.has64bitOffsets).toBe(false);
     const [part] = media.parts;
+    assertDefined(part);
     expect(part.accessible).toBe(true);
     expect(part.audioProfile).toBe('lc');
     expect(part.hasThumbnail).toBe(true);
     expect(part.optimizedForStreaming).toBe(true);
     const [stream] = part.audioStreams();
+    assertDefined(stream);
     expect(stream.channels).toBe(2);
     expect(stream.samplingRate).toBe(48_000);
     expect(stream.albumGain).toBe(-7.19);

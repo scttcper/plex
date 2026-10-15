@@ -9,6 +9,7 @@ import {
   type PlexServer,
 } from '../src/index.ts';
 
+import { first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 const PHOTO_SECTION_TITLE = 'Photos';
@@ -53,7 +54,7 @@ describe('Photo libraries', () => {
     expect(fixturePhoto.title).toBe('Cute Cat');
     expect(fixturePhoto.type).toBe('photo');
     expect(fixturePhoto.media[0]).toBeInstanceOf(PhotoMedia);
-    expect(fixturePhoto.media[0].parts[0]).toBeInstanceOf(PhotoPart);
+    expect(first(fixturePhoto.media).parts[0]).toBeInstanceOf(PhotoPart);
     expect(fixturePhoto.locations).toContain(PHOTO_FIXTURE_PATH);
     expect(fixturePhoto.originalUrl()).toContain('/library/parts/');
     expect(fixturePhoto.originalUrl()).toContain('X-Plex-Token=');

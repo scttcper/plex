@@ -4,6 +4,8 @@ import type { MediaDownload } from '../src/download.ts';
 import { PlexServer } from '../src/server.ts';
 import { Movie } from '../src/video.ts';
 
+import { first, itemAt } from './assertions.ts';
+
 describe('streamed downloads', () => {
   it('paginates descendants and cancels a body when iteration stops', async () => {
     const server = new PlexServer('http://localhost:32400', 'test');
@@ -40,17 +42,20 @@ describe('streamed downloads', () => {
       .spyOn(server, 'stream')
       .mockImplementation(async () => new ReadableStream({ cancel }));
     const downloads = item.download();
-    const first = await downloads.next();
-    expect(first.value).toMatchObject({ filename: 'one.mkv', key: '/library/metadata/11' });
-    const second = await downloads.next();
-    expect(second.value).toMatchObject({ filename: 'two.mkv', key: '/library/metadata/12' });
+    const firstDownload = await downloads.next();
+    expect(firstDownload.value).toMatchObject({ filename: 'one.mkv', key: '/library/metadata/11' });
+    const secondDownload = await downloads.next();
+    expect(secondDownload.value).toMatchObject({
+      filename: 'two.mkv',
+      key: '/library/metadata/12',
+    });
     expect(cancel).toHaveBeenCalledTimes(1);
     await downloads.return();
     expect(cancel).toHaveBeenCalledTimes(2);
-    expect(new URL(query.mock.calls[2][0].path).searchParams.get('X-Plex-Container-Start')).toBe(
-      '1',
-    );
-    expect(new URL(stream.mock.calls[0][0]).searchParams.get('download')).toBe('1');
+    expect(
+      new URL(itemAt(query.mock.calls, 2)[0].path).searchParams.get('X-Plex-Container-Start'),
+    ).toBe('1');
+    expect(new URL(first(stream.mock.calls)[0]).searchParams.get('download')).toBe('1');
   });
 
   it('rejects media URLs on a different origin before streaming', async () => {
@@ -116,7 +121,7 @@ describe('download cancellation and media versions', () => {
     await downloads.next();
     const reader = body.getReader();
     await downloads.return();
-    expect(stream.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(first(stream.mock.calls)[1]?.signal?.aborted).toBe(true);
     reader.releaseLock();
     await body.cancel();
   });
@@ -130,7 +135,7 @@ describe('download cancellation and media versions', () => {
     const downloads = item.download({ signal: controller.signal });
     await downloads.next();
     controller.abort(new Error('stop download'));
-    expect(stream.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(first(stream.mock.calls)[1]?.signal?.aborted).toBe(true);
     await expect(downloads.next()).rejects.toThrow('stop download');
     expect(stream).toHaveBeenCalledTimes(1);
   });
@@ -159,7 +164,7 @@ describe('download cancellation and media versions', () => {
     const failure = new Error('connection failed');
     const stream = vi.spyOn(server, 'stream').mockRejectedValue(failure);
     await expect(item.download().next()).rejects.toBe(failure);
-    expect(stream.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(first(stream.mock.calls)[1]?.signal?.aborted).toBe(true);
   });
 });
 

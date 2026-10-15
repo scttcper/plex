@@ -4,6 +4,8 @@ import type { Movie } from '../src/index.ts';
 import { Playlist } from '../src/playlist.ts';
 import { PlexServer } from '../src/server.ts';
 
+import { first } from './assertions.ts';
+
 const playlistData = {
   addedAt: 1,
   composite: '/playlists/88/composite',
@@ -84,7 +86,7 @@ describe('PlexServer playlists', () => {
     const playlist = await server.playlist('Test Playlist');
 
     expect(playlists[0]).toBeInstanceOf(Playlist);
-    expect(playlists[0].metadataType).toBe('movie');
+    expect(first(playlists).metadataType).toBe('movie');
     expect(playlist.ratingKey).toBe('88');
   });
 
@@ -130,10 +132,10 @@ describe('PlexServer playlists', () => {
       Promise.resolve(responses.get(path)),
     ) as never;
     const playlist = new Playlist(server, playlistData, '/playlists/88');
-    const first = { ratingKey: '1', title: 'First' } as Movie;
-    const second = { ratingKey: '2', title: 'Second' } as Movie;
+    const firstMovie = { ratingKey: '1', title: 'First' } as Movie;
+    const secondMovie = { ratingKey: '2', title: 'Second' } as Movie;
 
-    await playlist.moveItem(second, { after: first });
+    await playlist.moveItem(secondMovie, { after: firstMovie });
 
     expect(server.query).toHaveBeenLastCalledWith({
       path: '/playlists/88/items/102/move?after=101',
@@ -158,7 +160,7 @@ describe('PlexServer.history', () => {
     });
 
     expect(history).toEqual([{ ratingKey: '12' }]);
-    const path = query.mock.calls[0][0].path;
+    const path = first(query.mock.calls)[0].path;
     const params = new URLSearchParams(path.split('?')[1]);
     expect(path.split('?')[0]).toBe('/status/sessions/history/all');
     expect(Object.fromEntries(params)).toEqual({

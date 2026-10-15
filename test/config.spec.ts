@@ -3,6 +3,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { BASE_HEADERS, setPlexHeaders } from '../src/config.ts';
 import { PlexServer } from '../src/server.ts';
 
+import { first } from './assertions.ts';
+
 const defaultHeaders = { ...BASE_HEADERS };
 
 afterEach(() => {
@@ -18,7 +20,7 @@ it('sends overridden X-Plex headers with server requests', async () => {
 
   await new PlexServer('http://localhost:32400', 'token').query({ path: '/identity' });
 
-  const headers = new Headers(fetchMock.mock.calls[0][1]?.headers);
+  const headers = new Headers(first(fetchMock.mock.calls)[1]?.headers);
   expect(headers.get('X-Plex-Product')).toBe('My App');
   expect(headers.get('X-Plex-Version')).toBe('2.0.0');
   expect(headers.get('X-Plex-Client-Identifier')).toBe('install-1');

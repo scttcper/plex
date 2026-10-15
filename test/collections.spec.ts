@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Collections, type MovieSection, PlexServer } from '../src/index.ts';
 
+import { assertDefined } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -43,6 +44,7 @@ describe('Collections', () => {
     const collections = await movieSection.collections();
     expect(collections.length).toBeGreaterThan(0);
     const collection = collections[0];
+    assertDefined(collection);
     expect(collection.ratingKey).toBeTruthy();
     expect(collection.title).toBeTruthy();
     expect(typeof collection.smart).toBe('boolean');
@@ -53,6 +55,7 @@ describe('Collections', () => {
     const collections = await movieSection.collections();
     expect(collections.length).toBeGreaterThan(0);
     const collection = collections[0];
+    assertDefined(collection);
     const items = await collection.items();
     expect(items.length).toBe(collection.childCount);
   });

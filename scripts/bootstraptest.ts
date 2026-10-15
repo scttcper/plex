@@ -237,11 +237,9 @@ function waitForScanCompletion({
   });
 
   const listener = new AlertListener(server, data => {
-    if (data.type === 'timeline' && data.TimelineEntry[0].state === 5) {
-      const entry = data.TimelineEntry[0];
-      if (expectedMediaTypes.includes(entry.type)) {
-        processedMedia += 1;
-      }
+    const [entry] = data.type === 'timeline' ? data.TimelineEntry : [];
+    if (entry?.state === 5 && expectedMediaTypes.includes(entry.type)) {
+      processedMedia += 1;
     }
 
     if (processedMedia >= expectedMediaCount) {

@@ -8,6 +8,7 @@ import {
   type ServerWalkEntry,
 } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -25,6 +26,7 @@ describe('Server Admin Methods', () => {
     const tasks = await plex.butlerTasks();
     expect(tasks.length).toBeGreaterThan(0);
     const task = tasks[0];
+    assertDefined(task);
     expect(task.name).toBeTruthy();
     expect(typeof task.enabled).toBe('boolean');
     expect(typeof task.interval).toBe('number');
@@ -34,6 +36,7 @@ describe('Server Admin Methods', () => {
     const accounts = await plex.systemAccounts();
     expect(accounts.length).toBeGreaterThan(0);
     const account = accounts[0];
+    assertDefined(account);
     expect(typeof account.accountID).toBe('number');
   });
 
@@ -41,6 +44,7 @@ describe('Server Admin Methods', () => {
     const devices = await plex.systemDevices();
     expect(devices.length).toBeGreaterThan(0);
     const device = devices[0];
+    assertDefined(device);
     expect(typeof device.deviceID).toBe('number');
     expect(typeof device.name).toBe('string');
   });
@@ -90,8 +94,8 @@ describe('Server Admin Methods', () => {
     expect(agents.find(agent => agent.identifier === 'tv.plex.agents.movie')).toBeInstanceOf(Agent);
     expect(photoAgents[0]).toBeInstanceOf(Agent);
     expect(photoAgents.map(agent => agent.identifier)).toContain('tv.plex.agents.none');
-    expect(photoAgents[0].name).toBe('Plex Personal Media');
-    expect(typeof photoAgents[0].languageCode).toBe('string');
+    expect(first(photoAgents).name).toBe('Plex Personal Media');
+    expect(typeof first(photoAgents).languageCode).toBe('string');
   });
 
   it('should browse server folders and files', async () => {

@@ -62,8 +62,7 @@ export async function prepareTvDir(showPath = tvDir): Promise<void> {
       fs.mkdirSync(showDir);
     }
 
-    for (let index = 0; index < seasons.length; index++) {
-      const season = seasons[index];
+    for (const [index, season] of seasons.entries()) {
       for (const episode of season) {
         const episodePath = path.join(
           showDir,

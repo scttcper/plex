@@ -4,6 +4,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { Movie, type MovieSection, Optimized, type PlexServer } from '../src/index.ts';
 
+import { first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 const optimizedTitle = '__optimized_media_test__';
@@ -101,8 +102,8 @@ it('creates, inspects, renames, and removes strongly typed optimized media', asy
   const items = await optimized.items();
   expect(items).toHaveLength(1);
   expect(items[0]).toBeInstanceOf(Movie);
-  expect(items[0].ratingKey).toBe(movie.ratingKey);
-  expect(items[0].processingState).toBe('pending');
+  expect(first(items).ratingKey).toBe(movie.ratingKey);
+  expect(first(items).processingState).toBe('pending');
 
   await optimized.rename(renamedOptimizedTitle);
   expect(optimized.title).toBe(renamedOptimizedTitle);
