@@ -14,6 +14,20 @@ import { createClient } from './test-client.ts';
 let plex: PlexServer;
 let movie: Movie;
 
+/** Put a shared item's view count and resume position back after a test changes them. */
+async function restoreWatchState(
+  item: Movie,
+  { viewCount, viewOffset }: { viewCount: number; viewOffset: number },
+): Promise<void> {
+  await item.markUnplayed();
+  for (let count = 0; count < viewCount; count += 1) {
+    await item.markPlayed();
+  }
+  if (viewOffset > 0) {
+    await item.updateTimeline({ time: viewOffset });
+  }
+}
+
 beforeAll(async () => {
   plex = await createClient();
   const library = await plex.library();
@@ -62,8 +76,11 @@ it('should return strongly typed video streams', () => {
 });
 
 it('should update progress and timeline position', async () => {
-  await movie.markUnplayed();
+  await movie.reload();
+  const original = { viewCount: movie.viewCount ?? 0, viewOffset: movie.viewOffset };
+
   try {
+    await movie.markUnplayed();
     await movie.updateProgress({ time: 90_000 });
     await movie.reload();
     expect(movie.viewOffset).toBe(90_000);
@@ -71,8 +88,10 @@ it('should update progress and timeline position', async () => {
     await movie.reload();
     expect(movie.viewOffset).toBe(120_000);
   } finally {
-    await movie.markUnplayed();
+    await restoreWatchState(movie, original);
   }
 
-  expect(movie.viewOffset).toBe(0);
+  await movie.reload();
+  expect(movie.viewCount).toBe(original.viewCount);
+  expect(movie.viewOffset).toBe(original.viewOffset);
 });

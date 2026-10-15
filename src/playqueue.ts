@@ -86,8 +86,6 @@ export class PlayQueue extends PlexObject {
   declare playQueueVersion: number;
   /** Total size of the PlayQueue (alias for playQueueTotalCount) */
   declare size: number;
-  /** Media object for the currently selected item */
-  declare selectedItem?: Playable;
 
   /** Cache of PlayQueue items */
   private _items: QueueItem[] | null = null;
@@ -226,17 +224,15 @@ export class PlayQueue extends PlexObject {
         }
         return item;
       });
-
-      // Set selectedItem based on the offset now that items are loaded
-      if (
-        this.playQueueSelectedItemOffset >= 0 &&
-        this._items.length > this.playQueueSelectedItemOffset &&
-        !this.selectedItem
-      ) {
-        this.selectedItem = this._items[this.playQueueSelectedItemOffset];
-      }
     }
     return this._items;
+  }
+
+  /**
+   * The currently selected item, when it is inside the loaded window of the PlayQueue.
+   */
+  get selectedItem(): QueueItem | undefined {
+    return this.items.find(item => playQueueItemID(item) === this.playQueueSelectedItemID);
   }
 
   /**
@@ -432,8 +428,6 @@ export class PlayQueue extends PlexObject {
     this.playQueueTotalCount = data.playQueueTotalCount;
     this.playQueueVersion = data.playQueueVersion;
     this.size = data.size > 0 ? data.size : this.playQueueTotalCount;
-
-    // selectedItem will be set lazily when accessing items
   }
 
   private _invalidateCacheAndLoadData(data: PlayQueueResponse): void {

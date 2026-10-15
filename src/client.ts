@@ -635,7 +635,17 @@ async function parseClientResponse(body: string | undefined): Promise<unknown> {
   }
 
   if (text.startsWith('<')) {
-    const xml = (await parseStringPromise(text)) as Record<string, XmlNode>;
+    let xml: Record<string, XmlNode>;
+    try {
+      xml = (await parseStringPromise(text)) as Record<string, XmlNode>;
+    } catch (error) {
+      // Plex for Samsung answers successful commands with an unclosed `<Response code="200">`.
+      if (/^(?:<\?xml[^>]*>\s*)?<Response\b[^>]*\bcode="200"/.test(text)) {
+        return text;
+      }
+      throw error;
+    }
+
     return Object.fromEntries(
       Object.entries(xml).map(([key, value]) => [key, normalizeXml(value)]),
     );

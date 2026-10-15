@@ -131,6 +131,32 @@ describe('PlexClient', () => {
     }
   });
 
+  it("should accept Plex for Samsung's unclosed success response", async () => {
+    const client = new PlexClient({ baseurl: 'http://192.168.1.100:32500' });
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('<?xml version="1.0"?><Response code="200" status="OK">'));
+
+    try {
+      await expect(client.play()).resolves.toBeUndefined();
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('should still reject malformed XML that is not a success response', async () => {
+    const client = new PlexClient({ baseurl: 'http://192.168.1.100:32500' });
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('<MediaContainer><Timeline state="playing">'));
+
+    try {
+      await expect(client.timelines()).rejects.toThrow('Unclosed root tag');
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
   it('should treat paused media as playing by default', async () => {
     const client = new PlexClient();
     vi.spyOn(client, 'timelines').mockResolvedValue([
@@ -194,6 +220,29 @@ describe('PlexClient', () => {
       containerKey: '/playQueues/7?window=100&own=1',
       token: 'transient-token',
     });
+  });
+
+  it('should play the selected item of a fresh play queue', async () => {
+    const server = createServer();
+    vi.spyOn(server, 'createToken').mockResolvedValue('');
+    const client = new PlexClient();
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+    const queue = new PlayQueue(server, {
+      playQueueID: 7,
+      playQueueSelectedItemID: 102,
+      playQueueSelectedItemOffset: 1,
+      Metadata: [
+        { type: 'track', key: '/library/metadata/11', ratingKey: '11', playQueueItemID: 101 },
+        { type: 'track', key: '/library/metadata/12', ratingKey: '12', playQueueItemID: 102 },
+      ],
+    });
+
+    await client.playMedia(queue);
+
+    expect(sendCommand).toHaveBeenCalledWith(
+      'playback/playMedia',
+      expect.objectContaining({ key: '/library/metadata/12' }),
+    );
   });
 });
 
