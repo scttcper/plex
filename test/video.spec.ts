@@ -304,16 +304,15 @@ describe('Movies', () => {
     expect(url).toContain('details');
   });
 
-  /**
-   * Seems to be failing because the movie has no extras
-   */
-  it.skip('should get movie extras', async () => {
-    const results = await section.search({ title: 'The Lincoln Lawyer' });
-    movie = results[0];
-    expect(movie).toBeDefined();
-    const extras = await movie.extras();
-    const extra = extras[0];
+  it('should get movie extras', async () => {
+    const [extra] = await movie.extras();
+
     expect(extra.type).toBe('clip');
+    expect(extra.subtype).toBe('trailer');
+    expect(typeof extra.extraType).toBe('number');
+    expect(typeof extra.duration).toBe('number');
+    expect(extra.primaryGuid).toBe(movie.guid);
+    expect(extra.media.length).toBeGreaterThan(0);
     expect((await extra.section()).title).toBe('Movies');
   });
 

@@ -494,6 +494,12 @@ export interface ExtrasData {
   duration: number;
   addedAt: number;
   extraType: number;
+  originallyAvailableAt?: string;
+  primaryGuid?: string;
+  skipDetails?: number;
+  thumbAspectRatio?: string;
+  viewOffset?: number;
+  year?: number;
   Media: ExtrasMedia[];
 }
 

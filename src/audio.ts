@@ -25,7 +25,7 @@ import { Playlist } from './playlist.ts';
 import type { PlaylistResponse } from './playlist.types.ts';
 
 type MusicSectionLike = {
-  sonicAdventure: (start: any, end: any) => Promise<any[]>;
+  sonicAdventure: (start: Track | number, end: Track | number) => Promise<Track[]>;
 };
 const hasSonicAdventure = (s: unknown): s is MusicSectionLike =>
   typeof (s as { sonicAdventure?: unknown }).sonicAdventure === 'function';
@@ -80,19 +80,8 @@ export class Audio extends Playable {
   /** List of mood objects. */
   declare moods?: Mood[];
 
-  /**
-   * Returns the full URL for a given part (like a media stream) relative to the item's key.
-   * Includes the authentication token.
-   * @param part The relative path or resource identifier.
-   * @returns The full URL string including the server address and token, or undefined if part is empty.
-   */
+  /** Build an authenticated server URL for a path such as a media part key. */
   url(part: string): string | undefined {
-    // This typically refers to sub-resources like media parts, not the main item URL (which is `key`)
-    // The python version returns server.url(part), let's keep it consistent,
-    // assuming `part` is something like `/transcode/universal/start?protocol=...` relative to server root,
-    // or it might be used for things like `/tree`? The python `url` method seems rarely used directly.
-    // For now, mirroring the python seems safest. If `part` is meant to be appended to `this.key`,
-    // the logic would need changing.
     return part ? this.server.url(part, { includeToken: true })?.toString() : undefined;
   }
 
@@ -181,7 +170,6 @@ export class Audio extends Playable {
       : librarySectionIDInt;
     this.librarySectionKey = data.librarySectionKey;
     this.librarySectionTitle = data.librarySectionTitle;
-    // listType is handled by the getter
     const musicAnalysisVersionInt = data.musicAnalysisVersion
       ? Number.parseInt(data.musicAnalysisVersion, 10)
       : Number.NaN;
@@ -210,7 +198,6 @@ export class Audio extends Playable {
       data.viewCount !== undefined ? Number.parseInt(data.viewCount, 10) : Number.NaN;
     this.viewCount = Number.isNaN(viewCountInt) ? 0 : viewCountInt;
 
-    // Map tag arrays like video.ts does
     this.ultraBlurColors = data.UltraBlurColors;
     this.fields = data.Field?.map((d: unknown) => new Field(this.server, d, undefined, this)) ?? [];
     this.images = data.Image?.map((d: unknown) => new Image(this.server, d, undefined, this)) ?? [];
@@ -239,40 +226,35 @@ export class Track extends Audio {
   static override TAG = 'Track';
   static override TYPE = 'track';
 
-  // Track specific properties
   declare audienceRating?: number;
   declare chapterSource?: string;
-  // chapters defined via getter
-  // collections defined via getter
   declare duration?: number;
-  // genres defined via getter
   declare grandparentArt?: string;
   declare grandparentGuid?: string;
   declare grandparentKey?: string;
   declare grandparentRatingKey?: number | string;
   declare grandparentTheme?: string;
   declare grandparentThumb?: string;
-  declare grandparentTitle?: string; // Artist Name
-  // guids defined via getter
-  // index inherited from Audio
-  // labels defined via getter
-  // media defined via getter
-  declare originalTitle?: string; // Often the Artist Name again or original track title?
+  /** Artist name. */
+  declare grandparentTitle?: string;
+  /** Track artist when it differs from the album artist. */
+  declare originalTitle?: string;
   declare parentGuid?: string;
-  declare parentIndex?: number; // Disc Number
+  /** Disc number. */
+  declare parentIndex?: number;
   declare parentKey?: string;
   declare parentRatingKey?: number | string;
   declare parentStudio?: string;
   declare parentThumb?: string;
-  declare parentTitle?: string; // Album Title
+  /** Album title. */
+  declare parentTitle?: string;
   declare parentYear?: number | string;
   declare primaryExtraKey?: string;
-  declare rating?: number; // Inherited ratingKey exists from PlexObject base
+  declare rating?: number;
   declare ratingCount?: number | string;
   declare skipCount?: number;
-  declare sourceURI?: string; // Remote playlist item
-  // viewCount inherited from Audio
-  // lastViewedAt inherited from Audio
+  /** Remote server URI for items from another server (ex: playlist items). */
+  declare sourceURI?: string;
   declare viewOffset?: number;
   declare chapters?: Chapter[];
   declare collections?: Collection[];
@@ -280,12 +262,6 @@ export class Track extends Audio {
   declare guids?: Guid[];
   declare labels?: Label[];
   declare media?: Media[];
-
-  // Properties from Mixins (assuming, some might overlap with Audio)
-  // userRating inherited from Audio
-  // art inherited from Audio
-  // thumb inherited from Audio (used as poster?)
-  // theme inherited from Audio
 
   /**
    * @returns List of file paths where the track is found on disk.
@@ -302,19 +278,11 @@ export class Track extends Audio {
     return this.index;
   }
 
-  // /**
-  //  * @returns File paths for all parts of this media item.
-  //  */
-  // iterParts(): Part[] {
-  //   return this.media?.flatMap(media => media.Part ?? []) ?? [];
-  // }
-
   /**
    * @returns A filename for use in download.
    */
   prettyfilename(): string {
     const trackNum = String(this.trackNumber ?? '00').padStart(2, '0');
-    // Use optional chaining for potentially undefined properties
     return `${this.grandparentTitle ?? 'Unknown Artist'} - ${this.parentTitle ?? 'Unknown Album'} - ${trackNum} - ${this.title ?? 'Unknown Track'}`;
   }
 
@@ -344,7 +312,6 @@ export class Track extends Audio {
    * @returns Default title for a new syncItem.
    */
   override _defaultSyncTitle(): string {
-    // Use optional chaining for potentially undefined properties
     return `${this.grandparentTitle ?? 'Unknown Artist'} - ${this.parentTitle ?? 'Unknown Album'} - ${this.title ?? 'Unknown Track'}`;
   }
 
@@ -361,10 +328,6 @@ export class Track extends Audio {
     return super.getWebURL({ base });
   }
 
-  // metadataDirectory property requires Path module and filesystem access, which is
-  // complex in node/browser. Omitting for now, might need specific implementation.
-  // get metadataDirectory(): string { ... }
-
   /**
    * Returns a sonic adventure from the current track to the specified track.
    * @param to The target track for the sonic adventure.
@@ -379,26 +342,6 @@ export class Track extends Audio {
     return section.sonicAdventure(this, to);
   }
 
-  // /**
-  //  * @returns The LibrarySection this item belongs to.
-  //  */
-  // override section(): LibrarySection | undefined {
-  //   let parent = this._parent; // Access protected _parent from base
-  //   // Navigate up until we find a LibrarySection or hit the top
-  //   while (parent) {
-  //     // Basic check based on key structure, might need refinement
-  //     if (parent instanceof PlexObject && parent.key?.startsWith('/library/sections/')) {
-  //       return parent as LibrarySection;
-  //     }
-  //     // Check if parent has a _parent property to continue traversal
-  //     if (!('_parent' in parent) || !parent._parent) {
-  //       break;
-  //     }
-  //     parent = parent._parent as PlexObject | undefined;
-  //   }
-  //   return undefined;
-  // }
-
   /**
    * Populates the object's properties from the provided Plex API data,
    * overriding the base Audio class method to add Track-specific attributes.
@@ -408,7 +351,6 @@ export class Track extends Audio {
   override _loadData(data: TrackData): void {
     super._loadData(data);
 
-    // Assign directly, assuming data properties are already numbers
     this.audienceRating = data.audienceRating;
     this.chapterSource = data.chapterSource;
     this.duration = data.duration;
@@ -436,7 +378,6 @@ export class Track extends Audio {
     this.viewOffset = data.viewOffset ?? 0;
     this.year = data.year;
 
-    // ratingKey, index, title, etc., are loaded by super._loadData or PlexObject base
     this.chapters = data.Chapter?.map(d => new Chapter(this.server, d, undefined, this));
     this.collections = data.Collection?.map(d => new Collection(this.server, d, undefined, this));
     this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this));
@@ -454,7 +395,6 @@ export class Artist extends Audio {
   static override TAG = 'Directory';
   static override TYPE = 'artist';
 
-  // Artist specific properties
   declare albumSort?: number; // -1: Library default, 0: Newest, 1: Oldest, 2: Name
   declare audienceRating?: number;
   declare rating?: number;
@@ -578,9 +518,6 @@ export class Artist extends Audio {
     return this.track(args);
   }
 
-  // /**
-  //  * Returns a list of popular tracks by the artist.
-  //  */
   async popularTracks(): Promise<Track[]> {
     const section = await this.section();
     if (!section || typeof section.search !== 'function') {
@@ -600,9 +537,6 @@ export class Artist extends Audio {
     );
   }
 
-  // /**
-  //  * Returns the artist radio station Playlist or undefined.
-  //  */
   /**
    * Load attribute values from Plex XML response.
    * @protected
@@ -638,14 +572,11 @@ export class Album extends Audio {
   static override TAG = 'Directory';
   static override TYPE = 'album';
 
-  // Album specific properties
   declare audienceRating?: number;
-  // mapped arrays
   declare collections?: Collection[];
   declare formats?: Format[];
   declare genres?: Genre[];
   declare guids?: Guid[];
-  // key inherited from Audio
   declare labels?: Label[];
   declare leafCount?: number;
   declare loudnessAnalysisVersion?: number | string;
@@ -722,9 +653,6 @@ export class Album extends Audio {
     return `${this.parentTitle ?? 'Unknown Artist'} - ${this.title ?? 'Unknown Album'}`;
   }
 
-  // section() method - Albums typically don't directly need this,
-  // but could be inherited or implemented if needed to find parent section.
-
   /**
    * Load attribute values from Plex XML response.
    * @protected
@@ -732,12 +660,10 @@ export class Album extends Audio {
   override _loadData(data: AlbumData): void {
     super._loadData(data);
 
-    // Assign directly, assuming data properties have correct types
     this.audienceRating = data.audienceRating;
     this.key = data.key?.replace('/children', ''); // Apply FIX_BUG_50
     this.leafCount = data.leafCount;
     this.loudnessAnalysisVersion = data.loudnessAnalysisVersion;
-    // Attempt direct Date parsing for originallyAvailableAt
     try {
       this.originallyAvailableAt = data.originallyAvailableAt
         ? new Date(data.originallyAvailableAt)

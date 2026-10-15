@@ -42,6 +42,7 @@ import type {
   ChapterSource,
   EpisodeMetadata,
   FullMovieResponse,
+  MediaData as VideoMediaData,
   SubtitleSearchResponse,
 } from './video.types.ts';
 
@@ -1091,7 +1092,25 @@ export class Clip extends Video {
   TYPE = 'clip';
   METADATA_TYPE = 'clip';
 
+  /** Duration of the clip in milliseconds. */
+  declare duration?: number;
+  /** Plex extra type id. */
+  declare extraType?: number;
+  /** Position of the clip in its parent's extras. */
+  declare index?: number;
   declare media: Media[];
+  /** Datetime the clip was released. */
+  declare originallyAvailableAt?: Date;
+  /** Plex GUID of the item this extra belongs to. */
+  declare primaryGuid?: string;
+  /** Whether clients skip the details page for this clip. */
+  declare skipDetails?: number;
+  /** Kind of extra (ex: trailer, behindTheScenes, deletedScene). */
+  declare subtype?: string;
+  /** Thumbnail aspect ratio hint. */
+  declare thumbAspectRatio?: string;
+  /** View offset in milliseconds. */
+  declare viewOffset: number;
 
   locations(): string[] {
     return this.iterParts()
@@ -1099,12 +1118,23 @@ export class Clip extends Video {
       .filter((file): file is string => typeof file === 'string' && file.length > 0);
   }
 
-  protected override _loadData(data: any): void {
-    super._loadData(data);
+  // Extras share the video loader but have their own shape, Extra narrows this to ExtrasData.
+  protected override _loadData(clip: any): void {
+    super._loadData(clip);
+    const data = clip as ExtrasData;
+    this.duration = parseOptionalNumber(data.duration);
+    this.extraType = parseOptionalNumber(data.extraType);
+    this.index = parseOptionalNumber(data.index);
     this.media = (data.Media ?? []).map(
-      (media: import('./video.types.ts').MediaData) =>
-        new Media(this.server, media, undefined, this),
+      media => new Media(this.server, media as unknown as VideoMediaData, undefined, this),
     );
+    this.originallyAvailableAt = parseOptionalDate(data.originallyAvailableAt);
+    this.primaryGuid = data.primaryGuid;
+    this.skipDetails = parseOptionalNumber(data.skipDetails);
+    this.subtype = data.subtype;
+    this.thumbAspectRatio = data.thumbAspectRatio;
+    this.viewOffset = data.viewOffset ?? 0;
+    this.year = parseOptionalNumber(data.year);
   }
 
   protected _loadFullData(data: any): void {
