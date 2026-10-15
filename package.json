@@ -38,15 +38,13 @@
     "jose": "^6.2.12",
     "ofetch": "^1.5.1",
     "type-fest": "^5.10.0",
-    "uint8array-extras": "^1.6.0",
-    "ws": "^8.22.0"
+    "uint8array-extras": "^1.6.0"
   },
   "devDependencies": {
     "@ctrl/oxlint-config": "1.5.0",
     "@ctrl/video-filename-parser": "5.12.0",
     "@sindresorhus/tsconfig": "8.1.0",
     "@types/node": "26.6.5",
-    "@types/ws": "8.18.2",
     "nanospinner": "1.2.2",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
