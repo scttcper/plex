@@ -751,7 +751,7 @@ export class LibraryMediaTag extends PlexObject implements LibraryTagItems {
   }
 }
 
-const LIBRARY_TAG_CLASSES = {
+const LIBRARY_TAG_CLASSES: Partial<Record<LibraryTagName, Class<MediaTag>>> = {
   tag: Tag,
   genre: Genre,
   collection: Collection,
@@ -768,7 +768,7 @@ const LIBRARY_TAG_CLASSES = {
   format: Format,
   subformat: Subformat,
   similar: Similar,
-} satisfies Partial<Record<LibraryTagName, Class<MediaTag>>>;
+};
 
 export interface SearchArgs {
   [key: string]: SearchArgValue;

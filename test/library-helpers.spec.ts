@@ -13,6 +13,11 @@ import {
   type EditableLibraryItem,
   type PlexServer,
 } from '../src/index.ts';
+import type {
+  LibraryFilterMetaData,
+  LibraryRootResponse,
+  Location as LocationData,
+} from '../src/library.types.ts';
 
 const showSectionData = {
   uuid: 'show-section-uuid',
@@ -23,7 +28,7 @@ const showSectionData = {
   composite: '/library/sections/2/composite',
   filters: true,
   language: 'en-US',
-  Location: [],
+  Location: [] as LocationData[],
   refreshing: false,
   scanner: 'Plex TV Series',
   thumb: '/:/resources/show.png',
@@ -49,7 +54,7 @@ const movieSectionData = {
   type: 'movie',
 };
 
-const libraryRootData = {
+const libraryRootData: LibraryRootResponse = {
   size: 1,
   allowSync: true,
   art: '',
@@ -489,7 +494,7 @@ function createMovieSection() {
 }
 
 function createShowSection() {
-  const showFilterMeta = {
+  const showFilterMeta: LibraryFilterMetaData = {
     Type: [
       {
         active: true,
