@@ -6,12 +6,16 @@ on:
       - master
   pull_request:
 
+# Every run claims a test server on the same Plex account, so runs go one at a time across all
+# branches. `queue: max` keeps every waiting run instead of cancelling the older pending one, so a
+# queued master push (which triggers the release) can't be dropped by a PR push.
+concurrency:
+  group: ${{ github.workflow }}
+  queue: max
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    # should hopefully run one build at a time
-    concurrency:
-      group: ${{ github.workflow }}
     env:
       PLEXAPI_AUTH_SERVER_BASEURL: http://127.0.0.1:32400
       PLEX_CONTAINER: plexinc/pms-docker
