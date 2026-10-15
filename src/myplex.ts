@@ -10,7 +10,7 @@ import {
 import { PlexObject } from './base/plexObject.ts';
 import { PlexClient } from './client.ts';
 import { BASE_HEADERS, TIMEOUT } from './config.ts';
-import { BadRequest, NotFound, TwoFactorRequiredError } from './exceptions.ts';
+import { BadRequest, NotFound, TwoFactorRequiredError, Unauthorized } from './exceptions.ts';
 import type { Hub, LibrarySection } from './library.ts';
 import type { StreamingAvailability } from './media.types.ts';
 import type {
@@ -239,6 +239,9 @@ export class MyPlexAccount {
   async videoOnDemand(): Promise<Hub[]> {
     const { Hub } = await import('./library.ts');
     const { fetchItems } = await import('./baseFunctionality.ts');
+    if (!this.token) {
+      throw new Unauthorized('Browsing video on demand requires a Plex token.');
+    }
     const server = createPlexServer('https://vod.provider.plex.tv', this.token, this.timeout);
     return fetchItems(server, '/hubs', undefined, Hub);
   }
@@ -275,7 +278,7 @@ export class MyPlexAccount {
     const speakers = await this.sonosSpeakers();
     return speakers.find(speaker =>
       'name' in identifier
-        ? speaker.title?.split('+')[0].trim() === identifier.name
+        ? speaker.title?.split('+', 1)[0]?.trim() === identifier.name
         : speaker.machineIdentifier?.startsWith(identifier.id),
     );
   }
@@ -1086,7 +1089,7 @@ export interface PendingInvitesOptions {
   includeSent?: boolean;
 }
 
-export type LibraryShareSection = Pick<LibrarySection<unknown>, 'key' | 'title'> | number | string;
+export type LibraryShareSection = Pick<LibrarySection, 'key' | 'title'> | number | string;
 
 export interface MyPlexLibraryShareSection {
   /** Account-level section id used in sharing requests. */

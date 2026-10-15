@@ -3,7 +3,7 @@ import { URLSearchParams } from 'node:url';
 import type { AlbumData, ArtistData, TrackData } from './audio.types.ts';
 import { Playable } from './base/playable.ts';
 import { fetchItem, fetchItems } from './baseFunctionality.ts';
-import { NotFound } from './exceptions.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
 import {
   Chapter,
   Collection,
@@ -67,18 +67,18 @@ export class Audio extends Playable {
   /** User rating (0.0-10.0). */
   declare userRating?: number;
   /** Count of times the item was played. */
-  declare viewCount?: number;
+  declare viewCount: number;
 
   /** Store the raw data from the Plex API for lazy loading related items. */
   declare protected _data?: Record<string, any>;
 
   /** List of field objects. */
-  declare fields?: Field[];
+  declare fields: Field[];
   declare ultraBlurColors?: UltraBlurColorsData;
   /** List of image objects. */
-  declare images?: Image[];
+  declare images: Image[];
   /** List of mood objects. */
-  declare moods?: Mood[];
+  declare moods: Mood[];
 
   /** Build an authenticated server URL for a path such as a media part key. */
   url(part: string): string | undefined {
@@ -268,7 +268,7 @@ export class Track extends Audio {
    */
   get locations(): string[] {
     const parts = this.media?.flatMap(m => m.parts ?? []) ?? [];
-    return parts.map(part => part.file).filter(Boolean);
+    return parts.map(part => part.file).filter((file): file is string => Boolean(file));
   }
 
   /**
@@ -434,6 +434,9 @@ export class Artist extends Audio {
   async albums(options: Record<string, unknown> = {}): Promise<Album[]> {
     if (!this.librarySectionID) {
       await this.reload();
+    }
+    if (!this.ratingKey) {
+      throw new BadRequest('Listing albums requires an artist rating key.');
     }
 
     const section = await this.section();

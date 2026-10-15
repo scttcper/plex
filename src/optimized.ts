@@ -123,6 +123,7 @@ export class Optimized extends PlexObject {
   declare composite: string;
   declare device: OptimizationDevice;
   declare id: number;
+  declare key: string;
   declare location: OptimizationLocation;
   declare mediaSettings: OptimizationMediaSettings;
   declare policy: OptimizationPolicy;
@@ -158,7 +159,7 @@ export class Optimized extends PlexObject {
 
   protected _loadData(data: OptimizedResponse): void {
     this.id = data.id;
-    const [basePath] = this.initpath.split('?', 1);
+    const basePath = this.initpath?.split('?', 1)[0] ?? '/playlists';
     this.key = `${basePath}/${this.id.toString()}`;
     this.composite = data.composite;
     this.title = data.title;

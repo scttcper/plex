@@ -1,11 +1,14 @@
 import type { UltraBlurColorsData } from './media.types.ts';
 
 export interface MatchSearchResult {
-  thumb: string;
+  thumb?: string;
+  type?: string;
   guid: string;
   name: string;
-  score: number;
-  year: number;
+  summary?: string;
+  /** Match confidence, returned for automatic matches. */
+  score?: number;
+  year?: number;
   lifespanEnded: boolean;
 }
 

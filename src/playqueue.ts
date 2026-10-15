@@ -170,10 +170,14 @@ export class PlayQueue extends PlexObject {
 
     if (Array.isArray(items)) {
       const playableItems = items.map(asPlayQueuePlayable);
+      const [firstItem] = playableItems;
+      if (!firstItem) {
+        throw new BadRequest('Creating a PlayQueue requires at least one item.');
+      }
       const itemKeys = playableItems.map(x => x.ratingKey).join(',');
       const uriArgs = encodeURIComponent(`/library/metadata/${itemKeys}`);
       args.uri = `library:///directory/${uriArgs}`;
-      args.type = playableItems[0].listType;
+      args.type = firstItem.listType;
     } else if (hasPlaylistShape(items)) {
       args.type = items.playlistType;
       args.playlistID = items.ratingKey;
@@ -261,11 +265,11 @@ export class PlayQueue extends PlexObject {
    * Useful for looking up playQueueItemIDs using items from the Library.
    */
   getQueueItem(item: Playable): Playable {
-    const matches = this.items.filter(x => x.ratingKey === item.ratingKey);
+    const [match, ...duplicates] = this.items.filter(x => x.ratingKey === item.ratingKey);
 
-    if (matches.length === 1) {
-      return matches[0];
-    } else if (matches.length > 1) {
+    if (match && duplicates.length === 0) {
+      return match;
+    } else if (match) {
       throw new BadRequest(
         `${item.title} occurs multiple times in this PlayQueue, provide exact item`,
       );

@@ -34,8 +34,9 @@ export class Settings extends PlexObject {
 
   get(id: string): Setting {
     const lowerId = lowerFirst(id);
-    if (Object.hasOwn(this._settings, lowerId)) {
-      return this._settings[lowerId];
+    const setting = Object.hasOwn(this._settings, lowerId) ? this._settings[lowerId] : undefined;
+    if (setting) {
+      return setting;
     }
 
     throw new NotFound(`Invalid setting id: ${id}`);

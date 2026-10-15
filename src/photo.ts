@@ -21,7 +21,12 @@ import type {
 } from './photo.types.ts';
 import type { PlayQueue } from './playqueue.ts';
 import type { CreatePlayQueueOptions } from './playqueue.types.ts';
-import { type MediaContainer, parseOptionalDate, parseOptionalNumber } from './util.ts';
+import {
+  firstMetadata,
+  type MediaContainer,
+  parseOptionalDate,
+  parseOptionalNumber,
+} from './util.ts';
 import { Clip } from './video.ts';
 
 function isAlbumMetadata(item: Record<string, unknown>): boolean {
@@ -153,7 +158,7 @@ export class Photoalbum extends PartialPlexObject {
   }
 
   protected override _loadFullData(data: PhotoMetadataResponse<PhotoalbumData>): void {
-    this._loadData(data.Metadata[0]);
+    this._loadData(firstMetadata(data, this.key));
   }
 
   protected override _loadData(data: PhotoalbumData): void {
@@ -276,7 +281,7 @@ export class Photo extends Playable {
     return this.media
       .flatMap(media => media.parts)
       .map(part => part.file)
-      .filter(Boolean);
+      .filter((file): file is string => Boolean(file));
   }
 
   /**
@@ -287,8 +292,7 @@ export class Photo extends Playable {
     return this.media
       .flatMap(media => media.parts)
       .map(part => part.originalUrl())
-      .filter(Boolean)
-      .map(url => url);
+      .filter((url): url is string => Boolean(url));
   }
 
   /**
@@ -317,7 +321,7 @@ export class Photo extends Playable {
   }
 
   protected override _loadFullData(data: PhotoMetadataResponse<PhotoData>): void {
-    this._loadData(data.Metadata[0]);
+    this._loadData(firstMetadata(data, this.key));
   }
 
   protected override _loadData(data: PhotoData): void {

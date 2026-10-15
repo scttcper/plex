@@ -42,7 +42,6 @@ import type {
   SectionsResponse,
 } from './library.types.ts';
 import {
-  Chapter,
   Collection,
   Country,
   Director,
@@ -52,7 +51,6 @@ import {
   Genre,
   Guid,
   Label,
-  Marker,
   type MediaTag,
   Mood,
   Producer,
@@ -86,7 +84,12 @@ import type { PlexServer } from './server.ts';
 import type { HistoryOptions, HistoryResult } from './server.types.ts';
 import { Setting, type SettingResponse, type SettingValue } from './settings.ts';
 import { smartFilterParams } from './smart-filter.ts';
-import { type MediaContainer, parseOptionalNumber, parsePlexBoolean } from './util.ts';
+import {
+  firstMetadata,
+  type MediaContainer,
+  parseOptionalNumber,
+  parsePlexBoolean,
+} from './util.ts';
 import { Clip, Episode, Movie, Season, Show } from './video.ts';
 
 export type Section = MovieSection | ShowSection | MusicSection | PhotoSection;
@@ -239,23 +242,19 @@ export type LibraryTagItemFor<T extends LibraryTagName> = T extends 'tag'
               ? Producer & LibraryTagItems
               : T extends 'country'
                 ? Country & LibraryTagItems
-                : T extends 'chapter'
-                  ? Chapter & LibraryTagItems
-                  : T extends 'label'
-                    ? Label & LibraryTagItems
-                    : T extends 'marker'
-                      ? Marker & LibraryTagItems
-                      : T extends 'mood'
-                        ? Mood & LibraryTagItems
-                        : T extends 'style'
-                          ? Style & LibraryTagItems
-                          : T extends 'format'
-                            ? Format & LibraryTagItems
-                            : T extends 'subformat'
-                              ? Subformat & LibraryTagItems
-                              : T extends 'similar'
-                                ? Similar & LibraryTagItems
-                                : LibraryMediaTag;
+                : T extends 'label'
+                  ? Label & LibraryTagItems
+                  : T extends 'mood'
+                    ? Mood & LibraryTagItems
+                    : T extends 'style'
+                      ? Style & LibraryTagItems
+                      : T extends 'format'
+                        ? Format & LibraryTagItems
+                        : T extends 'subformat'
+                          ? Subformat & LibraryTagItems
+                          : T extends 'similar'
+                            ? Similar & LibraryTagItems
+                            : LibraryMediaTag;
 
 export class Library {
   static key = '/library';
@@ -762,9 +761,7 @@ const LIBRARY_TAG_CLASSES: Partial<Record<LibraryTagName, Class<MediaTag>>> = {
   role: Role,
   producer: Producer,
   country: Country,
-  chapter: Chapter,
   label: Label,
-  marker: Marker,
   mood: Mood,
   style: Style,
   format: Format,
@@ -894,7 +891,7 @@ export type SearchArgValue =
   | SearchFilterValue
   | undefined;
 export type AdvancedSearchFilters = {
-  [field: string]: AdvancedSearchFilters[] | SearchFilterValue;
+  [field: string]: AdvancedSearchFilters[] | SearchFilterValue | undefined;
   and?: AdvancedSearchFilters[];
   or?: AdvancedSearchFilters[];
 };
@@ -1124,22 +1121,22 @@ function resolveRequestedLibtype(parsed: string | undefined, fallback: Libtype):
 }
 
 function parseFilterField(field: string): ParsedFilterField {
-  const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+)([!<>=&]*)$/.exec(field);
-  if (!match) {
+  const [, libtype, parsedField, operator = ''] =
+    /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+)([!<>=&]*)$/.exec(field) ?? [];
+  if (!parsedField) {
     throw new BadRequest(`Invalid filter field "${field}".`);
   }
 
-  const [, libtype, parsedField, operator] = match;
   return { field: parsedField, libtype: libtype as Libtype | undefined, operator };
 }
 
 function parseSortField(sort: string): ParsedSortField {
-  const match = /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+):?([a-zA-Z]*)$/.exec(sort.trim());
-  if (!match) {
+  const [, libtype, field, direction = ''] =
+    /^(?:([a-zA-Z]*)\.)?([a-zA-Z]+):?([a-zA-Z]*)$/.exec(sort.trim()) ?? [];
+  if (!field) {
     throw new BadRequest(`Invalid sort "${sort}".`);
   }
 
-  const [, libtype, field, direction] = match;
   return { direction, field, libtype: libtype as Libtype | undefined };
 }
 
@@ -1315,7 +1312,7 @@ const MANUAL_FILTERING_SORTS: Record<string, ManualFilteringSort[]> = {
 };
 
 function titleizeLibtype(libtype: string): string {
-  return `${libtype[0].toUpperCase()}${libtype.slice(1)}`;
+  return `${libtype.charAt(0).toUpperCase()}${libtype.slice(1)}`;
 }
 
 function manualFilteringFields(libtype: string): ManualFilteringField[] {
@@ -1381,18 +1378,20 @@ function manualFilteringSorts(libtype: string): FilteringSortData[] {
 /**
  * Base class for a single library section.
  */
-export abstract class LibrarySection<SType = SectionType> extends PlexObject {
+export abstract class LibrarySection<SType extends RatingKeyItem = SectionType> extends PlexObject {
   static ALLOWED_FILTERS: string[] = [];
   static ALLOWED_SORT: string[] = [];
   static BOOLEAN_FILTERS = ['unwatched', 'duplicate'];
+  /** Key of this section (ex: 1). */
+  declare key: string;
   /** Unknown (com.plexapp.agents.imdb, etc) */
   declare agent: string;
   /** l True if you allow syncing content from this section. */
   declare allowSync: boolean;
   /** Wallpaper artwork used to respresent this section. */
-  declare art: string;
+  declare art?: string;
   /** Composit image used to represent this section. */
-  declare composite: string;
+  declare composite?: string;
   /** Unknown */
   declare filters: boolean;
   /** Language represented in this section (en, xn, etc). */
@@ -1404,7 +1403,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
   /** Internal scanner used to find media (Plex Movie Scanner, Plex Premium Music Scanner, etc.) */
   declare scanner: string;
   /** Thumbnail image used to represent this section. */
-  declare thumb: string;
+  declare thumb?: string;
   /** Title of this section. */
   declare title: string;
   /** Type of content section represents (movie, artist, photo, show). */
@@ -2152,19 +2151,13 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     return (await this.getFieldType(fieldType)).operators;
   }
 
-  async filterTypes() {
-    if (!this._filterTypes) {
-      await this._loadFilters();
-    }
-
+  async filterTypes(): Promise<FilteringType[]> {
+    this._filterTypes ??= (await this._loadFilters()).filterTypes;
     return this._filterTypes;
   }
 
-  async fieldTypes() {
-    if (!this._fieldTypes) {
-      await this._loadFilters();
-    }
-
+  async fieldTypes(): Promise<FilteringFieldType[]> {
+    this._fieldTypes ??= (await this._loadFilters()).fieldTypes;
     return this._fieldTypes;
   }
 
@@ -2258,17 +2251,16 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
 
   private _validateItems(
     items: EditableLibraryItem | EditableLibraryItem[],
-  ): EditableLibraryItem[] {
-    const itemList = Array.isArray(items) ? items : [items];
-    if (itemList.length === 0) {
+  ): [EditableLibraryItem, ...EditableLibraryItem[]] {
+    const [firstItem, ...rest] = Array.isArray(items) ? items : [items];
+    if (!firstItem) {
       throw new BadRequest('No items specified.');
     }
 
-    const [firstItem] = itemList;
-    const itemType = firstItem.type;
+    const itemList: [EditableLibraryItem, ...EditableLibraryItem[]] = [firstItem, ...rest];
     for (const item of itemList) {
       this._validateItemBelongsToSection(item);
-      this._validateItemType(item, itemType);
+      this._validateItemType(item, firstItem.type);
     }
 
     return itemList;
@@ -2356,7 +2348,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     this._loadData(section);
   }
 
-  private async _loadFilters() {
+  private async _loadFilters(): Promise<{
+    filterTypes: FilteringType[];
+    fieldTypes: FilteringFieldType[];
+  }> {
     const key = `/library/sections/${this.key}/all?includeMeta=1&includeAdvanced=1&X-Plex-Container-Start=0&X-Plex-Container-Size=0`;
     const data = await this.server.query<
       MediaContainer<{ Meta?: LibraryFilterMetaData | LibraryFilterMetaData[] }>
@@ -2366,17 +2361,17 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const meta = Array.isArray(data.MediaContainer.Meta)
       ? data.MediaContainer.Meta[0]
       : data.MediaContainer.Meta;
-    this._filterTypes = (meta?.Type ?? []).map(
+    const filterTypes = (meta?.Type ?? []).map(
       type => new FilteringType(this.server, type, undefined, this),
     );
-    this._fieldTypes = (meta?.FieldType ?? []).map(
+    const fieldTypes = (meta?.FieldType ?? []).map(
       fieldType => new FilteringFieldType(this.server, fieldType, undefined, this),
     );
     // Plex accepts `guid` as a search field, but does not advertise a guid field
     // type. Add minimal operator metadata so validation can treat it like the
     // server-advertised field types.
-    if (!this._fieldTypes.some(fieldType => fieldType.type === 'guid')) {
-      this._fieldTypes.push(
+    if (!fieldTypes.some(fieldType => fieldType.type === 'guid')) {
+      fieldTypes.push(
         new FilteringFieldType(
           this.server,
           { type: 'guid', Operator: [{ key: '=', title: 'is' }] },
@@ -2385,6 +2380,9 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
         ),
       );
     }
+    this._filterTypes = filterTypes;
+    this._fieldTypes = fieldTypes;
+    return { filterTypes, fieldTypes };
   }
 
   /**
@@ -2668,6 +2666,10 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
     const validatedFilters: SearchParamEntry[] = [];
     const entries = Object.entries(filters);
     for (const [field, values] of entries) {
+      if (values === undefined) {
+        continue;
+      }
+
       const groupOperator = advancedFilterGroupOperator(field);
       if (groupOperator) {
         if (entries.length > 1) {
@@ -2724,7 +2726,7 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
         continue;
       }
 
-      if (Object.hasOwn(OPERATORS, field.split('__').at(-1))) {
+      if (Object.hasOwn(OPERATORS, field.split('__').at(-1) ?? field)) {
         if (!isItemFilterValue(values)) {
           throw new BadRequest(`Invalid local filter value for "${field}".`);
         }
@@ -2786,8 +2788,9 @@ export abstract class LibrarySection<SType = SectionType> extends PlexObject {
       params.set('X-Plex-Container-Start', containerStart.toString());
     }
 
-    if (containerSize !== undefined || maxresults !== undefined) {
-      params.set('X-Plex-Container-Size', (containerSize ?? maxresults).toString());
+    const size = containerSize ?? maxresults;
+    if (size !== undefined) {
+      params.set('X-Plex-Container-Size', size.toString());
     }
   }
 
@@ -3245,7 +3248,7 @@ export class ManagedHub extends PlexObject {
     });
     const base = `/hubs/sections/${this.librarySectionID}/manage`;
     if (!this.#promoted) {
-      params.set('metadataItemId', this.identifier.split('.').at(-1));
+      params.set('metadataItemId', this.identifier.split('.').at(-1) ?? this.identifier);
     }
     const path = this.#promoted ? `${base}/${this.identifier}` : base;
     await this.server.query({ path: `${path}?${params}`, method: this.#promoted ? 'put' : 'post' });
@@ -3300,6 +3303,7 @@ export class ManagedHub extends PlexObject {
 export class Hub extends PlexObject {
   static override TAG = 'Hub';
 
+  declare key: string;
   declare context?: string;
   declare hubKey?: string;
   declare hubIdentifier: string;
@@ -3313,8 +3317,8 @@ export class Hub extends PlexObject {
   declare type: string;
   /** True if the hub items are randomized. */
   declare random: boolean;
-  declare Directory: SearchResultContainer['Directory'];
-  declare Metadata: SearchResultContainer['Metadata'];
+  declare Directory?: SearchResultContainer['Directory'];
+  declare Metadata?: SearchResultContainer['Metadata'];
   declare private _metadata?: LibrarySearchMetadata[];
   declare private _items?: HubItem[];
 
@@ -3388,7 +3392,7 @@ export class Hub extends PlexObject {
  */
 export class Folder extends PlexObject {
   static override TAG = 'Directory';
-
+  declare key: string;
   declare title: string;
 
   /**
@@ -3438,26 +3442,29 @@ export class Collections<
 
   declare guid: string;
   declare smart: boolean;
-  declare content: string;
+  /** Smart collection content URI. */
+  declare content?: string;
+  /** Collection display mode (-1 library default, 0 hide, 1 hide items, 2 show items). */
   declare collectionMode: number;
+  /** Collection sort (0 release date, 1 alphabetical, 2 custom). */
   declare collectionSort: number;
   declare titleSort: string;
-  declare librarySectionTitle: string;
-  declare librarySectionKey: string;
+  declare librarySectionTitle?: string;
+  declare librarySectionKey?: string;
   declare contentRating: string;
   declare subtype: string;
   declare summary: string;
   declare index: number;
-  declare rating: number;
+  declare rating?: number;
   /** Number of ratings contributing to the collection rating. */
   declare ratingCount?: number;
-  declare userRating: number;
+  declare userRating?: number;
   declare thumb: string;
   declare addedAt: number;
   declare updatedAt: number;
   declare childCount: number;
-  declare maxYear: string;
-  declare minYear: string;
+  declare maxYear?: string;
+  declare minYear?: string;
   declare art?: string;
   declare fields: Field[];
   declare images: Image[];
@@ -3496,6 +3503,9 @@ export class Collections<
   }
 
   async visibility(): Promise<ManagedHub> {
+    if (!this.ratingKey) {
+      throw new BadRequest('Collection visibility requires a collection rating key.');
+    }
     const params = new URLSearchParams({ metadataItemId: this.ratingKey });
     const key = `/hubs/sections/${this.librarySectionID}/manage?${params}`;
     const hubs = await fetchItems(this.server, key, undefined, ManagedHub);
@@ -3562,7 +3572,8 @@ export class Collections<
    * Returns a list of all items in the collection.
    */
   async items(): Promise<CollectionVideoType[]> {
-    if (!this.itemClass) {
+    const { itemClass } = this;
+    if (!itemClass) {
       throw new Error('Cannot fetch collection items without a collection item class.');
     }
 
@@ -3571,7 +3582,7 @@ export class Collections<
     const data = await this.server.query<MediaContainer<{ Metadata?: unknown[] }>>({ path: key });
     return (
       data.MediaContainer.Metadata?.map(
-        d => new this.itemClass(this.server, d as PlexItemData, undefined, this),
+        d => new itemClass(this.server, d as PlexItemData, undefined, this),
       ) ?? []
     );
   }
@@ -3781,13 +3792,13 @@ export class Collections<
   }
 
   protected _loadFullData(data: MediaContainer<{ Metadata: CollectionData[] }>['MediaContainer']) {
-    this._loadData(data.Metadata[0]);
+    this._loadData(firstMetadata(data, this.key));
   }
 
   protected _loadData(data: CollectionData) {
     this.key = data.key.replace(/\/children$/, '');
     this.title = data.title;
-    this.titleSort = data.titleSort;
+    this.titleSort = data.titleSort ?? data.title;
     this.ratingKey = data.ratingKey;
     this.guid = data.guid;
     this.type = data.type;
@@ -3797,8 +3808,8 @@ export class Collections<
     this.images = (data.Image ?? []).map(image => new Image(this.server, image, undefined, this));
     this.labels = (data.Label ?? []).map(label => new Label(this.server, label, undefined, this));
     this.ultraBlurColors = data.UltraBlurColors;
-    this.collectionMode = data.collectionMode;
-    this.collectionSort = data.collectionSort;
+    this.collectionMode = data.collectionMode ?? -1;
+    this.collectionSort = data.collectionSort ?? 0;
     this.librarySectionTitle = data.librarySectionTitle;
     this.librarySectionID = data.librarySectionID;
     this.librarySectionKey = data.librarySectionKey;
@@ -3881,12 +3892,12 @@ export class Common extends PlexObject {
   declare year?: number;
 
   get commonType(): Libtype | undefined {
-    const [, search = ''] = this.initpath.split('?', 2);
+    const [, search = ''] = (this.initpath ?? '').split('?', 2);
     return reverseSearchType(new URLSearchParams(search).get('type'));
   }
 
   get ratingKeys(): number[] {
-    const [, search = ''] = this.initpath.split('?', 2);
+    const [, search = ''] = (this.initpath ?? '').split('?', 2);
     const ratingKeys = new URLSearchParams(search).get('id') ?? '';
     return ratingKeys
       .split(',')
@@ -3897,12 +3908,11 @@ export class Common extends PlexObject {
   async items(): Promise<LibrarySearchItem[]> {
     const ratingKeys = this.ratingKeys.join(',');
     const key = this._buildQueryKey(`/library/metadata/${ratingKeys}`);
-    return fetchItems<LibrarySearchItem>(
-      this.server,
-      key,
-      undefined,
-      classForLibtype(this.commonType),
-    );
+    const cls = classForLibtype(this.commonType);
+    if (!cls) {
+      throw new BadRequest('Unable to determine the item type for these common fields.');
+    }
+    return fetchItems<LibrarySearchItem>(this.server, key, undefined, cls);
   }
 
   protected _loadData(data: CommonData): void {
@@ -3931,7 +3941,9 @@ export class Common extends PlexObject {
     this.parentTitle = data.parentTitle;
     this.producers = (data.Producer ?? []).map(d => new Producer(this.server, d, undefined, this));
     this.ratingKey = parseOptionalNumber(data.ratingKey);
-    this.ratings = (data.Rating ?? []).map(d => new Rating(this.server, d, undefined, this));
+    this.ratings = (data.Rating ?? [])
+      .filter(d => d.image !== undefined && d.type !== undefined && d.value !== undefined)
+      .map(d => new Rating(this.server, d, undefined, this));
     this.roles = (data.Role ?? []).map(d => new Role(this.server, d, undefined, this));
     this.studio = data.studio;
     this.styles = (data.Style ?? []).map(d => new Style(this.server, d, undefined, this));
@@ -3948,7 +3960,7 @@ export class Common extends PlexObject {
 
 export class FilterChoice extends PlexObject {
   static override TAG = 'Directory';
-
+  declare key: string;
   /**
    * API URL path to quickly list all items with this filter choice.
    * (/library/sections/<section>/all?genre=<key>)
@@ -3970,6 +3982,9 @@ export class FilterChoice extends PlexObject {
     const libtype = reverseSearchType(new URLSearchParams(search).get('type'));
     const parent = this.parent?.deref() as LibrarySection | undefined;
     const cls = classForLibtype(libtype) ?? parent?.SECTION_TYPE;
+    if (!cls) {
+      throw new BadRequest(`Unable to determine the item type for filter choice "${this.title}".`);
+    }
     return fetchItems<LibrarySearchItem>(
       this.server,
       this._buildQueryKey(this.fastKey),
@@ -3993,7 +4008,7 @@ export class FilterChoice extends PlexObject {
  */
 export class FirstCharacter extends PlexObject {
   static override TAG = 'Directory';
-
+  declare key: string;
   /** The title of the character (e.g. 'A', 'B', '#'). */
   declare title: string;
   /** The number of items starting with this character. */
@@ -4009,6 +4024,7 @@ export class FirstCharacter extends PlexObject {
 export class FilteringType extends PlexObject {
   static override TAG = 'Type';
 
+  declare key: string;
   /** The libtype for the filter. */
   declare type: string;
   /** True if this filter type is currently active. */
@@ -4047,6 +4063,7 @@ export class FilteringType extends PlexObject {
 export class FilteringFilter extends PlexObject {
   static override TAG = 'Filter';
 
+  declare key: string;
   /** The key for the filter. */
   declare filter: string;
   /** The {@link FilteringFieldType} type (string, boolean, integer, date, etc). */
@@ -4071,6 +4088,7 @@ export class FilteringFilter extends PlexObject {
 export class FilteringSort extends PlexObject {
   static override TAG = 'Sort';
 
+  declare key: string;
   /** True if the sort is currently active. */
   declare active: boolean;
   /** The currently active sorting direction. */
@@ -4104,6 +4122,7 @@ export class FilteringSort extends PlexObject {
 export class FilteringField extends PlexObject {
   static override TAG = 'Field';
 
+  declare key: string;
   declare type: string;
   declare title: string;
   /** The subtype of the filter (decade, rating, etc) */
@@ -4141,6 +4160,7 @@ export class FilteringFieldType extends PlexObject {
 export class FilteringOperator extends PlexObject {
   static override TAG = 'Operator';
 
+  declare key: string;
   /** The title of the operator. */
   declare title: string;
 
