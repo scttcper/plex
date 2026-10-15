@@ -133,28 +133,34 @@ export const Protocol = {
 
 export type Protocol = (typeof Protocol)[keyof typeof Protocol];
 
+/** Device from plex.tv `/api/v2/devices`. */
 export interface Device {
-  $: {
-    id: string;
-    name: string;
-    publicAddress: string;
-    product: string;
-    productVersion: string;
-    platform: string;
-    platformVersion: string;
-    device: string;
-    model: string;
-    vendor: string;
-    provides: string;
-    clientIdentifier: string;
-    version: string;
-    token?: string;
-    createdAt: string;
-    lastSeenAt: string;
-    screenResolution: string;
-    screenDensity: string;
-  };
-  Connection?: Array<{ $: { uri: string } }>;
+  id: number;
+  name: string;
+  product: string;
+  platform: string;
+  platformVersion: string;
+  device: string;
+  model: string;
+  vendor: string | null;
+  provides: string;
+  token?: string;
+  publicAddress: string;
+  clientIdentifier: string;
+  createdAt: string;
+  lastSeenAt: string;
+  screenDensity: string | null;
+  screenResolution: string;
+  presence: boolean;
+  connections?: Array<{ uri: string }>;
+  /** App version, merged in from `/devices.json` since the v2 list leaves it out. */
+  version?: string;
+}
+
+/** Device summary from plex.tv `/devices.json`, the JSON source for app versions. */
+export interface DeviceVersion {
+  id: number;
+  version?: string;
 }
 
 export interface WebLogin {

@@ -1131,7 +1131,7 @@ export class PlexServer {
     const devices = await account.devices();
 
     for (const device of devices) {
-      const [uri] = device.connections ?? [];
+      const [uri] = device.connections;
       if (uri) {
         const connection = new URL(uri);
         ports[device.clientIdentifier] =

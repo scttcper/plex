@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { MyPlexAccount } from '../src/myplex.ts';
 import { MyPlexPinLogin } from '../src/pin.ts';
 
+import { assertDefined } from './assertions.ts';
 import { createAccount } from './test-client.ts';
 
 const clientIdentifierPrefix = 'plex-ts-pin-test-';
@@ -18,11 +19,7 @@ async function cleanupPinDevices(): Promise<void> {
   const matchingDevices = devices.filter(device =>
     device.clientIdentifier.startsWith(clientIdentifierPrefix),
   );
-  await Promise.all(
-    matchingDevices.map(device =>
-      account.query({ url: `https://plex.tv/devices/${device.id}.xml`, method: 'delete' }),
-    ),
-  );
+  await Promise.all(matchingDevices.map(async device => device.delete()));
 }
 
 beforeAll(async () => {
@@ -62,3 +59,29 @@ it('creates, resumes, links, and authenticates an OAuth PIN', async () => {
   expect(authenticatedAccount.id).toBe(account.id);
   expect(resumed.token).toBe(authentication.token);
 }, 10_000);
+
+it('lists and deletes a linked device through the JSON device APIs', async () => {
+  const deviceIdentifier = `${clientIdentifierPrefix}${randomUUID()}`;
+  const login = await MyPlexPinLogin.create({ clientIdentifier: deviceIdentifier, product });
+  await account.linkPin(login);
+  await login.wait({ pollInterval: 100, timeout: 5000 });
+
+  const device = (await account.devices()).find(
+    candidate => candidate.clientIdentifier === deviceIdentifier,
+  );
+  assertDefined(device);
+  expect(device.product).toBe(product);
+  expect(typeof device.id).toBe('number');
+  expect(typeof device.presence).toBe('boolean');
+  expect(typeof device.token).toBe('string');
+  expect(device.createdAt).toBeInstanceOf(Date);
+  expect(Number.isNaN(device.createdAt.getTime())).toBe(false);
+  expect(Array.isArray(device.connections)).toBe(true);
+
+  await device.delete();
+
+  const remaining = (await account.devices()).filter(
+    candidate => candidate.clientIdentifier === deviceIdentifier,
+  );
+  expect(remaining).toEqual([]);
+}, 15_000);

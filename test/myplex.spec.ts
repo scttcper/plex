@@ -18,7 +18,7 @@ import type {
   WebhookResponse,
 } from '../src/myplex.types.ts';
 
-import { first, itemAt } from './assertions.ts';
+import { assertDefined, first, itemAt } from './assertions.ts';
 
 const resourceData: ResourcesResponse = {
   accessToken: 'resource-token',
@@ -738,5 +738,60 @@ describe('MyPlexAccount users and invites', () => {
     await expect(account.removeWebhook('https://missing.example/hook')).rejects.toThrow(
       'Webhook does not exist',
     );
+  });
+});
+
+describe('MyPlexDevice', () => {
+  it('lists devices from the JSON APIs and deletes through the JSON endpoint', async () => {
+    const account = new MyPlexAccount({ token: 'account-token' });
+    const query = vi.spyOn(account, 'query').mockImplementation(async ({ url, method }) => {
+      if (method === 'delete') {
+        return {};
+      }
+      if (url === 'https://plex.tv/devices.json') {
+        return [{ id: 7, version: '1.43.4.10903-e5521bd8c' }];
+      }
+      return [
+        {
+          id: 7,
+          name: 'living-room',
+          product: 'Plex Media Server',
+          platform: 'Linux',
+          platformVersion: '6.17.0',
+          device: 'PC',
+          model: 'x86_64',
+          vendor: null,
+          provides: 'server',
+          token: 'device-token',
+          publicAddress: '203.0.113.2',
+          clientIdentifier: 'server-id',
+          createdAt: '2026-02-17T05:56:55Z',
+          lastSeenAt: '2026-10-15T04:10:26Z',
+          screenDensity: null,
+          screenResolution: '1920x1080',
+          presence: true,
+          connections: [{ uri: 'http://192.168.1.2:32400' }],
+        },
+      ];
+    });
+
+    const [device] = await account.devices();
+    assertDefined(device);
+    await device.delete();
+
+    expect(query.mock.calls.map(([options]) => options)).toEqual([
+      { url: 'https://plex.tv/api/v2/devices' },
+      { url: 'https://plex.tv/devices.json' },
+      { url: 'https://plex.tv/devices/7.json', method: 'delete' },
+    ]);
+    expect(device.id).toBe(7);
+    expect(device.version).toBe('1.43.4.10903-e5521bd8c');
+    expect(device.productVersion).toBe('1.43.4.10903-e5521bd8c');
+    expect(device.vendor).toBeUndefined();
+    expect(device.presence).toBe(true);
+    expect(device.token).toBe('device-token');
+    expect(Object.keys(device)).not.toContain('token');
+    expect(device.createdAt).toEqual(new Date('2026-02-17T05:56:55Z'));
+    expect(device.connections).toEqual(['http://192.168.1.2:32400']);
   });
 });

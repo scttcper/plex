@@ -15,6 +15,7 @@ import type { StreamingAvailability } from './media.types.ts';
 import type {
   Connection,
   Device,
+  DeviceVersion,
   DiscoverMovieData,
   DiscoverSearchResultData,
   DiscoverSearchResponse,
@@ -871,10 +872,15 @@ export class MyPlexAccount {
    * Returns a list of all {@link MyPlexDevice} objects connected to the server.
    */
   async devices(): Promise<MyPlexDevice[]> {
-    const response = await this.query<MediaContainer<{ Device: Device[] }>>({
-      url: MyPlexDevice.key,
-    });
-    return response.MediaContainer.Device.map(data => new MyPlexDevice(this, data));
+    // The v2 list is the full JSON model but leaves out app versions, devices.json has them.
+    const [devices, versions] = await Promise.all([
+      this.query<Device[]>({ url: MyPlexDevice.key }),
+      this.query<DeviceVersion[]>({ url: 'https://plex.tv/devices.json' }),
+    ]);
+    const versionById = new Map(versions.map(device => [device.id, device.version]));
+    return devices.map(
+      data => new MyPlexDevice(this, { ...data, version: versionById.get(data.id) }),
+    );
   }
 
   /**
@@ -2025,34 +2031,38 @@ export class ResourceConnection {
  * This object represents resources connected to your Plex server that provide
  * playback ability from your Plex Server, iPhone or Android clients, Plex Web,
  * this API, etc. The raw xml for the data presented here can be found at:
- * https://plex.tv/devices.xml
+ * https://plex.tv/api/v2/devices
  */
 export class MyPlexDevice {
   static TAG = 'Device';
-  static key = 'https://plex.tv/devices.xml';
+  static key = 'https://plex.tv/api/v2/devices';
 
   readonly account: MyPlexAccount;
   declare name: string;
   declare publicAddress: string;
   declare product: string;
-  declare productVersion: string;
+  /** App version (1.43.4.10903-e5521bd8c), when plex.tv lists one. Same as {@link version}. */
+  declare productVersion?: string;
   declare platform: string;
   declare platformVersion: string;
   declare device: string;
   declare model: string;
-  declare vendor: string;
+  declare vendor?: string;
   declare provides: string;
   declare clientIdentifier: string;
-  declare version: string;
-  declare id: string;
+  /** App version, when plex.tv lists one. */
+  declare version?: string;
+  declare id: number;
+  /** True if the device is currently connected to plex.tv. */
+  declare presence: boolean;
   /** Device access token, when plex.tv includes one. Connections fall back to the account token. */
   declare token?: string;
   declare screenResolution: string;
-  declare screenDensity: string;
+  declare screenDensity?: string;
   declare createdAt: Date;
   declare lastSeenAt: Date;
   /** List of connection URIs for the device. */
-  declare connections?: string[];
+  declare connections: string[];
 
   constructor(account: MyPlexAccount, data: Device) {
     this.account = account;
@@ -2062,7 +2072,7 @@ export class MyPlexDevice {
   /** Connect to this device as a Plex Media Server. */
   async connect({ timeout }: DeviceConnectOptions = {}): Promise<PlexServer> {
     const token = this._connectionToken();
-    return connectInPreferredOrder(this.connections ?? [], this.name, url =>
+    return connectInPreferredOrder(this.connections, this.name, url =>
       connectServer(url, token, timeout),
     );
   }
@@ -2070,7 +2080,7 @@ export class MyPlexDevice {
   /** Connect to this device as a player, such as Plex for iOS or Plexamp. */
   async connectClient({ timeout }: DeviceConnectOptions = {}): Promise<PlexClient> {
     const token = this._connectionToken();
-    return connectInPreferredOrder(this.connections ?? [], this.name, url =>
+    return connectInPreferredOrder(this.connections, this.name, url =>
       new PlexClient({
         baseurl: url,
         token,
@@ -2084,7 +2094,7 @@ export class MyPlexDevice {
    * Remove this device from your account
    */
   async delete(): Promise<void> {
-    await this.account.query({ url: `https://plex.tv/devices/${this.id}.xml`, method: 'delete' });
+    await this.account.query({ url: `https://plex.tv/devices/${this.id}.json`, method: 'delete' });
   }
 
   private _connectionToken(): string {
@@ -2096,31 +2106,31 @@ export class MyPlexDevice {
   }
 
   private _loadData(data: Device): void {
-    this.name = data.$.name;
-    this.publicAddress = data.$.publicAddress;
-    this.product = data.$.product;
-    this.productVersion = data.$.productVersion;
-    this.platform = data.$.platform;
-    this.platformVersion = data.$.platformVersion;
-    this.device = data.$.device;
-    this.model = data.$.model;
-    this.vendor = data.$.vendor;
-    this.provides = data.$.provides;
-    this.clientIdentifier = data.$.clientIdentifier;
-    this.version = data.$.version;
-    this.id = data.$.id;
-    // this.token = logfilter.add_secret(data.token);
-    // Attempt to prevent token from being logged accidentally
+    this.name = data.name;
+    this.publicAddress = data.publicAddress;
+    this.product = data.product;
+    this.productVersion = data.version;
+    this.platform = data.platform;
+    this.platformVersion = data.platformVersion;
+    this.device = data.device;
+    this.model = data.model;
+    this.vendor = data.vendor ?? undefined;
+    this.provides = data.provides;
+    this.clientIdentifier = data.clientIdentifier;
+    this.version = data.version;
+    this.id = data.id;
+    this.presence = data.presence;
+    // Keep the token out of logs and JSON.stringify output.
     Object.defineProperty(this, 'token', {
       enumerable: false,
       configurable: true,
-      value: data.$.token,
+      value: data.token,
     });
-    this.screenResolution = data.$.screenResolution;
-    this.screenDensity = data.$.screenDensity;
-    this.createdAt = new Date(Number.parseInt(data.$.createdAt, 10) * 1000);
-    this.lastSeenAt = new Date(Number.parseInt(data.$.lastSeenAt, 10) * 1000);
-    this.connections = data.Connection?.map(connection => connection.$.uri);
+    this.screenResolution = data.screenResolution;
+    this.screenDensity = data.screenDensity ?? undefined;
+    this.createdAt = new Date(data.createdAt);
+    this.lastSeenAt = new Date(data.lastSeenAt);
+    this.connections = (data.connections ?? []).map(connection => connection.uri);
   }
 }
 
