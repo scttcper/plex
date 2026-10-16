@@ -9,6 +9,7 @@ import {
   type ShowSection,
 } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 describe('Shows', () => {
@@ -23,7 +24,7 @@ describe('Shows', () => {
   });
   beforeEach(async () => {
     const results = await showSection.search({ title: 'Silicon Valley' });
-    show = results[0];
+    show = first(results);
   });
 
   it("should get a shows's episodes", async () => {
@@ -42,8 +43,8 @@ describe('Shows', () => {
     expect(watched.length + unwatched.length).toBe(episodes.length);
     expect(watched.every(episode => episode.viewCount > 0)).toBe(true);
     expect(unwatched.every(episode => episode.viewCount === 0)).toBe(true);
-    expect(onDeck?.ratingKey).toBe(episodes[0].ratingKey);
-    expect((await season.onDeck())?.ratingKey).toBe(episodes[0].ratingKey);
+    expect(onDeck?.ratingKey).toBe(first(episodes).ratingKey);
+    expect((await season.onDeck())?.ratingKey).toBe(first(episodes).ratingKey);
     expect((await season.show()).ratingKey).toBe(show.ratingKey);
   });
 
@@ -57,9 +58,52 @@ describe('Shows', () => {
     await expect(show.editions()).resolves.toEqual([]);
   });
 
+  it('should reload a season without dropping its metadata', async () => {
+    const [season] = await show.seasons();
+    assertDefined(season);
+    const { ratingKey, key, title, index } = season;
+
+    await season.reload();
+
+    expect(season.ratingKey).toBe(ratingKey);
+    expect(season.key).toBe(key);
+    expect(season.title).toBe(title);
+    expect(season.index).toBe(index);
+    expect(season.parentRatingKey).toBe(show.ratingKey);
+    expect((await season.episodes()).length).toBeGreaterThan(0);
+  });
+
+  it('should load show, season, and episode details', async () => {
+    await show.reload();
+    const season = await show.season(1);
+    const episode = await season.episode(1);
+    await episode.reload();
+
+    expect(typeof show.slug).toBe('string');
+    expect(show.seasonCount).toBe(2);
+    expect(show.originallyAvailableAt).toBeInstanceOf(Date);
+    expect(typeof season.guid).toBe('string');
+    expect(season.parentSlug).toBe(show.slug);
+    expect(season.parentThumb).toBe(show.thumb);
+    expect(episode.grandparentSlug).toBe(show.slug);
+    expect(episode.librarySectionTitle).toBe('TV Shows');
+    expect(episode.skipParent).toBe(false);
+    expect(episode.originallyAvailableAt).toBeInstanceOf(Date);
+  });
+
+  it('should find the library section of episodes listed from a season', async () => {
+    const [season] = await show.seasons();
+    assertDefined(season);
+    const [episode] = await season.episodes();
+    assertDefined(episode);
+
+    expect(episode.librarySectionID).toBe(Number(showSection.key));
+    expect((await episode.section()).key).toBe(showSection.key);
+  });
+
   it("should get a season's episodes", async () => {
     const seasons = await show.seasons();
-    const episodes = await seasons[0].episodes();
+    const episodes = await first(seasons).episodes();
     // Season 1 of Silicon Valley
     expect(episodes.length).toBe(8);
   });
@@ -88,7 +132,9 @@ describe('Shows', () => {
 
   it("should get an episode's full data", async () => {
     const [season] = await show.seasons();
+    assertDefined(season);
     const [episode] = await season.episodes();
+    assertDefined(episode);
     expect(episode.isFullObject).toBeFalsy();
     await episode.reload();
     expect(episode.isFullObject).toBeTruthy();
@@ -96,18 +142,20 @@ describe('Shows', () => {
 
   it("should get a episode's season and show", async () => {
     const seasons = await show.seasons();
-    const episodes = await seasons[0].episodes();
+    const episodes = await first(seasons).episodes();
     const [episode] = episodes;
+    assertDefined(episode);
     // Season 1 of Silicon Valley
-    expect((await episode.season()).key).toBe(seasons[0].key);
+    expect((await episode.season()).key).toBe(first(seasons).key);
     expect((await episode.show()).key).toBe(show.key);
     expect(episode.isWatched).toBe(false);
   });
 
   it('should edit an episode title', async () => {
     const seasons = await show.seasons();
-    const episodes = await seasons[0].episodes();
+    const episodes = await first(seasons).episodes();
     const [episode] = episodes;
+    assertDefined(episode);
     const originalTitle = `${episode.title}`;
     await episode.edit({ 'title.value': 'hello' });
     await episode.reload();
@@ -127,14 +175,16 @@ describe('Shows', () => {
   // Markers don't seem to be available from json? Or in the test env
   it('should determine if an episode has makers', async () => {
     const seasons = await show.seasons();
-    const episodes = await seasons[0].episodes();
+    const episodes = await first(seasons).episodes();
     const [episode] = episodes;
+    assertDefined(episode);
     expect(await episode.hasIntroMarker()).toBe(false);
   });
 
   it('should load all episode extra data', async () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
+    assertDefined(episode);
     await episode.reload();
     // expect(episode.writers.length).toBeGreaterThan(0);
     expect(episode.grandparentTitle).toContain('Silicon Valley');
@@ -144,37 +194,40 @@ describe('Shows', () => {
   it('should get show locations', async () => {
     const episodes = await show.episodes();
     const [episode] = episodes;
+    assertDefined(episode);
     expect(episode.locations()[0]).toContain('Silicon Valley/S01E01.mp4');
   });
 
   it('should get show hubs', async () => {
     const hubs = await showSection.hubs();
     expect(hubs.length).toBeDefined();
-    expect(hubs[0].type).toBe('episode');
+    expect(first(hubs).type).toBe('episode');
   });
 
   it('should get show folders', async () => {
     const folders = await showSection.folders();
     expect(folders.length).toBe(2);
-    expect(folders[0].title).toBeDefined();
+    expect(first(folders).title).toBeDefined();
   });
 
   it('should get all nested show folders', async () => {
     const folders = await showSection.folders();
-    const nested = await folders[0].allSubfolders();
+    const nested = await first(folders).allSubfolders();
     expect(nested).toEqual([]);
   });
 
   it('should search shows', async () => {
     const shows = await showSection.search({ title: 'Silicon Valley' });
-    expect(shows[0].title).toContain('Silicon Valley');
+    expect(first(shows).title).toContain('Silicon Valley');
   });
 
   it('should get common sense media data', async () => {
     await show.reload(undefined, { includeReviews: 1 });
 
     const commonSenseMedia = show.commonSenseMedia;
+    assertDefined(commonSenseMedia);
     const [ageRating] = commonSenseMedia.ageRatings;
+    assertDefined(ageRating);
 
     expect(commonSenseMedia).toBeInstanceOf(CommonSenseMedia);
     expect(typeof commonSenseMedia.id).toBe('number');
@@ -198,12 +251,30 @@ describe('Movies', () => {
 
   beforeEach(async () => {
     const results = await section.search({ title: 'Bunny' });
-    movie = results[0];
+    movie = first(results);
   });
 
   // Takes forever
   it.skip('should analyze movie', async () => {
     await movie.analyze();
+  });
+
+  it('should load movie, media, and part details', async () => {
+    await movie.reload();
+
+    expect(movie.slug).toBe('big-buck-bunny');
+    expect(movie.librarySectionTitle).toBe('Movies');
+    expect(movie.librarySectionKey).toBe(`/library/sections/${section.key}`);
+    expect(movie.updatedAt).toBeInstanceOf(Date);
+    const [media] = movie.media;
+    assertDefined(media);
+    expect(media.container).toBe('mp4');
+    expect(media.videoResolution).toBe('1080');
+    expect(typeof media.optimizedForStreaming).toBe('boolean');
+    const [audio] = first(media.parts).audioStreams();
+    assertDefined(audio);
+    expect(audio.channels).toBe(2);
+    expect(audio.samplingRate).toBe(44_100);
   });
 
   it('should reutrn roles as actors', () => {
@@ -217,14 +288,14 @@ describe('Movies', () => {
   it('should add and remove movie from collection', async () => {
     await movie.addCollection(['Test']);
     expect(movie.collections.length).toBe(1);
-    expect(movie.collections[0].tag).toBe('Test');
+    expect(first(movie.collections).tag).toBe('Test');
     const collections = await section.collections({ title: 'Test' });
     expect(collections.length).toBe(1);
-    const myCollection = collections[0];
-    expect(myCollection.title.toLowerCase()).toBe('test');
+    const myCollection = first(collections);
+    expect(myCollection.title).toMatch(/^test$/i);
     expect(myCollection.childCount).toBe(1);
-    const movies = await collections[0].items();
-    expect(movies[0].title).toBe(movie.title);
+    const movies = await first(collections).items();
+    expect(first(movies).title).toBe(movie.title);
     await movie.removeCollection(['Test']);
     expect(movie.collections.length).toBe(0);
     await myCollection.reload();
@@ -233,8 +304,8 @@ describe('Movies', () => {
 
   it('should get movie matches', async () => {
     const matches = await movie.matches();
-    expect(matches[0].year).toBe(movie.year);
-    expect(matches[0].name).toBe(movie.title);
+    expect(first(matches).year).toBe(movie.year);
+    expect(first(matches).name).toBe(movie.title);
   });
 
   it('should get movie plex web url', async () => {
@@ -244,24 +315,24 @@ describe('Movies', () => {
     expect(url).toContain('details');
   });
 
-  /**
-   * Seems to be failing because the movie has no extras
-   */
-  it.skip('should get movie extras', async () => {
-    const results = await section.search({ title: 'The Lincoln Lawyer' });
-    movie = results[0];
-    expect(movie).toBeDefined();
-    const extras = await movie.extras();
-    const extra = extras[0];
+  it('should get movie extras', async () => {
+    const [extra] = await movie.extras();
+    assertDefined(extra);
+
     expect(extra.type).toBe('clip');
+    expect(extra.subtype).toBe('trailer');
+    expect(typeof extra.extraType).toBe('number');
+    expect(typeof extra.duration).toBe('number');
+    expect(extra.primaryGuid).toBe(movie.guid);
+    expect(extra.media.length).toBeGreaterThan(0);
     expect((await extra.section()).title).toBe('Movies');
   });
 
   it('should get video posters', async () => {
     const posters = await movie.posters();
     expect(posters.length).toBeGreaterThan(0);
-    expect(posters[0].provider).toBe('tmdb');
-    expect(typeof posters[0].ratingKey).toBe('string');
-    expect(typeof posters[0].selected).toBe('boolean');
+    expect(first(posters).provider).toBe('tmdb');
+    expect(typeof first(posters).ratingKey).toBe('string');
+    expect(typeof first(posters).selected).toBe('boolean');
   });
 });

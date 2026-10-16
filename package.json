@@ -26,36 +26,31 @@
     "build": "tsc",
     "build:docs": "pnpm --filter @ctrl/plex-typedoc exec typedoc --options ../../typedoc.json --tsconfig ../../tsconfig.json",
     "test": "vitest run",
-    "bootstraptest": "node scripts/bootstraptest.ts --create-photos",
-    "teardowntest": "node scripts/teardowntest.ts",
-    "add-media": "node scripts/add-media.ts",
-    "test-cleanup": "node scripts/test-cleanup.ts",
+    "bootstraptest": "node --env-file-if-exists=.env scripts/bootstraptest.ts --create-photos",
+    "teardowntest": "node --env-file-if-exists=.env scripts/teardowntest.ts",
+    "add-media": "node --env-file-if-exists=.env scripts/add-media.ts",
+    "test-cleanup": "node --env-file-if-exists=.env scripts/test-cleanup.ts",
     "test:types": "tsc --project test/types/tsconfig.json"
   },
   "dependencies": {
-    "@ctrl/mac-address": "^3.2.1",
-    "jose": "^6.2.8",
+    "fast-xml-parser": "^5.11.2",
+    "jose": "^6.2.12",
     "ofetch": "^1.5.1",
-    "type-fest": "^5.8.0",
-    "uint8array-extras": "^1.5.0",
-    "ws": "^8.21.0",
-    "xml2js": "^0.6.2"
+    "uint8array-extras": "^1.6.0"
   },
   "devDependencies": {
     "@ctrl/oxlint-config": "1.5.0",
-    "@ctrl/video-filename-parser": "5.11.1",
+    "@ctrl/video-filename-parser": "5.12.0",
     "@sindresorhus/tsconfig": "8.1.0",
-    "@types/node": "26.1.1",
-    "@types/ws": "8.18.1",
-    "@types/xml2js": "0.4.14",
+    "@types/node": "26.6.5",
     "nanospinner": "1.2.2",
-    "oxfmt": "0.58.0",
-    "oxlint": "1.73.0",
-    "p-retry": "8.0.0",
-    "tinyexec": "1.2.4",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "p-retry": "8.0.1",
+    "tinyexec": "1.3.1",
     "tinyglobby": "0.2.17",
     "typescript": "7.0.2",
-    "vitest": "4.1.10"
+    "vitest": "5.0.4"
   },
   "release": {
     "branches": [
@@ -63,7 +58,7 @@
     ]
   },
   "engines": {
-    "node": ">20"
+    "node": ">=24"
   },
-  "packageManager": "pnpm@11.11.0"
+  "packageManager": "pnpm@12.11.2"
 }

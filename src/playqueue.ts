@@ -10,6 +10,8 @@ import type {
   MovePlayQueueItemOptions,
   PlayQueueContainerResponse,
   PlayQueueResponse,
+  PlayQueueSource,
+  RemovePlayQueueItemOptions,
 } from './playqueue.types.ts';
 import type { PlexServer } from './server.ts';
 
@@ -21,12 +23,12 @@ type PlayQueuePlayable = Playable & {
   ratingKey: string;
 };
 
-function hasPlaylistShape(item: Playable | Playlist): item is PlaylistLike {
+function hasPlaylistShape(item: unknown): item is PlaylistLike {
   return (item as { type?: unknown }).type === 'playlist';
 }
 
-function asPlayQueuePlayable(item: Playable): PlayQueuePlayable {
-  const playable = item as Playable & {
+function asPlayQueuePlayable(item: unknown): PlayQueuePlayable {
+  const playable = item as {
     key?: unknown;
     listType?: unknown;
     ratingKey?: unknown;
@@ -72,8 +74,8 @@ export class PlayQueue extends PlexObject {
   declare playQueueSelectedItemID: number;
   /** The offset of the selected item in the PlayQueue */
   declare playQueueSelectedItemOffset: number;
-  /** ID of the currently selected item, matches ratingKey */
-  declare playQueueSelectedMetadataItemID: number;
+  /** Rating key of the currently selected item. */
+  declare playQueueSelectedMetadataItemID?: string;
   /** True if the PlayQueue is shuffled */
   declare playQueueShuffled: boolean;
   /** Original URI used to create the PlayQueue */
@@ -84,8 +86,6 @@ export class PlayQueue extends PlexObject {
   declare playQueueVersion: number;
   /** Total size of the PlayQueue (alias for playQueueTotalCount) */
   declare size: number;
-  /** Media object for the currently selected item */
-  declare selectedItem?: Playable;
 
   /** Cache of PlayQueue items */
   private _items: QueueItem[] | null = null;
@@ -128,7 +128,7 @@ export class PlayQueue extends PlexObject {
    */
   static async create(
     server: PlexServer,
-    items: Playable | Playable[] | Playlist,
+    items: PlayQueueSource,
     options: CreatePlayQueueOptions = {},
   ): Promise<PlayQueue> {
     const args = await this.createArgs(server, items, options);
@@ -146,7 +146,7 @@ export class PlayQueue extends PlexObject {
   /** Build the parameters used by server and client play queue creation commands. */
   static async createArgs(
     server: PlexServer,
-    items: Playable | Playable[] | Playlist,
+    items: PlayQueueSource,
     options: CreatePlayQueueOptions = {},
   ): Promise<Record<string, string | number | boolean>> {
     const {
@@ -170,10 +170,14 @@ export class PlayQueue extends PlexObject {
 
     if (Array.isArray(items)) {
       const playableItems = items.map(asPlayQueuePlayable);
+      const [firstItem] = playableItems;
+      if (!firstItem) {
+        throw new BadRequest('Creating a PlayQueue requires at least one item.');
+      }
       const itemKeys = playableItems.map(x => x.ratingKey).join(',');
       const uriArgs = encodeURIComponent(`/library/metadata/${itemKeys}`);
       args.uri = `library:///directory/${uriArgs}`;
-      args.type = playableItems[0].listType;
+      args.type = firstItem.listType;
     } else if (hasPlaylistShape(items)) {
       args.type = items.playlistType;
       args.playlistID = items.ratingKey;
@@ -224,24 +228,22 @@ export class PlayQueue extends PlexObject {
         }
         return item;
       });
-
-      // Set selectedItem based on the offset now that items are loaded
-      if (
-        this.playQueueSelectedItemOffset >= 0 &&
-        this._items.length > this.playQueueSelectedItemOffset &&
-        !this.selectedItem
-      ) {
-        this.selectedItem = this._items[this.playQueueSelectedItemOffset];
-      }
     }
     return this._items;
+  }
+
+  /**
+   * The currently selected item, when it is inside the loaded window of the PlayQueue.
+   */
+  get selectedItem(): QueueItem | undefined {
+    return this.items.find(item => playQueueItemID(item) === this.playQueueSelectedItemID);
   }
 
   /**
    * Get item at specific index.
    */
   getItem(index: number): Playable | null {
-    return this.items[index] || null;
+    return this.items[index] ?? null;
   }
 
   /**
@@ -263,11 +265,11 @@ export class PlayQueue extends PlexObject {
    * Useful for looking up playQueueItemIDs using items from the Library.
    */
   getQueueItem(item: Playable): Playable {
-    const matches = this.items.filter(x => x.ratingKey === item.ratingKey);
+    const [match, ...duplicates] = this.items.filter(x => x.ratingKey === item.ratingKey);
 
-    if (matches.length === 1) {
-      return matches[0];
-    } else if (matches.length > 1) {
+    if (match && duplicates.length === 0) {
+      return match;
+    } else if (match) {
       throw new BadRequest(
         `${item.title} occurs multiple times in this PlayQueue, provide exact item`,
       );
@@ -365,7 +367,10 @@ export class PlayQueue extends PlexObject {
   /**
    * Remove an item from the PlayQueue.
    */
-  async removeItem(item: Playable, refresh = true): Promise<PlayQueue> {
+  async removeItem(
+    item: Playable,
+    { refresh = true }: RemovePlayQueueItemOptions = {},
+  ): Promise<PlayQueue> {
     if (refresh) {
       await this.refresh();
     }
@@ -380,20 +385,27 @@ export class PlayQueue extends PlexObject {
       throw new BadRequest(`${item.title} is missing a PlayQueue item id`);
     }
 
-    const path = `/playQueues/${this.playQueueID}/items/${queueItemID}`;
-    const data = await this.server.query<PlayQueueContainerResponse>({ path, method: 'delete' });
-    this._invalidateCacheAndLoadData(data.MediaContainer);
+    // Plex answers deletes with the new items but the previous totals and version.
+    await this.server.query({
+      path: `/playQueues/${this.playQueueID}/items/${queueItemID}`,
+      method: 'delete',
+    });
+    await this.refresh();
     return this;
   }
 
   /**
-   * Remove all items from the PlayQueue.
+   * Remove every item except the currently selected one from the PlayQueue.
    */
   async clear(): Promise<PlayQueue> {
-    const path = `/playQueues/${this.playQueueID}/items`;
-    const data = await this.server.query<PlayQueueContainerResponse>({ path, method: 'delete' });
-    this._invalidateCacheAndLoadData(data.MediaContainer);
+    await this.server.query({ path: `/playQueues/${this.playQueueID}/items`, method: 'delete' });
+    await this.refresh();
     return this;
+  }
+
+  /** Alias for {@link PlayQueue.refresh}. */
+  override async reload(): Promise<void> {
+    await this.refresh();
   }
 
   /**
@@ -420,8 +432,6 @@ export class PlayQueue extends PlexObject {
     this.playQueueTotalCount = data.playQueueTotalCount;
     this.playQueueVersion = data.playQueueVersion;
     this.size = data.size > 0 ? data.size : this.playQueueTotalCount;
-
-    // selectedItem will be set lazily when accessing items
   }
 
   private _invalidateCacheAndLoadData(data: PlayQueueResponse): void {

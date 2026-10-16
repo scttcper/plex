@@ -95,7 +95,7 @@ export interface HistoryResult {
   grandparentArt?: string;
   index?: number;
   parentIndex?: number;
-  originallyAvailableAt?: Date;
+  originallyAvailableAt?: string;
   viewedAt: number;
   accountID: number;
   deviceID: number;

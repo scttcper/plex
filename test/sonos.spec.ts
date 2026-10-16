@@ -33,7 +33,7 @@ describe('Sonos playback', () => {
       machineIdentifier: 'server-id',
       protocol: 'https',
       address: 'plex.example',
-      port: '443',
+      port: 443,
       token: 'delegation-token',
       'X-Plex-Token': 'server-token',
     });

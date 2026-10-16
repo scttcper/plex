@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MusicSection } from '../src/library.ts';
 import type { PlexServer } from '../src/server.ts';
 
+import { assertDefined } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 describe('History API Tests', () => {
@@ -32,6 +33,7 @@ describe('History API Tests', () => {
     const tracks = await musicLibrary.searchTracks({ title: '' });
     expect(tracks.length).toBeGreaterThan(0);
     const track = tracks[0];
+    assertDefined(track);
     const key = `/:/scrobble?key=${track.ratingKey}&identifier=com.plexapp.plugins.library`;
     await plex.query({ path: key });
     await sleep(2000); // Wait for history to be updated
@@ -72,28 +74,5 @@ describe('History API Tests', () => {
 
     // Filter should not increase results
     expect(validMusicHistory.length).toBeLessThanOrEqual(validAllHistory.length);
-  }, 30_000);
-
-  // TODO: history endpoint returns empty despite beforeEach scrobble
-  it.skip('should filter history by ratingKey', async () => {
-    const allHistory = await plex.history({ maxResults: 100 });
-    const validHistory = allHistory.filter(h => h != null);
-    expect(validHistory.length).toBeGreaterThan(0);
-
-    const firstItem = validHistory[0];
-    const ratingKey = firstItem.ratingKey;
-    expect(ratingKey).toBeDefined();
-
-    const filteredHistory = await plex.history({ maxResults: 100, ratingKey });
-    const validFilteredHistory = filteredHistory.filter(h => h != null);
-
-    // All items should have the same ratingKey
-    const allSameKey = validFilteredHistory.every(item => item.ratingKey === ratingKey);
-    expect(allSameKey).toBe(true);
-
-    // Each history entry should have a unique historyKey
-    const historyKeys = validFilteredHistory.map(item => item.historyKey);
-    const uniqueHistoryKeys = new Set(historyKeys);
-    expect(uniqueHistoryKeys.size).toBe(validFilteredHistory.length);
   }, 30_000);
 });

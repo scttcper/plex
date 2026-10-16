@@ -1,30 +1,22 @@
-import fs from 'node:fs';
-import http from 'node:http';
+import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const __dirname = new URL('.', import.meta.url).pathname;
-const mediaDir = path.join(__dirname, '../media/');
+const mediaDir = path.join(import.meta.dirname, '../media/');
 const moviesDir = path.join(mediaDir, './movies/');
 const tvDir = path.join(mediaDir, './shows/');
 const audioDir = path.join(mediaDir, './music/');
-const videoStubPath = path.join(__dirname, '../test/data/video_stub.mp4');
-const audioStubPath = path.join(__dirname, '../test/data/audio_stub.mp3');
+const videoStubPath = path.join(import.meta.dirname, '../test/data/video_stub.mp4');
+const audioStubPath = path.join(import.meta.dirname, '../test/data/audio_stub.mp3');
 
 export async function downloadVideoFile(): Promise<void> {
   console.log('Downloading video_stub.mp4..');
-  const file = fs.createWriteStream(videoStubPath);
-  return new Promise(resolve => {
-    http.get(
-      'http://www.mytvtestpatterns.com/mytvtestpatterns/Default/GetFile?p=PhilipsCircleMP4',
-      response => {
-        response.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          resolve();
-        });
-      },
-    );
-  });
+  const response = await fetch(
+    'http://www.mytvtestpatterns.com/mytvtestpatterns/Default/GetFile?p=PhilipsCircleMP4',
+  );
+  if (!response.ok) {
+    throw new Error(`Video stub download failed: ${response.status} ${response.statusText}`);
+  }
+  await writeFile(videoStubPath, new Uint8Array(await response.arrayBuffer()));
 }
 
 export const requiredMovies = {
@@ -39,8 +31,7 @@ export const requiredMovies = {
 
 export async function prepareMovieDir(moviePath = moviesDir): Promise<void> {
   for (const [name, year] of Object.entries(requiredMovies)) {
-    const dir = path.join(moviePath, `${name} (${year}).mp4`);
-    fs.copyFileSync(videoStubPath, dir);
+    await copyFile(videoStubPath, path.join(moviePath, `${name} (${year}).mp4`));
   }
 }
 
@@ -58,18 +49,15 @@ export const requiredShows = {
 export async function prepareTvDir(showPath = tvDir): Promise<void> {
   for (const [name, seasons] of Object.entries(requiredShows)) {
     const showDir = path.join(showPath, name);
-    if (!fs.existsSync(showDir)) {
-      fs.mkdirSync(showDir);
-    }
+    await mkdir(showDir, { recursive: true });
 
-    for (let index = 0; index < seasons.length; index++) {
-      const season = seasons[index];
+    for (const [index, season] of seasons.entries()) {
       for (const episode of season) {
         const episodePath = path.join(
           showDir,
           `/S${(index + 1).toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}.mp4`,
         );
-        fs.copyFileSync(videoStubPath, episodePath);
+        await copyFile(videoStubPath, episodePath);
       }
     }
   }
@@ -89,13 +77,10 @@ export async function prepareAudioDir(audioPath = audioDir): Promise<void> {
   for (const [artist, albums] of Object.entries(requiredAudio)) {
     for (const [album, songs] of Object.entries(albums)) {
       const albumDir = path.join(audioPath, `${artist} - ${album}`);
-      if (!fs.existsSync(albumDir)) {
-        fs.mkdirSync(albumDir, { recursive: true });
-      }
+      await mkdir(albumDir, { recursive: true });
 
       for (const song of songs) {
-        const songPath = path.join(albumDir, song);
-        fs.copyFileSync(audioStubPath, songPath);
+        await copyFile(audioStubPath, path.join(albumDir, song));
       }
     }
   }

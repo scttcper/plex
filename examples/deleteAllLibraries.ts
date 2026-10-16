@@ -44,12 +44,6 @@ async function main() {
   }
 }
 
-main()
-  .then(() => {
-    console.log('Finished deleting all library sections.');
-    process.exit(0);
-  })
-  .catch(err => {
-    console.error('Unhandled error in main function:', err);
-    process.exit(1);
-  });
+await main();
+console.log('Finished deleting all library sections.');
+process.exit(0);

@@ -1,3 +1,4 @@
+import type { MovieData } from './library.types.ts';
 import type { ImageData } from './media.types.ts';
 import type { PlexBoolean } from './util.ts';
 
@@ -68,60 +69,21 @@ export interface FullMovieResponse {
   librarySectionUUID: string;
   mediaTagPrefix: string;
   mediaTagVersion: number;
-  Metadata: TitleMetadatum[];
+  Metadata: Array<MovieData & { Chapter?: ChapterData[] }>;
 }
 
-export interface TitleMetadatum {
-  ratingKey: string;
-  key: string;
-  guid: string;
-  studio: string;
-  type: string;
-  title: string;
-  titleSort?: string;
-  librarySectionTitle: string;
-  librarySectionID: number;
-  librarySectionKey: string;
-  contentRating: string;
-  summary: string;
-  rating: number;
-  viewCount?: number;
-  lastViewedAt?: number;
-  year: number;
-  tagline?: string;
-  thumb: string;
-  art: string;
-  duration: number;
-  originallyAvailableAt: string;
-  addedAt: number;
-  updatedAt: number;
-  chapterSource?: ChapterSource;
-  primaryExtraKey: string;
-  ratingImage: string;
-  Media: MovieMedia[];
-  Genre: MediaTagData[];
-  Director: MediaTagData[];
-  Writer: MediaTagData[];
-  Producer: MediaTagData[];
-  Country: MediaTagData[];
-  Role: Role[];
-  Similar?: MediaTagData[];
-  Chapter?: ChapterData[];
-  Collection?: MediaTagData[];
-  Field?: Field[];
-  Extras: Extras;
-  Related: Related;
-}
-
-export interface ChapterData extends MediaTagData {
-  index: number;
+export interface ChapterData {
+  id?: number;
+  tag?: string;
+  index?: number;
   startTimeOffset: number;
   endTimeOffset: number;
   thumb?: string;
   filter?: string;
 }
 
-export interface MarkerData extends MediaTagData {
+export interface MarkerData {
+  id?: number;
   final?: PlexBoolean;
   Attributes?: { version?: number };
   type: string;
@@ -130,9 +92,12 @@ export interface MarkerData extends MediaTagData {
 }
 
 export interface MediaTagData {
-  id?: number;
+  id?: number | string;
   filter?: string;
+  key?: string;
+  role?: string;
   tag: string;
+  tagType?: number;
 }
 
 export interface Extras {
@@ -390,7 +355,7 @@ export interface EpisodeMetadata {
   grandparentKey: string;
   grandparentRatingKey: string;
   grandparentSlug?: string;
-  grandparentTheme: string;
+  grandparentTheme?: string;
   grandparentThumb: string;
   grandparentTitle: string;
   guid: string;
@@ -401,8 +366,11 @@ export interface EpisodeMetadata {
   parentRatingKey: string;
   parentThumb: string;
   parentTitle: string;
+  parentYear?: number;
   rating?: number;
   ratingKey: string;
+  skipParent?: PlexBoolean;
+  source?: string;
   studio?: string;
   summary: string;
   thumb: string;
@@ -410,7 +378,7 @@ export interface EpisodeMetadata {
   type: string;
   updatedAt: number;
   viewOffset?: number;
-  year: number;
+  year?: number;
   titleSort?: string;
   Media: MediaData[];
   Writer?: Array<{ tag: string }>;
@@ -431,7 +399,7 @@ export interface EpisodeMetadata {
 export interface MediaData {
   proxyType?: number;
   id: number;
-  duration: number;
+  duration?: number;
   title?: string;
   bitrate?: number;
   width?: number;
@@ -443,26 +411,38 @@ export interface MediaData {
   videoResolution?: string;
   container?: string;
   videoFrameRate?: string;
-  optimizedForStreaming?: boolean;
+  optimizedForStreaming?: PlexBoolean;
   audioProfile?: string;
-  has64bitOffsets?: boolean;
+  has64bitOffsets?: PlexBoolean;
   hasVoiceActivity?: boolean;
   videoProfile?: string;
+  selected?: PlexBoolean;
+  target?: string;
+  uuid?: string;
   Part: MediaPartData[];
 }
 
 export interface MediaPartData {
+  accessible?: PlexBoolean;
   indexes?: string;
   id: number;
   key: string;
   audioProfile?: string;
   container: string;
-  duration: number;
+  decision?: string;
+  deepAnalysisVersion?: number | `${number}`;
+  duration?: number;
   file?: string;
-  has64bitOffsets?: boolean;
-  hasThumbnail?: boolean;
-  optimizedForStreaming?: boolean;
-  size: number;
+  has64bitOffsets?: PlexBoolean;
+  hasThumbnail?: PlexBoolean;
+  optimizedForStreaming?: PlexBoolean;
+  packetLength?: number | `${number}`;
+  protocol?: string;
+  requiredBandwidths?: string;
+  selected?: PlexBoolean;
+  size?: number;
+  syncItemId?: string;
+  syncState?: string;
   videoProfile?: string;
   exists?: boolean;
   Stream?: MediaPartStreamData[];
@@ -502,6 +482,40 @@ export interface MediaPartStreamData {
   sourceKey?: string;
   transient?: string;
   userID?: number | string;
+}
+
+/** Numeric audio fields arrive as numbers for media streams and strings for analyzed tracks. */
+type NumericValue = number | `${number}`;
+
+export interface AudioStreamData extends MediaPartStreamData {
+  streamType: 2;
+  albumGain?: NumericValue;
+  albumPeak?: NumericValue;
+  albumRange?: NumericValue;
+  audioChannelLayout?: string;
+  bitDepth?: NumericValue;
+  bitrateMode?: string;
+  canNormalizeLoudness?: PlexBoolean;
+  duration?: NumericValue;
+  endRamp?: string;
+  gain?: NumericValue;
+  gainOffset?: NumericValue;
+  loudness?: NumericValue;
+  loudnessAnalysisVersion?: NumericValue;
+  lra?: NumericValue;
+  peak?: NumericValue;
+  profile?: string;
+  samplingRate?: NumericValue;
+  startRamp?: string;
+  threshold?: NumericValue;
+  visualImpaired?: PlexBoolean;
+}
+
+export interface LyricStreamData extends MediaPartStreamData {
+  streamType: 4;
+  minLines?: number | `${number}`;
+  provider?: string;
+  timed?: PlexBoolean;
 }
 
 export interface VideoStreamData extends MediaPartStreamData {

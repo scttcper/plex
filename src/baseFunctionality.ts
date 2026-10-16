@@ -1,10 +1,8 @@
-import { URLSearchParams } from 'node:url';
-
 import type { PlexObject } from './base/plexObject.ts';
 import { X_PLEX_CONTAINER_SIZE } from './config.ts';
 import { NotFound } from './exceptions.ts';
 import type { PlexServer } from './server.ts';
-import type { MediaContainer } from './util.ts';
+import { type MediaContainer, parseOptionalNumber } from './util.ts';
 
 export type QueryParamValue = string | number | boolean | null | undefined;
 export type ItemFilterPrimitive = string | number | boolean;
@@ -129,7 +127,7 @@ export async function fetchItemData<T = PlexItemData>(
 
 /**
  * Load the specified key to find and build all items with the specified tag
- * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
+ * and attrs. See {@link fetchItem} for more details
  * on how this is used.
  */
 export async function fetchItems<T>(
@@ -158,8 +156,10 @@ export async function fetchItems<T = PlexItemData>(
 ): Promise<T[]> {
   const keyParams = new URLSearchParams(ekey.split('?', 2)[1] ?? '');
   let containerStart =
-    fetchOptions.containerStart ?? optionalNumber(keyParams.get('X-Plex-Container-Start')) ?? 0;
-  const keyContainerSize = optionalNumber(keyParams.get('X-Plex-Container-Size'));
+    fetchOptions.containerStart ??
+    parseOptionalNumber(keyParams.get('X-Plex-Container-Start')) ??
+    0;
+  const keyContainerSize = parseOptionalNumber(keyParams.get('X-Plex-Container-Size'));
   const requestedContainerSize = fetchOptions.containerSize ?? keyContainerSize;
   let inferredContainerSize: number | undefined;
   const maxResults = fetchOptions.maxResults;
@@ -182,11 +182,18 @@ export async function fetchItems<T = PlexItemData>(
         : buildContainerKey(ekey, containerStart, containerSize);
     const response = await server.query<MediaContainer<PlexItemContainer>>({ path: pageKey });
     const { MediaContainer } = response;
-    const elems = containerItems(MediaContainer, Cls?.TAG ?? fetchOptions.containerTag);
-    results.push(...findItems(elems, options, Cls, server, parent, pageKey));
+    const elems = withContainerSection(
+      containerItems(MediaContainer, Cls?.TAG ?? fetchOptions.containerTag),
+      MediaContainer,
+    );
+    results.push(
+      ...(Cls
+        ? findItems(elems, options, Cls, server, parent, pageKey)
+        : findItems(elems as T[], options)),
+    );
 
-    const totalSize = optionalNumber(MediaContainer.totalSize);
-    const rawPageSize = optionalNumber(MediaContainer.size) ?? elems.length;
+    const totalSize = parseOptionalNumber(MediaContainer.totalSize);
+    const rawPageSize = parseOptionalNumber(MediaContainer.size) ?? elems.length;
     inferredContainerSize ??= rawPageSize;
     containerStart += rawPageSize;
     firstPage = false;
@@ -200,7 +207,7 @@ export async function fetchItems<T = PlexItemData>(
 
 /**
  * Load the specified data to find and build all items with the specified tag
- * and attrs. See :func:`~plexapi.base.PlexObject.fetchItem` for more details
+ * and attrs. See {@link fetchItem} for more details
  * on how this is used.
  */
 export function findItems<T>(
@@ -272,13 +279,29 @@ function containerItems(container: PlexItemContainer, tag?: string | null): Plex
   return Array.isArray(value) ? (value as PlexItemData[]) : [];
 }
 
-function optionalNumber(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === '') {
-    return undefined;
+const CONTAINER_SECTION_FIELDS = [
+  'librarySectionID',
+  'librarySectionTitle',
+  'librarySectionUUID',
+] as const;
+
+/**
+ * Child listings such as `/library/metadata/:id/children` put the library section on the
+ * container instead of each item. Copy it down so items can still find their section.
+ */
+function withContainerSection(items: PlexItemData[], container: PlexItemContainer): PlexItemData[] {
+  const inherited: PlexItemData = {};
+  for (const field of CONTAINER_SECTION_FIELDS) {
+    if (container[field] !== undefined) {
+      inherited[field] = container[field];
+    }
   }
 
-  const result = Number(value);
-  return Number.isNaN(result) ? undefined : result;
+  if (Object.keys(inherited).length === 0) {
+    return items;
+  }
+
+  return items.map(item => ({ ...inherited, ...item }));
 }
 
 function getAttrOperator(attr: string): [string[], keyof typeof OPERATORS, ItemOperator] {
@@ -294,7 +317,8 @@ function getAttrOperator(attr: string): [string[], keyof typeof OPERATORS, ItemO
 }
 
 function nestedValues(value: unknown, path: string[]): unknown[] {
-  if (path.length === 0) {
+  const [key, ...rest] = path;
+  if (key === undefined) {
     return [value];
   }
 
@@ -306,6 +330,5 @@ function nestedValues(value: unknown, path: string[]): unknown[] {
     return [];
   }
 
-  const [key, ...rest] = path;
   return nestedValues((value as Record<string, unknown>)[key], rest);
 }

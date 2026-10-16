@@ -1,9 +1,7 @@
-import { URLSearchParams } from 'node:url';
-
-import type { AlbumData, ArtistData, TrackData } from './audio.types.ts';
+import type { AlbumData, ArtistData, AudioItemData, TrackData } from './audio.types.ts';
 import { Playable } from './base/playable.ts';
-import { fetchItem, fetchItems } from './baseFunctionality.ts';
-import { NotFound } from './exceptions.ts';
+import { fetchItem, fetchItems, type ItemFilterValue } from './baseFunctionality.ts';
+import { BadRequest, NotFound } from './exceptions.ts';
 import {
   Chapter,
   Collection,
@@ -23,9 +21,10 @@ import {
 import type { UltraBlurColorsData } from './media.types.ts';
 import { Playlist } from './playlist.ts';
 import type { PlaylistResponse } from './playlist.types.ts';
+import { parseOptionalDate, parseOptionalNumber } from './util.ts';
 
 type MusicSectionLike = {
-  sonicAdventure: (start: any, end: any) => Promise<any[]>;
+  sonicAdventure: (start: Track | number, end: Track | number) => Promise<Track[]>;
 };
 const hasSonicAdventure = (s: unknown): s is MusicSectionLike =>
   typeof (s as { sonicAdventure?: unknown }).sonicAdventure === 'function';
@@ -67,33 +66,38 @@ export class Audio extends Playable {
   /** User rating (0.0-10.0). */
   declare userRating?: number;
   /** Count of times the item was played. */
-  declare viewCount?: number;
+  declare viewCount: number;
 
   /** Store the raw data from the Plex API for lazy loading related items. */
-  declare protected _data?: Record<string, any>;
+  declare protected _data?: AudioItemData;
 
   /** List of field objects. */
-  declare fields?: Field[];
+  declare fields: Field[];
   declare ultraBlurColors?: UltraBlurColorsData;
   /** List of image objects. */
-  declare images?: Image[];
+  declare images: Image[];
   /** List of mood objects. */
-  declare moods?: Mood[];
+  declare moods: Mood[];
 
-  /**
-   * Returns the full URL for a given part (like a media stream) relative to the item's key.
-   * Includes the authentication token.
-   * @param part The relative path or resource identifier.
-   * @returns The full URL string including the server address and token, or undefined if part is empty.
-   */
+  /** Build an authenticated server URL for a path such as a media part key. */
   url(part: string): string | undefined {
-    // This typically refers to sub-resources like media parts, not the main item URL (which is `key`)
-    // The python version returns server.url(part), let's keep it consistent,
-    // assuming `part` is something like `/transcode/universal/start?protocol=...` relative to server root,
-    // or it might be used for things like `/tree`? The python `url` method seems rarely used directly.
-    // For now, mirroring the python seems safest. If `part` is meant to be appended to `this.key`,
-    // the logic would need changing.
     return part ? this.server.url(part, { includeToken: true })?.toString() : undefined;
+  }
+
+  /** Thumbnail URL with the token, falling back to the album or artist thumbnail. */
+  get thumbUrl(): URL | undefined {
+    const { parentThumb, grandparentThumb } = this as {
+      parentThumb?: string;
+      grandparentThumb?: string;
+    };
+    const thumb = this.thumb ?? parentThumb ?? grandparentThumb;
+    return thumb ? this.server.url(thumb, { includeToken: true }) : undefined;
+  }
+
+  /** Background art URL with the token, falling back to the artist's art. */
+  get artUrl(): URL | undefined {
+    const art = this.art ?? (this as { grandparentArt?: string }).grandparentArt;
+    return art ? this.server.url(art, { includeToken: true }) : undefined;
   }
 
   /** Indicates if the audio item has undergone sonic analysis. */
@@ -148,86 +152,42 @@ export class Audio extends Playable {
    * @param data The raw data object from the Plex API.
    * @protected
    */
-  protected _loadData(data: Record<string, any>): void {
+  protected _loadData(data: AudioItemData): void {
     this._data = data;
-
-    const addedAtTimestamp = data.addedAt ? Number.parseInt(data.addedAt, 10) : Number.NaN;
-    this.addedAt = Number.isNaN(addedAtTimestamp) ? undefined : new Date(addedAtTimestamp * 1000);
-    this.art = data.art ? this.server.url(data.art, { includeToken: true })?.toString() : undefined;
+    this.addedAt = parseOptionalDate(data.addedAt);
+    this.art = data.art;
     this.artBlurHash = data.artBlurHash;
-    const distanceFloat = data.distance ? Number.parseFloat(data.distance) : Number.NaN;
-    this.distance = Number.isNaN(distanceFloat) ? undefined : distanceFloat;
+    this.distance = parseOptionalNumber(data.distance);
     this.guid = data.guid;
-    const indexInt = data.index ? Number.parseInt(data.index, 10) : Number.NaN;
-    this.index = Number.isNaN(indexInt) ? undefined : indexInt;
-    this.key = data.key ?? this.key ?? '';
-    const lastRatedAtTimestamp = data.lastRatedAt
-      ? Number.parseInt(data.lastRatedAt, 10)
-      : Number.NaN;
-    this.lastRatedAt = Number.isNaN(lastRatedAtTimestamp)
-      ? undefined
-      : new Date(lastRatedAtTimestamp * 1000);
-    const lastViewedAtTimestamp = data.lastViewedAt
-      ? Number.parseInt(data.lastViewedAt, 10)
-      : Number.NaN;
-    this.lastViewedAt = Number.isNaN(lastViewedAtTimestamp)
-      ? undefined
-      : new Date(lastViewedAtTimestamp * 1000);
-    const librarySectionIDInt = data.librarySectionID
-      ? Number.parseInt(data.librarySectionID, 10)
-      : Number.NaN;
-    this.librarySectionID = Number.isNaN(librarySectionIDInt)
-      ? this.librarySectionID
-      : librarySectionIDInt;
+    this.index = parseOptionalNumber(data.index);
+    this.key = data.key;
+    this.lastRatedAt = parseOptionalDate(data.lastRatedAt);
+    this.lastViewedAt = parseOptionalDate(data.lastViewedAt);
+    this.librarySectionID = parseOptionalNumber(data.librarySectionID) ?? this.librarySectionID;
     this.librarySectionKey = data.librarySectionKey;
     this.librarySectionTitle = data.librarySectionTitle;
-    // listType is handled by the getter
-    const musicAnalysisVersionInt = data.musicAnalysisVersion
-      ? Number.parseInt(data.musicAnalysisVersion, 10)
-      : Number.NaN;
-    this.musicAnalysisVersion = Number.isNaN(musicAnalysisVersionInt)
-      ? undefined
-      : musicAnalysisVersionInt;
+    this.musicAnalysisVersion = parseOptionalNumber(data.musicAnalysisVersion);
     this.playlistItemID = data.playlistItemID;
-    this.ratingKey = data.ratingKey;
-    const ratingKeyInt = data.ratingKey ? Number.parseInt(data.ratingKey, 10) : Number.NaN;
-    this.ratingKey = Number.isNaN(ratingKeyInt) ? this.ratingKey : ratingKeyInt.toString();
+    this.ratingKey = data.ratingKey ?? this.ratingKey;
     this.summary = data.summary;
-    this.thumb = data.thumb
-      ? this.server.url(data.thumb, { includeToken: true })?.toString()
-      : undefined;
+    this.thumb = data.thumb;
     this.thumbBlurHash = data.thumbBlurHash;
     this.title = data.title ?? this.title;
     this.titleSort = data.titleSort ?? this.title;
     this.type = data.type ?? this.type;
-    const updatedAtTimestamp = data.updatedAt ? Number.parseInt(data.updatedAt, 10) : Number.NaN;
-    this.updatedAt = Number.isNaN(updatedAtTimestamp)
-      ? undefined
-      : new Date(updatedAtTimestamp * 1000);
-    const userRatingFloat = data.userRating ? Number.parseFloat(data.userRating) : Number.NaN;
-    this.userRating = Number.isNaN(userRatingFloat) ? undefined : userRatingFloat;
-    const viewCountInt =
-      data.viewCount !== undefined ? Number.parseInt(data.viewCount, 10) : Number.NaN;
-    this.viewCount = Number.isNaN(viewCountInt) ? 0 : viewCountInt;
-
-    // Map tag arrays like video.ts does
+    this.updatedAt = parseOptionalDate(data.updatedAt);
+    this.userRating = parseOptionalNumber(data.userRating);
+    this.viewCount = parseOptionalNumber(data.viewCount) ?? 0;
     this.ultraBlurColors = data.UltraBlurColors;
-    this.fields = data.Field?.map((d: unknown) => new Field(this.server, d, undefined, this)) ?? [];
-    this.images = data.Image?.map((d: unknown) => new Image(this.server, d, undefined, this)) ?? [];
-    this.moods = data.Mood?.map((d: unknown) => new Mood(this.server, d, undefined, this)) ?? [];
+    this.fields = data.Field?.map(d => new Field(this.server, d, undefined, this)) ?? [];
+    this.images = data.Image?.map(d => new Image(this.server, d, undefined, this)) ?? [];
+    this.moods = data.Mood?.map(d => new Mood(this.server, d, undefined, this)) ?? [];
   }
 
-  /**
-   * Overrides `PartialPlexObject._loadFullData` to apply Audio-specific attributes
-   * after fetching the full item data.
-   * @param data The raw data object representing the full item from the Plex API.
-   * @protected
-   */
-  protected override _loadFullData(data: any): void {
-    // Data is typically nested under 'Metadata' for single item fetches
-    const metadataItem = Array.isArray(data.Metadata) ? data.Metadata[0] : data;
-    if (metadataItem) {
-      this._loadData(metadataItem);
+  protected override _loadFullData(data: { Metadata?: AudioItemData[] }): void {
+    const [metadata] = data.Metadata ?? [];
+    if (metadata) {
+      this._loadData(metadata);
     }
   }
 }
@@ -239,40 +199,35 @@ export class Track extends Audio {
   static override TAG = 'Track';
   static override TYPE = 'track';
 
-  // Track specific properties
   declare audienceRating?: number;
   declare chapterSource?: string;
-  // chapters defined via getter
-  // collections defined via getter
   declare duration?: number;
-  // genres defined via getter
   declare grandparentArt?: string;
   declare grandparentGuid?: string;
   declare grandparentKey?: string;
   declare grandparentRatingKey?: number | string;
   declare grandparentTheme?: string;
   declare grandparentThumb?: string;
-  declare grandparentTitle?: string; // Artist Name
-  // guids defined via getter
-  // index inherited from Audio
-  // labels defined via getter
-  // media defined via getter
-  declare originalTitle?: string; // Often the Artist Name again or original track title?
+  /** Artist name. */
+  declare grandparentTitle?: string;
+  /** Track artist when it differs from the album artist. */
+  declare originalTitle?: string;
   declare parentGuid?: string;
-  declare parentIndex?: number; // Disc Number
+  /** Disc number. */
+  declare parentIndex?: number;
   declare parentKey?: string;
   declare parentRatingKey?: number | string;
   declare parentStudio?: string;
   declare parentThumb?: string;
-  declare parentTitle?: string; // Album Title
+  /** Album title. */
+  declare parentTitle?: string;
   declare parentYear?: number | string;
   declare primaryExtraKey?: string;
-  declare rating?: number; // Inherited ratingKey exists from PlexObject base
+  declare rating?: number;
   declare ratingCount?: number | string;
   declare skipCount?: number;
-  declare sourceURI?: string; // Remote playlist item
-  // viewCount inherited from Audio
-  // lastViewedAt inherited from Audio
+  /** Remote server URI for items from another server (ex: playlist items). */
+  declare sourceURI?: string;
   declare viewOffset?: number;
   declare chapters?: Chapter[];
   declare collections?: Collection[];
@@ -281,18 +236,12 @@ export class Track extends Audio {
   declare labels?: Label[];
   declare media?: Media[];
 
-  // Properties from Mixins (assuming, some might overlap with Audio)
-  // userRating inherited from Audio
-  // art inherited from Audio
-  // thumb inherited from Audio (used as poster?)
-  // theme inherited from Audio
-
   /**
    * @returns List of file paths where the track is found on disk.
    */
   get locations(): string[] {
     const parts = this.media?.flatMap(m => m.parts ?? []) ?? [];
-    return parts.map(part => part.file).filter(Boolean);
+    return parts.map(part => part.file).filter((file): file is string => Boolean(file));
   }
 
   /**
@@ -302,19 +251,11 @@ export class Track extends Audio {
     return this.index;
   }
 
-  // /**
-  //  * @returns File paths for all parts of this media item.
-  //  */
-  // iterParts(): Part[] {
-  //   return this.media?.flatMap(media => media.Part ?? []) ?? [];
-  // }
-
   /**
    * @returns A filename for use in download.
    */
   prettyfilename(): string {
     const trackNum = String(this.trackNumber ?? '00').padStart(2, '0');
-    // Use optional chaining for potentially undefined properties
     return `${this.grandparentTitle ?? 'Unknown Artist'} - ${this.parentTitle ?? 'Unknown Album'} - ${trackNum} - ${this.title ?? 'Unknown Track'}`;
   }
 
@@ -344,7 +285,6 @@ export class Track extends Audio {
    * @returns Default title for a new syncItem.
    */
   override _defaultSyncTitle(): string {
-    // Use optional chaining for potentially undefined properties
     return `${this.grandparentTitle ?? 'Unknown Artist'} - ${this.parentTitle ?? 'Unknown Album'} - ${this.title ?? 'Unknown Track'}`;
   }
 
@@ -361,10 +301,6 @@ export class Track extends Audio {
     return super.getWebURL({ base });
   }
 
-  // metadataDirectory property requires Path module and filesystem access, which is
-  // complex in node/browser. Omitting for now, might need specific implementation.
-  // get metadataDirectory(): string { ... }
-
   /**
    * Returns a sonic adventure from the current track to the specified track.
    * @param to The target track for the sonic adventure.
@@ -379,26 +315,6 @@ export class Track extends Audio {
     return section.sonicAdventure(this, to);
   }
 
-  // /**
-  //  * @returns The LibrarySection this item belongs to.
-  //  */
-  // override section(): LibrarySection | undefined {
-  //   let parent = this._parent; // Access protected _parent from base
-  //   // Navigate up until we find a LibrarySection or hit the top
-  //   while (parent) {
-  //     // Basic check based on key structure, might need refinement
-  //     if (parent instanceof PlexObject && parent.key?.startsWith('/library/sections/')) {
-  //       return parent as LibrarySection;
-  //     }
-  //     // Check if parent has a _parent property to continue traversal
-  //     if (!('_parent' in parent) || !parent._parent) {
-  //       break;
-  //     }
-  //     parent = parent._parent as PlexObject | undefined;
-  //   }
-  //   return undefined;
-  // }
-
   /**
    * Populates the object's properties from the provided Plex API data,
    * overriding the base Audio class method to add Track-specific attributes.
@@ -408,7 +324,6 @@ export class Track extends Audio {
   override _loadData(data: TrackData): void {
     super._loadData(data);
 
-    // Assign directly, assuming data properties are already numbers
     this.audienceRating = data.audienceRating;
     this.chapterSource = data.chapterSource;
     this.duration = data.duration;
@@ -436,7 +351,6 @@ export class Track extends Audio {
     this.viewOffset = data.viewOffset ?? 0;
     this.year = data.year;
 
-    // ratingKey, index, title, etc., are loaded by super._loadData or PlexObject base
     this.chapters = data.Chapter?.map(d => new Chapter(this.server, d, undefined, this));
     this.collections = data.Collection?.map(d => new Collection(this.server, d, undefined, this));
     this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this));
@@ -454,7 +368,6 @@ export class Artist extends Audio {
   static override TAG = 'Directory';
   static override TYPE = 'artist';
 
-  // Artist specific properties
   declare albumSort?: number; // -1: Library default, 0: Newest, 1: Oldest, 2: Name
   declare audienceRating?: number;
   declare rating?: number;
@@ -468,8 +381,7 @@ export class Artist extends Audio {
   declare collections?: Collection[];
 
   get locations(): string[] {
-    // Replicate listAttrs logic (assuming Location tag with path attribute)
-    return this._data?.Location?.map((loc: { path?: string }) => loc.path).filter(Boolean) ?? [];
+    return this._data?.Location?.map(location => location.path) ?? [];
   }
 
   /**
@@ -494,6 +406,9 @@ export class Artist extends Audio {
   async albums(options: Record<string, unknown> = {}): Promise<Album[]> {
     if (!this.librarySectionID) {
       await this.reload();
+    }
+    if (!this.ratingKey) {
+      throw new BadRequest('Listing albums requires an artist rating key.');
     }
 
     const section = await this.section();
@@ -542,15 +457,10 @@ export class Artist extends Audio {
     args: { title: string } | { album: string; track: number },
   ): Promise<Track | undefined> {
     const key = this._buildQueryKey(`${this.key}/allLeaves`);
-    let query: Record<string, any> = {};
-
-    if ('title' in args) {
-      query = { title__iexact: args.title };
-    } else if ('album' in args && 'track' in args) {
-      query = { parentTitle__iexact: args.album, index: args.track };
-    } else {
-      throw new Error('Missing argument: title or album and track are required');
-    }
+    const query: Record<string, ItemFilterValue> =
+      'title' in args
+        ? { title__iexact: args.title }
+        : { parentTitle__iexact: args.album, index: args.track };
 
     try {
       return await fetchItem(this.server, key, query, Track, this);
@@ -578,9 +488,6 @@ export class Artist extends Audio {
     return this.track(args);
   }
 
-  // /**
-  //  * Returns a list of popular tracks by the artist.
-  //  */
   async popularTracks(): Promise<Track[]> {
     const section = await this.section();
     if (!section || typeof section.search !== 'function') {
@@ -600,9 +507,6 @@ export class Artist extends Audio {
     );
   }
 
-  // /**
-  //  * Returns the artist radio station Playlist or undefined.
-  //  */
   /**
    * Load attribute values from Plex XML response.
    * @protected
@@ -638,14 +542,11 @@ export class Album extends Audio {
   static override TAG = 'Directory';
   static override TYPE = 'album';
 
-  // Album specific properties
   declare audienceRating?: number;
-  // mapped arrays
   declare collections?: Collection[];
   declare formats?: Format[];
   declare genres?: Genre[];
   declare guids?: Guid[];
-  // key inherited from Audio
   declare labels?: Label[];
   declare leafCount?: number;
   declare loudnessAnalysisVersion?: number | string;
@@ -722,9 +623,6 @@ export class Album extends Audio {
     return `${this.parentTitle ?? 'Unknown Artist'} - ${this.title ?? 'Unknown Album'}`;
   }
 
-  // section() method - Albums typically don't directly need this,
-  // but could be inherited or implemented if needed to find parent section.
-
   /**
    * Load attribute values from Plex XML response.
    * @protected
@@ -732,12 +630,10 @@ export class Album extends Audio {
   override _loadData(data: AlbumData): void {
     super._loadData(data);
 
-    // Assign directly, assuming data properties have correct types
     this.audienceRating = data.audienceRating;
     this.key = data.key?.replace('/children', ''); // Apply FIX_BUG_50
     this.leafCount = data.leafCount;
     this.loudnessAnalysisVersion = data.loudnessAnalysisVersion;
-    // Attempt direct Date parsing for originallyAvailableAt
     try {
       this.originallyAvailableAt = data.originallyAvailableAt
         ? new Date(data.originallyAvailableAt)
@@ -762,7 +658,7 @@ export class Album extends Audio {
     this.collections = data.Collection?.map(d => new Collection(this.server, d, undefined, this));
     this.formats = data.Format?.map(d => new Format(this.server, d, undefined, this));
     this.genres = data.Genre?.map(d => new Genre(this.server, d, undefined, this));
-    this.guids = data.Guid?.map((d: any) => new Guid(this.server, d, undefined, this));
+    this.guids = data.Guid?.map(d => new Guid(this.server, d, undefined, this));
     this.labels = data.Label?.map(d => new Label(this.server, d, undefined, this));
     this.styles = data.Style?.map(d => new Style(this.server, d, undefined, this));
     this.subformats = data.Subformat?.map(d => new Subformat(this.server, d, undefined, this));

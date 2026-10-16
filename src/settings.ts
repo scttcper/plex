@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import { PlexObject } from './base/plexObject.ts';
 import { BadRequest, NotFound } from './exceptions.ts';
 import { lowerFirst, parsePlexBoolean } from './util.ts';
@@ -28,14 +26,15 @@ export class Settings extends PlexObject {
 
   all(): Setting[] {
     return Object.entries(this._settings)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(x => x[1]);
+      .toSorted(([a], [b]) => a.localeCompare(b))
+      .map(([, setting]) => setting);
   }
 
   get(id: string): Setting {
     const lowerId = lowerFirst(id);
-    if (Object.hasOwn(this._settings, lowerId)) {
-      return this._settings[lowerId];
+    const setting = Object.hasOwn(this._settings, lowerId) ? this._settings[lowerId] : undefined;
+    if (setting) {
+      return setting;
     }
 
     throw new NotFound(`Invalid setting id: ${id}`);

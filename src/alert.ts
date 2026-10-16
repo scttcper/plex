@@ -1,5 +1,3 @@
-import WebSocket from 'ws';
-
 import type { AlertTypes, NotificationContainer } from './alert.types.ts';
 import type { PlexServer } from './server.ts';
 
@@ -36,40 +34,63 @@ export class AlertListener {
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     const socket = new WebSocket(url);
     this._ws = socket;
-    socket.on('message', message => {
-      try {
-        const data: unknown = JSON.parse(message.toString());
-        if (!isNotificationEnvelope(data)) {
-          throw new TypeError('Invalid Plex notification envelope.');
+    // Dropped once the socket closes so a stale socket can't call back into the listener.
+    const listeners = new AbortController();
+    const { signal } = listeners;
+    const { promise, resolve, reject } = Promise.withResolvers<void>();
+    socket.addEventListener(
+      'message',
+      event => {
+        try {
+          const data: unknown = JSON.parse(String(event.data));
+          if (!isNotificationEnvelope(data)) {
+            throw new TypeError('Invalid Plex notification envelope.');
+          }
+          this.callback(data.NotificationContainer as AlertTypes);
+        } catch (error) {
+          this.options.onError?.(error);
         }
-        this.callback(data.NotificationContainer as AlertTypes);
-      } catch (error) {
-        this.options.onError?.(error);
-      }
-    });
-    this.connecting = new Promise<void>((resolve, reject) => {
-      socket.once('open', resolve);
-      socket.on('error', error => {
+      },
+      { signal },
+    );
+    socket.addEventListener('open', () => resolve(), { signal });
+    socket.addEventListener(
+      'error',
+      event => {
+        const error = new Error(`Plex alert connection to ${this.server.baseurl} failed.`, {
+          cause: event,
+        });
+        if (this._ws === socket) {
+          this._ws = undefined;
+        }
         this.options.onError?.(error);
         reject(error);
-      });
-      socket.once('close', () => {
-        socket.removeAllListeners('message');
+      },
+      { signal },
+    );
+    socket.addEventListener(
+      'close',
+      () => {
+        listeners.abort();
         if (this._ws === socket) {
           this._ws = undefined;
         }
         reject(new Error('Alert connection closed before opening.'));
-      });
-    });
+      },
+      { signal },
+    );
+    this.connecting = promise;
     try {
-      await this.connecting;
+      await promise;
     } finally {
       this.connecting = undefined;
     }
   }
 
   stop(): void {
-    this._ws?.close();
+    const socket = this._ws;
+    this._ws = undefined;
+    socket?.close();
   }
 }
 

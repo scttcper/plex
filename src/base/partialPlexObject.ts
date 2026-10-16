@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { URLSearchParams } from 'node:url';
 
 import { ArtworkManager } from '../artwork.ts';
 import { fetchItems } from '../baseFunctionality.ts';
@@ -44,6 +43,8 @@ export abstract class PartialPlexObject extends PlexObject {
     includeStations: 0,
   };
 
+  /** Plex relative url of this metadata item. */
+  declare key: string;
   declare ratingKey?: string;
   declare title?: string;
   declare type?: string;
@@ -117,6 +118,9 @@ export abstract class PartialPlexObject extends PlexObject {
       playlist: 'Playlists',
       collection: 'Collections',
     };
+    if (!this.type) {
+      return undefined;
+    }
     const directory = directories[this.type];
     const field =
       this.type === 'episode'
@@ -265,7 +269,7 @@ export abstract class PartialPlexObject extends PlexObject {
   /**
    * load full data / reload the data for this object from this.key.
    */
-  override async reload(ekey?: string, args?: any): Promise<void> {
+  override async reload(ekey?: string, args?: Record<string, boolean | number>): Promise<void> {
     this._detailsKey = this._buildDetailsKey(args);
     const key = ekey ?? this._detailsKey ?? this.key;
     if (!key) {
@@ -273,9 +277,8 @@ export abstract class PartialPlexObject extends PlexObject {
     }
 
     this.initpath = key;
-    const data = await this.server.query({ path: key });
-    const innerData = data.MediaContainer ?? data;
-    this._loadFullData(innerData);
+    const data = await this.server.query<{ MediaContainer?: unknown }>({ path: key });
+    this._loadFullData(data.MediaContainer ?? data);
   }
 
   /**
@@ -303,10 +306,8 @@ export abstract class PartialPlexObject extends PlexObject {
   } = {}): Promise<void> {
     const key = `/library/metadata/${this.ratingKey}/match`;
     if (auto) {
-      const autoMatch = await this.matches();
-      if (autoMatch.length > 0) {
-        searchResult = autoMatch[0];
-      } else {
+      searchResult = (await this.matches())[0];
+      if (!searchResult) {
         throw new Error(`No matches found using this agent: (${agent})`);
       }
     } else if (!searchResult) {
@@ -360,16 +361,14 @@ export abstract class PartialPlexObject extends PlexObject {
       const ident = await getAgentIdentifier(section, agent);
       params.append('agent', ident);
     } else if ([agent, title, year, language].some(x => x)) {
-      if (title) {
-        params.append('title', title);
-      } else {
-        params.append('title', this.title);
+      const matchTitle = title || this.title;
+      if (matchTitle) {
+        params.append('title', matchTitle);
       }
 
-      if (year) {
-        params.append('year', year);
-      } else {
-        params.append('year', this.year.toString());
+      const matchYear = year || this.year?.toString();
+      if (matchYear) {
+        params.append('year', matchYear);
       }
 
       if (language) {
@@ -423,14 +422,17 @@ export abstract class PartialPlexObject extends PlexObject {
       return parent.section();
     }
 
+    if (this.librarySectionID === undefined) {
+      throw new BadRequest('Finding the library section requires a librarySectionID.');
+    }
     return (await this.server.library()).sectionByID(this.librarySectionID);
   }
 
   /**
    * Delete a media element. This has to be enabled under settings > server > library in plex webui.
    */
-  async delete(): Promise<any> {
-    return this.server.query({ path: this.key, method: 'delete' });
+  async delete(): Promise<void> {
+    await this.server.query({ path: this.key, method: 'delete' });
   }
 
   /** Add a collection(s). */
@@ -538,7 +540,7 @@ export abstract class PartialPlexObject extends PlexObject {
     await this.edit({ 'originallyAvailableAt.value': date, 'originallyAvailableAt.locked': 1 });
   }
 
-  protected abstract _loadFullData(data: any): void;
+  protected abstract _loadFullData(data: unknown): void;
 
   /**
    * Get the Plex Web URL with the correct parameters.

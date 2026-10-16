@@ -1,15 +1,17 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   type Episode,
   type Movie,
   type MovieSection,
   PlayQueue,
+  PlexClient,
   type PlexServer,
   Playlist,
   type ShowSection,
 } from '../src/index.ts';
 
+import { assertDefined, first, itemAt } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -24,17 +26,17 @@ beforeAll(async () => {
 
   // Get a movie for testing
   const movieSection = await library.section<MovieSection>('Movies');
-  [movie] = await movieSection.search({ title: 'Bunny' });
-  expect(movie).toBeDefined();
+  movie = first(await movieSection.search({ title: 'Bunny' }));
 
   // Get episodes for testing
   const showSection = await library.section<ShowSection>('TV Shows');
   const shows = await showSection.search({ title: 'Silicon Valley' });
   expect(shows.length).toBeGreaterThan(0);
   const show = shows[0];
+  assertDefined(show);
   const seasons = await show.seasons();
   expect(seasons.length).toBeGreaterThan(0);
-  episodes = (await seasons[0].episodes()).slice(0, 3);
+  episodes = (await first(seasons).episodes()).slice(0, 3);
   expect(episodes.length).toBeGreaterThanOrEqual(3);
 });
 
@@ -123,6 +125,42 @@ describe('PlayQueue Retrieval', () => {
 });
 
 describe('PlayQueue Items Management', () => {
+  it('should play the start item of a new PlayQueue', async () => {
+    const startItem = itemAt(episodes, 1);
+    const created = await PlayQueue.create(plex, episodes, { startItem });
+    expect(created.playQueueSelectedItemOffset).toBe(1);
+    const client = new PlexClient({ server: plex });
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+
+    await client.playMedia(created);
+
+    expect(sendCommand).toHaveBeenCalledWith(
+      'playback/playMedia',
+      expect.objectContaining({ key: startItem.key, type: 'video' }),
+    );
+  });
+
+  it('should play the selected item from a window that does not contain it', async () => {
+    const created = await PlayQueue.create(plex, episodes);
+    const selected = first(created.items);
+    const window = await PlayQueue.get(plex, created.playQueueID, {
+      center: itemAt(created.items, 1).playQueueItemID,
+      window: 1,
+      includeBefore: false,
+    });
+    expect(window.items.map(item => item.ratingKey)).toEqual([itemAt(episodes, 2).ratingKey]);
+    expect(window.selectedItem).toBeUndefined();
+    const client = new PlexClient({ server: plex });
+    const sendCommand = vi.spyOn(client, 'sendCommand').mockResolvedValue(null);
+
+    await client.playMedia(window);
+
+    expect(sendCommand).toHaveBeenCalledWith(
+      'playback/playMedia',
+      expect.objectContaining({ key: selected.key, type: 'video' }),
+    );
+  });
+
   it('should get items from PlayQueue', async () => {
     playQueue = await PlayQueue.create(plex, movie);
 
@@ -131,7 +169,7 @@ describe('PlayQueue Items Management', () => {
 
     const firstItem = playQueue.getItem(0);
     expect(firstItem).toBeDefined();
-    expect(firstItem?.ratingKey).toBe(items[0].ratingKey);
+    expect(firstItem?.ratingKey).toBe(first(items).ratingKey);
   });
 
   it('should check if PlayQueue contains item', async () => {
@@ -139,7 +177,7 @@ describe('PlayQueue Items Management', () => {
 
     const items = playQueue.items;
     expect(items.length).toBeGreaterThan(0);
-    const contains = playQueue.contains(items[0]);
+    const contains = playQueue.contains(first(items));
     expect(contains).toBe(true);
   });
 
@@ -151,36 +189,37 @@ describe('PlayQueue Items Management', () => {
     expect(queueItem.ratingKey).toBe(movie.ratingKey);
   });
 
-  // TODO: Episode.section() fails because librarySectionID is undefined on episodes from a PlayQueue slice
-  it.skip('should add item to PlayQueue', async () => {
+  it('should add item to PlayQueue', async () => {
     playQueue = await PlayQueue.create(plex, episodes.slice(0, 1));
 
     const initialCount = playQueue.playQueueTotalCount;
-    await playQueue.addItem(episodes[1]);
+    await playQueue.addItem(itemAt(episodes, 1));
 
     expect(playQueue.playQueueTotalCount).toBe(initialCount + 1);
   });
 
-  // TODO: Episode.section() fails because librarySectionID is undefined on episodes from a PlayQueue slice
-  it.skip('should add item with playNext option', async () => {
+  it('should add item with playNext option', async () => {
     playQueue = await PlayQueue.create(plex, episodes.slice(0, 1));
 
-    await playQueue.addItem(episodes[1], { playNext: true });
+    await playQueue.addItem(itemAt(episodes, 1), { playNext: true });
 
     const items = playQueue.items;
     expect(items.length).toBe(2);
   });
 
-  // TODO: removeItem does not update playQueueTotalCount
-  it.skip('should remove item from PlayQueue', async () => {
-    playQueue = await PlayQueue.create(plex, episodes.slice(0, 2));
+  it('should remove item from PlayQueue', async () => {
+    playQueue = await PlayQueue.create(plex, episodes.slice(0, 3));
 
     const initialCount = playQueue.playQueueTotalCount;
-    const items = playQueue.items;
+    const initialVersion = playQueue.playQueueVersion;
+    const removed = itemAt(playQueue.items, 2);
 
-    await playQueue.removeItem(items[0]);
+    await playQueue.removeItem(removed);
 
     expect(playQueue.playQueueTotalCount).toBe(initialCount - 1);
+    expect(playQueue.items).toHaveLength(initialCount - 1);
+    expect(playQueue.playQueueVersion).toBeGreaterThan(initialVersion);
+    expect(playQueue.contains(removed)).toBe(false);
   });
 
   it('should move item in PlayQueue', async () => {
@@ -188,6 +227,7 @@ describe('PlayQueue Items Management', () => {
 
     const items = playQueue.items;
     const firstItem = items[0];
+    assertDefined(firstItem);
     const secondItem = items[1];
 
     // Move first item after second item
@@ -195,18 +235,19 @@ describe('PlayQueue Items Management', () => {
 
     const newItems = playQueue.items;
     // The order should have changed
-    expect(newItems[0].ratingKey).not.toBe(firstItem.ratingKey);
+    expect(first(newItems).ratingKey).not.toBe(firstItem.ratingKey);
   });
 
-  // TODO: clear does not update playQueueTotalCount
-  it.skip('should clear all items from PlayQueue', async () => {
-    playQueue = await PlayQueue.create(plex, episodes.slice(0, 2));
+  it('should clear all but the selected item from PlayQueue', async () => {
+    playQueue = await PlayQueue.create(plex, episodes.slice(0, 3));
+    const selectedRatingKey = playQueue.playQueueSelectedMetadataItemID;
 
-    expect(playQueue.playQueueTotalCount).toBeGreaterThan(0);
+    expect(playQueue.playQueueTotalCount).toBe(3);
 
     await playQueue.clear();
 
-    expect(playQueue.playQueueTotalCount).toBe(0);
+    expect(playQueue.playQueueTotalCount).toBe(1);
+    expect(playQueue.items.map(item => item.ratingKey)).toEqual([selectedRatingKey]);
   });
 });
 
@@ -235,7 +276,7 @@ describe('PlayQueue from Playlist', () => {
     expect(playQueue.playQueueTotalCount).toBe(1);
 
     const items = playQueue.items;
-    expect(items[0].ratingKey).toBe(movie.ratingKey);
+    expect(first(items).ratingKey).toBe(movie.ratingKey);
   });
 });
 
@@ -256,14 +297,13 @@ describe('PlayQueue Error Handling', () => {
   });
 
   it('should handle queue item not found', async () => {
-    playQueue = await PlayQueue.create(plex, movie);
+    const queue = await PlayQueue.create(plex, movie);
+    playQueue = queue;
 
     // Try to get a queue item that doesn't exist
     const library = await plex.library();
     const movieSection = await library.section<MovieSection>('Movies');
-    const otherMovies = await movieSection.search({ title: 'Ghost' });
-
-    const otherMovie = otherMovies[0];
-    expect(() => playQueue.getQueueItem(otherMovie)).toThrow();
+    const otherMovie = first(await movieSection.search({ title: 'Ghost' }));
+    expect(() => queue.getQueueItem(otherMovie)).toThrow();
   });
 });

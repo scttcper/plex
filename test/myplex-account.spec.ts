@@ -1,9 +1,11 @@
 import { beforeAll, expect, it } from 'vitest';
 
+import { NotFound } from '../src/exceptions.ts';
 import type { MovieSection } from '../src/library.ts';
 import { DiscoverMovie, DiscoverShow, MyPlexAccount, PlexUserState } from '../src/myplex.ts';
 import type { Movie } from '../src/video.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createAccount, createClient } from './test-client.ts';
 
 let account: MyPlexAccount;
@@ -12,7 +14,7 @@ beforeAll(async () => {
   account = await createAccount();
 });
 
-it('reads account users and pending invites from Plex XML endpoints', async () => {
+it('reads account users, pending invites, and sharing sections', async () => {
   const plex = await createClient();
   const users = await account.users();
   const sentInvites = await account.pendingInvites({ includeReceived: false });
@@ -27,17 +29,17 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   const webhooks = await account.webhooks();
   const library = await plex.library();
   const movieSection = await library.section<MovieSection>('Movies');
-  const [movie] = await movieSection.search<Movie>({ libtype: 'movie', maxresults: 1 });
+  const movie = first(await movieSection.search<Movie>({ libtype: 'movie', maxresults: 1 }));
   const userState = await account.userState(movie);
 
   expect(Array.isArray(users)).toBe(true);
   expect(Array.isArray(sentInvites)).toBe(true);
   expect(Array.isArray(receivedInvites)).toBe(true);
   expect(sharingSections.length).toBeGreaterThan(0);
-  expect(typeof sharingSections[0].id).toBe('number');
-  expect(typeof sharingSections[0].key).toBe('number');
-  expect(typeof sharingSections[0].title).toBe('string');
-  expect(typeof sharingSections[0].type).toBe('string');
+  expect(typeof first(sharingSections).id).toBe('number');
+  expect(typeof first(sharingSections).key).toBe('number');
+  expect(typeof first(sharingSections).title).toBe('string');
+  expect(typeof first(sharingSections).type).toBe('string');
   expect(Array.isArray(watchlist)).toBe(true);
   expect(Array.isArray(webhooks)).toBe(true);
   expect(userState).toBeInstanceOf(PlexUserState);
@@ -47,9 +49,37 @@ it('reads account users and pending invites from Plex XML endpoints', async () =
   expect(typeof userState.viewOffset).toBe('number');
 }, 20_000);
 
+it("lists the server's own device with its version and token", async () => {
+  const plex = await createClient();
+
+  const device = (await account.devices()).find(
+    candidate => candidate.clientIdentifier === plex.machineIdentifier,
+  );
+
+  assertDefined(device);
+  expect(device.product).toBe('Plex Media Server');
+  expect(typeof device.id).toBe('number');
+  // The v2 device list leaves versions out, they come from devices.json.
+  expect(device.version).toBe(plex.version);
+  expect(device.productVersion).toBe(plex.version);
+  expect(typeof device.token).toBe('string');
+  expect(Object.keys(device)).not.toContain('token');
+  expect(typeof device.presence).toBe('boolean');
+  expect(device.connections.length).toBeGreaterThan(0);
+  expect(device.createdAt.getTime()).toBeLessThan(Date.now());
+
+  const byIdentifier = await account.device({ clientIdentifier: device.clientIdentifier });
+  const byName = await account.device({ name: device.name.toUpperCase() });
+  expect(byIdentifier.id).toBe(device.id);
+  expect(byName.name).toBe(device.name);
+  await expect(account.device({ name: '__missing_device__' })).rejects.toBeInstanceOf(NotFound);
+}, 20_000);
+
 it('searches Plex Discover and reads account watch state', async () => {
   const [movie] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'movie' });
+  assertDefined(movie);
   const [show] = await account.searchDiscover({ query: 'Dune', limit: 1, type: 'show' });
+  assertDefined(show);
   const syncState = await account.viewStateSync();
   const isPlayed = await movie.isPlayed();
 

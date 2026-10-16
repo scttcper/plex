@@ -57,6 +57,8 @@ export interface SectionsDirectory {
   content: boolean;
   directory: boolean;
   contentChangedAt: number;
+  hidden?: number;
+  metadataAgentProviderGroupId?: number | string;
   totalSize?: number;
   totalDuration?: number;
   totalStorage?: number;
@@ -220,7 +222,8 @@ export interface CommonData {
   Label?: MediaTagData[];
   Mood?: MediaTagData[];
   Producer?: MediaTagData[];
-  Rating?: MediaRating[];
+  /** Plex returns empty rating entries when the items do not share one. */
+  Rating?: Array<Partial<MediaRating>>;
   Role?: MediaTag[];
   Style?: MediaTagData[];
   Tag?: MediaTagData[];
@@ -277,11 +280,15 @@ export interface MovieData {
   title: string;
   titleSort?: string;
   librarySectionID?: number;
+  librarySectionKey?: string;
+  librarySectionTitle?: string;
   contentRating?: string;
+  contentRatingAge?: number | string;
   summary?: string;
   rating?: number;
   viewCount?: number;
   viewOffset?: number;
+  lastRatedAt?: number;
   lastViewedAt?: number;
   year: number;
   tagline?: string;
@@ -289,12 +296,18 @@ export interface MovieData {
   art?: string;
   duration?: number;
   editionTitle?: string;
+  enableCreditsMarkerGeneration?: number | string;
+  languageOverride?: string;
   originallyAvailableAt?: string;
   addedAt: number;
   updatedAt: number;
   chapterSource?: ChapterSource;
   primaryExtraKey?: string;
   ratingImage?: string;
+  slug?: string;
+  source?: string;
+  theme?: string;
+  useOriginalTitle?: number | string;
   Media?: Media[];
   Genre?: MediaTag[];
   Director?: MediaTag[];
@@ -379,9 +392,15 @@ export interface ShowData {
   librarySectionTitle?: string;
   librarySectionID?: number;
   librarySectionKey?: string;
+  parentIndex?: number;
   parentKey?: string;
   parentRatingKey?: string;
+  parentSlug?: string;
+  parentStudio?: string;
+  parentTheme?: string;
+  parentThumb?: string;
   parentTitle?: string;
+  parentYear?: number;
   contentRating?: string;
   contentRatingAge?: number | string;
   summary?: string;
@@ -389,11 +408,25 @@ export interface ShowData {
   rating?: number;
   audienceRating?: number;
   audienceRatingImage?: string;
+  audioLanguage?: string;
+  autoDeletionItemPolicyUnwatchedLibrary?: number | string;
+  autoDeletionItemPolicyWatchedLibrary?: number | string;
+  enableCreditsMarkerGeneration?: number | string;
+  episodeSort?: number | string;
+  flattenSeasons?: number | string;
+  languageOverride?: string;
+  network?: string;
+  originalTitle?: string;
+  seasonCount?: number;
+  showOrdering?: string;
+  subtitleLanguage?: string;
+  subtitleMode?: number | string;
+  useOriginalTitle?: number | string;
   year: number;
   thumb: string;
   art: string;
   banner?: string;
-  theme: string;
+  theme?: string;
   duration?: number;
   editionTitle?: string;
   originallyAvailableAt?: string;
@@ -428,23 +461,24 @@ export interface CollectionData {
   content?: string;
   collectionMode?: number;
   collectionSort?: number;
-  librarySectionTitle: string;
-  librarySectionID: number;
-  librarySectionKey: string;
+  librarySectionTitle?: string;
+  librarySectionID?: number;
+  librarySectionKey?: string;
   contentRating: string;
   subtype: string;
   summary: string;
   index: number;
   rating?: number;
+  ratingCount?: number;
   userRating?: number;
   thumb: string;
   art?: string;
   addedAt: number;
   updatedAt: number;
-  childCount: string;
-  size: number;
-  maxYear: string;
-  minYear: string;
+  childCount?: string;
+  size?: number;
+  maxYear?: string;
+  minYear?: string;
 }
 
 export interface ExtrasData {
@@ -461,6 +495,14 @@ export interface ExtrasData {
   duration: number;
   addedAt: number;
   extraType: number;
+  librarySectionID?: number;
+  updatedAt?: number;
+  originallyAvailableAt?: string;
+  primaryGuid?: string;
+  skipDetails?: number;
+  thumbAspectRatio?: string;
+  viewOffset?: number;
+  year?: number;
   Media: ExtrasMedia[];
 }
 

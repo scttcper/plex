@@ -10,13 +10,15 @@ import {
 } from '../src/myplex.ts';
 import type {
   MyPlexInvitesResponse,
-  MyPlexServerSectionsResponse,
+  MyPlexServerResponse,
   MyPlexUsersResponse,
   ResourcesResponse,
   UserStateResponse,
   WatchlistResponse,
   WebhookResponse,
 } from '../src/myplex.types.ts';
+
+import { first, itemAt } from './assertions.ts';
 
 const resourceData: ResourcesResponse = {
   accessToken: 'resource-token',
@@ -87,94 +89,118 @@ describe('MyPlexResource IPv6 connections', () => {
       'http://[2001:db8::2]:32400',
       'http://[2001:db8::3]:44300',
     ]);
-    expect(resource.connections[1].ipv6).toBe(true);
-    expect(resource.connections[2].relay).toBe(true);
+    expect(itemAt(resource.connections, 1).ipv6).toBe(true);
+    expect(itemAt(resource.connections, 2).relay).toBe(true);
+    expect(resource.publicAddress).toBe('203.0.113.2');
+    expect(resource.httpsRequired).toBe(false);
+    expect(resource.relay).toBe(true);
+    expect(resource.ownerId).toBeNull();
+  });
+
+  it('connects to player resources as clients', async () => {
+    const resource = new MyPlexResource(new MyPlexAccount({ token: 'account-token' }), {
+      ...resourceData,
+      clientIdentifier: 'player-id',
+      provides: 'player,pubsub-player',
+      connections: [first(resourceData.connections)],
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      Response.json({
+        MediaContainer: {
+          Player: [
+            { machineIdentifier: 'other-player', title: 'Other' },
+            {
+              machineIdentifier: 'player-id',
+              title: 'Living Room',
+              protocolCapabilities: 'playback,timeline',
+            },
+          ],
+        },
+      }),
+    );
+
+    try {
+      const client = await resource.connectClient({ timeout: 1000 });
+      expect(client.baseurl).toBe('https://ipv4-local.example:32400');
+      expect(client.title).toBe('Living Room');
+      expect(client.protocolCapabilities).toEqual(['playback', 'timeline']);
+      const [request] = first(fetchMock.mock.calls);
+      expect(String(request)).toBe('https://ipv4-local.example:32400/resources');
+    } finally {
+      fetchMock.mockRestore();
+    }
   });
 });
 
-const usersResponse: MyPlexUsersResponse = {
+const usersResponse = {
   MediaContainer: {
-    $: { size: '1' },
+    size: '1',
     User: [
       {
-        $: {
-          allowCameraUpload: '0',
-          allowChannels: '1',
-          allowSync: '1',
-          email: 'friend@example.com',
-          home: '0',
-          id: '42',
-          protected: '0',
-          title: 'Friendly Name',
-          username: 'friend',
-        },
+        allowCameraUpload: '0',
+        allowChannels: '1',
+        allowSync: '1',
+        email: 'friend@example.com',
+        home: '0',
+        id: '42',
+        protected: '0',
+        title: 'Friendly Name',
+        username: 'friend',
         Server: [
           {
-            $: {
-              id: '7',
-              machineIdentifier: 'machine-id',
-              name: 'Shared Server',
-              allLibraries: '0',
-              owned: '1',
-              pending: '0',
-            },
+            id: '7',
+            machineIdentifier: 'machine-id',
+            name: 'Shared Server',
+            allLibraries: '0',
+            owned: '1',
+            pending: '0',
           },
         ],
       },
     ],
   },
-};
+} satisfies MyPlexUsersResponse;
 
-const sentInvitesResponse: MyPlexInvitesResponse = {
+const sentInvitesResponse = {
   MediaContainer: {
-    $: { size: '1' },
+    size: '1',
     Invite: [
       {
-        $: {
-          createdAt: '2026-07-11T00:00:00Z',
-          email: 'sent@example.com',
-          friend: '1',
-          home: '0',
-          id: '51',
-          server: '1',
-          username: 'sent-user',
-        },
+        createdAt: '2026-07-11T00:00:00Z',
+        email: 'sent@example.com',
+        friend: '1',
+        home: '0',
+        id: '51',
+        server: '1',
+        username: 'sent-user',
       },
     ],
   },
-};
+} satisfies MyPlexInvitesResponse;
 
-const receivedInvitesResponse: MyPlexInvitesResponse = {
+const receivedInvitesResponse = {
   MediaContainer: {
-    $: { size: '1' },
+    size: '1',
     Invite: [
       {
-        $: {
-          email: 'received@example.com',
-          friend: '1',
-          friendlyName: 'Received User',
-          home: '0',
-          id: '52',
-          server: '0',
-        },
+        email: 'received@example.com',
+        friend: '1',
+        friendlyName: 'Received User',
+        home: '0',
+        id: '52',
+        server: '0',
       },
     ],
   },
-};
+} satisfies MyPlexInvitesResponse;
 
-const serverSectionsResponse: MyPlexServerSectionsResponse = {
-  MediaContainer: {
-    $: { size: '1' },
-    Server: [
-      {
-        $: { machineIdentifier: 'machine-id' },
-        Section: [
-          { $: { id: '10', key: '1', title: 'Movies', type: 'movie' } },
-          { $: { id: '20', key: '2', title: 'TV Shows', type: 'show' } },
-        ],
-      },
-    ],
-  },
+const serverSectionsResponse: MyPlexServerResponse = {
+  machineIdentifier: 'machine-id',
+  name: 'Test Server',
+  librarySections: [
+    { id: 10, key: 1, title: 'Movies', type: 'movie' },
+    { id: 20, key: 2, title: 'TV Shows', type: 'show' },
+  ],
 };
 
 const watchlistResponse: WatchlistResponse = {
@@ -233,9 +259,9 @@ describe('MyPlexAccount users and invites', () => {
     const user = await account.user('FRIEND@EXAMPLE.COM');
 
     expect(users[0]).toBeInstanceOf(MyPlexUser);
-    expect(users[0].allowSync).toBe(true);
-    expect(users[0].allowCameraUpload).toBe(false);
-    expect(users[0].server('machine-id').name).toBe('Shared Server');
+    expect(first(users).allowSync).toBe(true);
+    expect(first(users).allowCameraUpload).toBe(false);
+    expect(first(users).server('machine-id').name).toBe('Shared Server');
     expect(user.id).toBe(42);
   });
 
@@ -254,7 +280,7 @@ describe('MyPlexAccount users and invites', () => {
 
     expect(invites.map(invite => invite.direction)).toEqual(['sent', 'received']);
     expect(invites[0]).toBeInstanceOf(MyPlexInvite);
-    expect(invites[0].server).toBe(true);
+    expect(first(invites).server).toBe(true);
     expect(received.id).toBe(52);
     expect(account.query).toHaveBeenLastCalledWith({ url: MyPlexInvite.requestsKey });
   });
@@ -262,15 +288,15 @@ describe('MyPlexAccount users and invites', () => {
   it('accepts, cancels, and removes account relationships with exact request shapes', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     account.query = vi.fn(() => Promise.resolve()) as never;
-    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     const sentInvite = new MyPlexInvite(
       account,
-      sentInvitesResponse.MediaContainer.Invite[0],
+      first(sentInvitesResponse.MediaContainer.Invite),
       'sent',
     );
     const receivedInvite = new MyPlexInvite(
       account,
-      receivedInvitesResponse.MediaContainer.Invite[0],
+      first(receivedInvitesResponse.MediaContainer.Invite),
       'received',
     );
 
@@ -302,7 +328,7 @@ describe('MyPlexAccount users and invites', () => {
   it('invites a friend with resolved sections, permissions, and filters', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -319,7 +345,7 @@ describe('MyPlexAccount users and invites', () => {
     });
 
     expect(account.query).toHaveBeenNthCalledWith(1, {
-      url: 'https://plex.tv/api/servers/machine-id',
+      url: 'https://plex.tv/api/v2/servers/machine-id',
     });
     expect(account.query).toHaveBeenNthCalledWith(2, {
       url: 'https://plex.tv/api/servers/machine-id/shared_servers',
@@ -344,9 +370,9 @@ describe('MyPlexAccount users and invites', () => {
 
   it('updates existing library shares and account-level permissions', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
-    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -376,11 +402,11 @@ describe('MyPlexAccount users and invites', () => {
   it('adds a server share to an existing user without one', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const user = new MyPlexUser(account, {
-      ...usersResponse.MediaContainer.User[0],
+      ...first(usersResponse.MediaContainer.User),
       Server: [],
     });
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -400,7 +426,7 @@ describe('MyPlexAccount users and invites', () => {
 
   it('removes an existing server share without changing other settings', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
-    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     account.query = vi.fn(() => Promise.resolve()) as never;
 
     await account.updateFriend(user, { server: 'machine-id', removeSections: true });
@@ -419,8 +445,8 @@ describe('MyPlexAccount users and invites', () => {
   it('creates a managed home user and assigns library access', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
-      ['https://plex.tv/api/home/users?title=Kid+One', { User: { $: { id: '77' } } }],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/home/users?title=Kid+One', { User: { id: '77' } }],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -461,7 +487,7 @@ describe('MyPlexAccount users and invites', () => {
       token: 'account-token',
       timeout: 5000,
     });
-    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     account.query = vi.fn(() =>
       Promise.resolve({ user: { authenticationToken: 'home-token' } }),
     ) as never;
@@ -486,9 +512,9 @@ describe('MyPlexAccount users and invites', () => {
 
   it('adds an existing Plex user to the Home and optionally shares libraries', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
-    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     const responses = new Map<string, unknown>([
-      ['https://plex.tv/api/servers/machine-id', serverSectionsResponse],
+      ['https://plex.tv/api/v2/servers/machine-id', serverSectionsResponse],
     ]);
     account.query = vi.fn(({ url }: { url: string }) =>
       Promise.resolve(responses.get(url)),
@@ -524,7 +550,7 @@ describe('MyPlexAccount users and invites', () => {
   it('sets and removes account and managed-user PINs', async () => {
     const account = new MyPlexAccount({ token: 'account-token' });
     account.id = 99;
-    const user = new MyPlexUser(account, usersResponse.MediaContainer.User[0]);
+    const user = new MyPlexUser(account, first(usersResponse.MediaContainer.User));
     account.query = vi.fn(() => Promise.resolve()) as never;
 
     await account.setPin({ pin: '1234', currentPin: '0000' });
@@ -566,8 +592,8 @@ describe('MyPlexAccount users and invites', () => {
       url: 'https://discover.provider.plex.tv/library/sections/watchlist/released?includeCollections=1&includeExternalMedia=1&sort=rating%3Adesc&type=1&X-Plex-Container-Size=5&genre=Comedy',
     });
     expect(items[0]).toBeInstanceOf(WatchlistItem);
-    expect(items[0].title).toBe('Discover Movie');
-    expect(items[0].watchlistedAt).toEqual(new Date(1_720_000_100_000));
+    expect(first(items).title).toBe('Discover Movie');
+    expect(first(items).watchlistedAt).toEqual(new Date(1_720_000_100_000));
   });
 
   it('reads user state and adds or removes a watchlist item', async () => {
@@ -645,10 +671,10 @@ describe('MyPlexAccount users and invites', () => {
     await account.setWebhooks(['https://one.example/hook', 'https://two.example/hook']);
     await account.setWebhooks([]);
 
-    expect(query.mock.calls[0][0].body?.toString()).toBe(
+    expect(first(query.mock.calls)[0].body?.toString()).toBe(
       'urls%5B%5D=https%3A%2F%2Fone.example%2Fhook&urls%5B%5D=https%3A%2F%2Ftwo.example%2Fhook',
     );
-    expect(query.mock.calls[1][0].body?.toString()).toBe('urls=');
+    expect(itemAt(query.mock.calls, 1)[0].body?.toString()).toBe('urls=');
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -680,10 +706,10 @@ describe('MyPlexAccount users and invites', () => {
 
     expect(added).toEqual(['https://one.example/hook', 'https://two.example/hook']);
     expect(removed).toEqual(['https://one.example/hook']);
-    expect(query.mock.calls[1][0].body.toString()).toContain(
+    expect(itemAt(query.mock.calls, 1)[0].body.toString()).toContain(
       'urls%5B%5D=https%3A%2F%2Ftwo.example%2Fhook',
     );
-    expect(query.mock.calls[3][0].body.toString()).toBe(
+    expect(itemAt(query.mock.calls, 3)[0].body.toString()).toBe(
       'urls%5B%5D=https%3A%2F%2Fone.example%2Fhook',
     );
   });

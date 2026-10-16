@@ -1,6 +1,3 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { createAccount } from '../test/test-client.ts';
 
 async function cleanup(): Promise<void> {
@@ -16,14 +13,7 @@ async function cleanup(): Promise<void> {
   }
 }
 
-// is this file being run directly in esm mode?
-const __filename = fileURLToPath(import.meta.url);
-const mainModulePath = path.resolve(process.argv[1]);
-if (__filename === mainModulePath) {
-  cleanup()
-    .then(() => process.exit(0))
-    .catch(err => {
-      console.error(err);
-      process.exit(1);
-    });
+if (import.meta.main) {
+  await cleanup();
+  process.exit(0);
 }

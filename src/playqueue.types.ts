@@ -1,4 +1,15 @@
 import type { Playable } from './base/playable.ts';
+import type { Collections, RatingKeyItem } from './library.ts';
+import type { Photoalbum } from './photo.ts';
+import type { Playlist } from './playlist.ts';
+
+/** Items a PlayQueue can be created from. */
+export type PlayQueueSource =
+  | Playable
+  | Playable[]
+  | Playlist
+  | Collections<RatingKeyItem>
+  | Photoalbum;
 
 export interface PlayQueueResponse {
   /** PlayQueue identifier */
@@ -15,8 +26,8 @@ export interface PlayQueueResponse {
   playQueueSelectedItemID: number;
   /** The offset of the selected item in the PlayQueue */
   playQueueSelectedItemOffset: number;
-  /** ID of the currently selected item, matches ratingKey */
-  playQueueSelectedMetadataItemID: number;
+  /** Rating key of the currently selected item. */
+  playQueueSelectedMetadataItemID?: string;
   /** True if the PlayQueue is shuffled */
   playQueueShuffled: boolean;
   /** Original URI used to create the PlayQueue */
@@ -80,6 +91,11 @@ export interface AddPlayQueueItemOptions {
 export interface MovePlayQueueItemOptions {
   /** Item to place the moved item after */
   after?: Playable;
+  /** Refresh the PlayQueue from server before updating */
+  refresh?: boolean;
+}
+
+export interface RemovePlayQueueItemOptions {
   /** Refresh the PlayQueue from server before updating */
   refresh?: boolean;
 }

@@ -133,28 +133,34 @@ export const Protocol = {
 
 export type Protocol = (typeof Protocol)[keyof typeof Protocol];
 
+/** Device from plex.tv `/api/v2/devices`. */
 export interface Device {
-  $: {
-    id: string;
-    name: string;
-    publicAddress: string;
-    product: string;
-    productVersion: string;
-    platform: string;
-    platformVersion: string;
-    device: string;
-    model: string;
-    vendor: string;
-    provides: string;
-    clientIdentifier: string;
-    version: string;
-    token: string;
-    createdAt: string;
-    lastSeenAt: string;
-    screenResolution: string;
-    screenDensity: string;
-  };
-  Connection?: Array<{ $: { uri: string } }>;
+  id: number;
+  name: string;
+  product: string;
+  platform: string;
+  platformVersion: string;
+  device: string;
+  model: string;
+  vendor: string | null;
+  provides: string;
+  token?: string;
+  publicAddress: string;
+  clientIdentifier: string;
+  createdAt: string;
+  lastSeenAt: string;
+  screenDensity: string | null;
+  screenResolution: string;
+  presence: boolean;
+  connections?: Array<{ uri: string }>;
+  /** App version, merged in from `/devices.json` since the v2 list leaves it out. */
+  version?: string;
+}
+
+/** Device summary from plex.tv `/devices.json`, the JSON source for app versions. */
+export interface DeviceVersion {
+  id: number;
+  version?: string;
 }
 
 export interface WebLogin {
@@ -164,89 +170,71 @@ export interface WebLogin {
 }
 
 export interface MyPlexServerShareData {
-  $: {
-    id?: string;
-    accountID?: string;
-    serverId?: string;
-    machineIdentifier?: string;
-    name?: string;
-    lastSeenAt?: string;
-    numLibraries?: string;
-    allLibraries?: PlexBoolean;
-    owned?: PlexBoolean;
-    pending?: PlexBoolean;
-  };
+  id?: string;
+  accountID?: string;
+  serverId?: string;
+  machineIdentifier?: string;
+  name?: string;
+  lastSeenAt?: string;
+  numLibraries?: string;
+  allLibraries?: PlexBoolean;
+  owned?: PlexBoolean;
+  pending?: PlexBoolean;
 }
 
 export interface MyPlexUserData {
-  $: {
-    allowCameraUpload?: PlexBoolean;
-    allowChannels?: PlexBoolean;
-    allowSync?: PlexBoolean;
-    email?: string;
-    filterAll?: string;
-    filterMovies?: string;
-    filterMusic?: string;
-    filterPhotos?: string;
-    filterTelevision?: string;
-    home?: PlexBoolean;
-    id?: string;
-    protected?: PlexBoolean;
-    recommendationsPlaylistId?: string;
-    restricted?: string;
-    thumb?: string;
-    title?: string;
-    username?: string;
-  };
+  allowCameraUpload?: PlexBoolean;
+  allowChannels?: PlexBoolean;
+  allowSync?: PlexBoolean;
+  email?: string;
+  filterAll?: string;
+  filterMovies?: string;
+  filterMusic?: string;
+  filterPhotos?: string;
+  filterTelevision?: string;
+  home?: PlexBoolean;
+  id?: string;
+  protected?: PlexBoolean;
+  recommendationsPlaylistId?: string;
+  restricted?: string;
+  thumb?: string;
+  title?: string;
+  username?: string;
   Server?: MyPlexServerShareData[];
 }
 
 export interface MyPlexInviteData {
-  $: {
-    createdAt?: string;
-    email?: string;
-    friend?: PlexBoolean;
-    friendlyName?: string;
-    home?: PlexBoolean;
-    id?: string;
-    server?: PlexBoolean;
-    thumb?: string;
-    username?: string;
-  };
+  createdAt?: string;
+  email?: string;
+  friend?: PlexBoolean;
+  friendlyName?: string;
+  home?: PlexBoolean;
+  id?: string;
+  server?: PlexBoolean;
+  thumb?: string;
+  username?: string;
   Server?: MyPlexServerShareData[];
 }
 
 export interface MyPlexUsersResponse {
   MediaContainer: {
-    $: Record<string, string>;
+    size?: string;
     User?: MyPlexUserData[];
   };
 }
 
 export interface MyPlexInvitesResponse {
   MediaContainer: {
-    $: Record<string, string>;
+    size?: string;
     Invite?: MyPlexInviteData[];
   };
 }
 
-export interface MyPlexServerSectionData {
-  $: {
-    id: string;
-    key: string;
-    type: string;
-    title: string;
-  };
-}
-
-export interface MyPlexServerSectionsResponse {
-  MediaContainer: {
-    $: Record<string, string>;
-    Server?: Array<{
-      $: Record<string, string>;
-      Section?: MyPlexServerSectionData[];
-    }>;
-  };
+/** Server from plex.tv `/api/v2/servers/{machineId}`. */
+export interface MyPlexServerResponse {
+  machineIdentifier: string;
+  name: string;
+  librarySections?: Array<{ id: number; key: number; title: string; type: string }>;
 }
 
 export interface WatchlistItemData {

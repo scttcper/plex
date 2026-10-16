@@ -21,11 +21,7 @@ async function cleanupJwtDevices(): Promise<void> {
   const matchingDevices = devices.filter(device =>
     device.clientIdentifier.startsWith(clientIdentifierPrefix),
   );
-  await Promise.all(
-    matchingDevices.map(device =>
-      account.query({ url: `https://plex.tv/devices/${device.id}.xml`, method: 'delete' }),
-    ),
-  );
+  await Promise.all(matchingDevices.map(async device => device.delete()));
 }
 
 async function createBootstrapToken(): Promise<string> {

@@ -6,13 +6,24 @@ import {
   ManagedHub,
   Movie,
   MovieSection,
+  MusicSection,
   NotFound,
+  Photo,
+  PhotoSection,
   Playlist,
   Setting,
   ShowSection,
+  Track,
   type EditableLibraryItem,
   type PlexServer,
 } from '../src/index.ts';
+import type {
+  LibraryFilterMetaData,
+  LibraryRootResponse,
+  Location as LocationData,
+} from '../src/library.types.ts';
+
+import { assertDefined, first, itemAt } from './assertions.ts';
 
 const showSectionData = {
   uuid: 'show-section-uuid',
@@ -23,7 +34,7 @@ const showSectionData = {
   composite: '/library/sections/2/composite',
   filters: true,
   language: 'en-US',
-  Location: [],
+  Location: [] as LocationData[],
   refreshing: false,
   scanner: 'Plex TV Series',
   thumb: '/:/resources/show.png',
@@ -49,7 +60,56 @@ const movieSectionData = {
   type: 'movie',
 };
 
-const libraryRootData = {
+const musicSectionData = {
+  ...showSectionData,
+  uuid: 'music-section-uuid',
+  key: '3',
+  agent: 'tv.plex.agents.music',
+  composite: '/library/sections/3/composite',
+  scanner: 'Plex Music',
+  title: 'Music',
+  type: 'artist',
+};
+
+const photoSectionData = {
+  ...showSectionData,
+  uuid: 'photo-section-uuid',
+  key: '6',
+  agent: 'com.plexapp.agents.none',
+  composite: '/library/sections/6/composite',
+  scanner: 'Plex Photo Scanner',
+  title: 'Photos',
+  type: 'photo',
+};
+
+// Row shapes from the music section root, on deck, and collection children.
+
+const trackRowData = {
+  addedAt: 1_760_236_796,
+  duration: 234_960,
+  grandparentRatingKey: '94',
+  grandparentTitle: 'Ladytron',
+  index: 1,
+  key: '/library/metadata/96',
+  parentRatingKey: '95',
+  parentTitle: 'Light & Magic',
+  ratingKey: '96',
+  title: 'Seventeen',
+  type: 'track',
+  updatedAt: 1_786_330_905,
+};
+
+const photoRowData = {
+  addedAt: 1_760_236_800,
+  key: '/library/metadata/120',
+  ratingKey: '120',
+  summary: '',
+  thumb: '/library/metadata/120/thumb',
+  title: 'Photo',
+  type: 'photo',
+};
+
+const libraryRootData: LibraryRootResponse = {
   size: 1,
   allowSync: true,
   art: '',
@@ -489,7 +549,7 @@ function createMovieSection() {
 }
 
 function createShowSection() {
-  const showFilterMeta = {
+  const showFilterMeta: LibraryFilterMetaData = {
     Type: [
       {
         active: true,
@@ -522,6 +582,19 @@ function createShowSection() {
     Promise.resolve(responses.get(path) ?? { MediaContainer: { Metadata: [] } }),
   );
   const section = new ShowSection({ query } as unknown as PlexServer, showSectionData);
+  return { query, section };
+}
+
+function createItemSection<T>(
+  Section: new (server: PlexServer, data: typeof showSectionData) => T,
+  data: typeof showSectionData,
+  responses: Record<string, unknown[]>,
+) {
+  const query = vi.fn(({ path }: { path: string }) =>
+    Promise.resolve({ MediaContainer: { Metadata: responses[first(path.split('?', 1))] ?? [] } }),
+  );
+  const server = { query, _uriRoot: () => 'server://machine' } as unknown as PlexServer;
+  const section = new Section(server, data);
   return { query, section };
 }
 
@@ -579,7 +652,7 @@ function lastQueryPath(query: ReturnType<typeof vi.fn>): string {
 }
 
 function lastQueryBase(query: ReturnType<typeof vi.fn>): string {
-  return lastQueryPath(query).split('?', 1)[0];
+  return first(lastQueryPath(query).split('?', 1));
 }
 
 function lastQueryEntries(query: ReturnType<typeof vi.fn>): Array<[string, string]> {
@@ -594,7 +667,7 @@ describe('Library root helpers', () => {
     const items = await library.search({ title: 'Bunny', libtype: 'movie', year: 1999 });
 
     expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Root Movie');
+    expect(first(items).title).toBe('Root Movie');
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
       ['year', '1999'],
@@ -612,8 +685,8 @@ describe('Library root helpers', () => {
       limit: 2,
     });
 
-    expect(hubs[0].title).toBe('Continue Watching');
-    expect(hubs[0].hubIdentifier).toBe('home.continue');
+    expect(first(hubs).title).toBe('Continue Watching');
+    expect(first(hubs).hubIdentifier).toBe('home.continue');
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
       ['limit', '2'],
@@ -720,7 +793,9 @@ describe('LibrarySection edit helpers', () => {
   it('creates a typed collection in the section', async () => {
     const { query, section } = createMovieSection();
 
-    const collection = await section.createCollection('Test Collection', [{ ratingKey: 10 }]);
+    const collection = await section.createCollection('Test Collection', [
+      { ratingKey: 10, type: 'movie' },
+    ]);
 
     expect(collection.title).toBe('Test Collection');
     expect(collection.ratingKey).toBe(99);
@@ -937,11 +1012,11 @@ describe('Hub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.hubs();
-    const items = await hubs[0].items();
-    const hubSection = await hubs[0].section();
+    const items = await first(hubs).items();
+    const hubSection = await first(hubs).section();
 
     expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Hub Movie');
+    expect(first(items).title).toBe('Hub Movie');
     expect(hubSection).toBe(section);
     expect(query).toHaveBeenCalledWith({
       path: '/hubs/sections/1?includeGuids=1&includeStations=1',
@@ -952,12 +1027,12 @@ describe('Hub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.hubs();
-    const items = await hubs[1].items();
+    const items = await itemAt(hubs, 1).items();
 
     expect(items[0]).toBeInstanceOf(Movie);
-    expect(items[0].title).toBe('Fetched Hub Movie');
-    expect(hubs[1].more).toBe(false);
-    expect(hubs[1].size).toBe(1);
+    expect(first(items).title).toBe('Fetched Hub Movie');
+    expect(itemAt(hubs, 1).more).toBe(false);
+    expect(itemAt(hubs, 1).size).toBe(1);
     expect(query).toHaveBeenCalledWith({ path: '/hubs/sections/1/more?includeGuids=1' });
   });
 
@@ -965,10 +1040,10 @@ describe('Hub helpers', () => {
     const { section } = createMovieSection();
 
     const hubs = await section.hubs();
-    const items = await hubs[2].items();
+    const items = await itemAt(hubs, 2).items();
 
     expect(items[0]).toBeInstanceOf(Playlist);
-    expect(items[0].title).toBe('Artist Radio');
+    expect(first(items).title).toBe('Artist Radio');
   });
 });
 
@@ -977,7 +1052,7 @@ describe('ManagedHub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.managedHubs();
-    const hub = await hubs[0].updateVisibility({ recommended: true, shared: true });
+    const hub = await first(hubs).updateVisibility({ recommended: true, shared: true });
 
     expect(hub).toBeInstanceOf(ManagedHub);
     expect(hub.promotedToRecommended).toBe(true);
@@ -993,7 +1068,7 @@ describe('ManagedHub helpers', () => {
     const { query, section } = createMovieSection();
 
     const hubs = await section.managedHubs();
-    const hub = await hubs[0].promoteShared();
+    const hub = await first(hubs).promoteShared();
 
     expect(hub.promotedToRecommended).toBe(false);
     expect(hub.promotedToOwnHome).toBe(true);
@@ -1101,7 +1176,9 @@ describe('LibrarySection search filters', () => {
         'having',
       ]),
     );
-    expect(fieldTypes.find(fieldType => fieldType.type === 'guid')?.operators[0].key).toBe('=');
+    const guidFieldType = fieldTypes.find(fieldType => fieldType.type === 'guid');
+    assertDefined(guidFieldType);
+    expect(first(guidFieldType.operators).key).toBe('=');
     expect(lastQueryEntries(query)).toEqual([
       ['includeGuids', '1'],
       ['guid', 'plex://movie/123'],
@@ -1173,5 +1250,37 @@ describe('LibrarySection search filters', () => {
     const { section } = createMovieSection();
 
     await expect(section.search({ filters: { 'genre>>': 'Animation' } })).rejects.toThrow(NotFound);
+  });
+});
+
+describe('LibrarySection item classes', () => {
+  // Music and photo sections rarely have on deck items on a real server, show sections are
+  // covered live in library.spec.
+  it('builds music and photo on deck rows as their playable item', async () => {
+    const music = createItemSection(MusicSection, musicSectionData, {
+      '/library/sections/3/onDeck': [trackRowData],
+    });
+    const photos = createItemSection(PhotoSection, photoSectionData, {
+      '/library/sections/6/onDeck': [photoRowData],
+    });
+
+    expect(first(await music.section.onDeck())).toBeInstanceOf(Track);
+    expect(first(await photos.section.onDeck())).toBeInstanceOf(Photo);
+  });
+
+  it('rejects collection items without one shared type', async () => {
+    const { query, section } = createItemSection(MusicSection, musicSectionData, {});
+
+    const mixed = section.createCollection('Mixed', [
+      { ratingKey: 96, type: 'track' },
+      { ratingKey: 94, type: 'artist' },
+    ]);
+    const untyped = section.createCollection('Untyped', [{ ratingKey: 96 }]);
+
+    await expect(mixed).rejects.toBeInstanceOf(BadRequest);
+    await expect(mixed).rejects.toThrow('Cannot mix items of different type: track and artist');
+    await expect(untyped).rejects.toBeInstanceOf(BadRequest);
+    await expect(untyped).rejects.toThrow('Collection items need a type to create a collection.');
+    expect(query).not.toHaveBeenCalled();
   });
 });

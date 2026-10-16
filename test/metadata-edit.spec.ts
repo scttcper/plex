@@ -2,6 +2,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 
 import { type Movie, type MovieSection, type PlexServer } from '../src/index.ts';
 
+import { assertDefined, first } from './assertions.ts';
 import { createClient } from './test-client.ts';
 
 let plex: PlexServer;
@@ -17,9 +18,12 @@ beforeAll(async () => {
   const section = await library.section<MovieSection>('Movies');
   const results = await section.search({ title: 'Sita' });
   expect(results.length).toBeGreaterThan(0);
-  movie = results[0];
+  movie = first(results);
   // Reload to get full object with all fields
   await movie.reload();
+  assertDefined(movie.title);
+  assertDefined(movie.summary);
+  assertDefined(movie.contentRating);
   originalTitle = movie.title;
   originalSummary = movie.summary;
   originalSortTitle = movie.titleSort;

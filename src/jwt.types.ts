@@ -1,4 +1,4 @@
-import type { LiteralUnion } from 'type-fest';
+import type { LiteralUnion } from './util.ts';
 
 export type KnownPlexJwtScope =
   | 'username'
@@ -9,7 +9,7 @@ export type KnownPlexJwtScope =
   | 'joinedAt';
 
 /** Known Plex JWT scopes, with support for scopes added by Plex later. */
-export type PlexJwtScope = LiteralUnion<KnownPlexJwtScope, string>;
+export type PlexJwtScope = LiteralUnion<KnownPlexJwtScope>;
 
 /** An Ed25519 private JWK used to refresh a Plex JWT. */
 export interface PlexJwtPrivateKey {

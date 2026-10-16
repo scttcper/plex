@@ -33,72 +33,72 @@ export async function discover({
   signal?.throwIfAborted();
   const socket = createSocket({ type: 'udp4', reuseAddr: clients });
   const entries = new Map<string, DiscoveryEntry>();
-  return new Promise((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let settled = false;
-    const finish = (error?: unknown): void => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', abort);
-      try {
-        socket.close();
-      } catch (closeError) {
-        // A failed bind may leave the socket without a running handle.
-        error ??= closeError;
-      }
-      if (error !== undefined) {
-        reject(error);
-      } else {
-        resolve([...entries.values()]);
-      }
-    };
-    const abort = (): void => finish(signal?.reason ?? new DOMException('Aborted', 'AbortError'));
-    socket.on('error', finish);
-    socket.on('message', (message, remote) => {
-      const data = parseDiscoveryResponse(message.toString());
-      if (!data || (contentType && !data['Content-Type']?.includes(contentType))) {
-        return;
-      }
-      if (!Object.entries(filters).every(([key, value]) => data[key] === value)) {
-        return;
-      }
-      const id = data['Resource-Identifier'] ?? `${remote.address}:${remote.port}`;
-      entries.set(id, { address: remote.address, port: remote.port, data });
-    });
-    socket.bind(() => {
-      if (settled) {
-        return;
-      }
-      try {
-        if (clients) {
-          socket.setBroadcast(true);
-        } else {
-          socket.setMulticastTTL(1);
-        }
-        signal?.addEventListener('abort', abort, { once: true });
-        if (signal?.aborted) {
-          abort();
-          return;
-        }
-        timer = setTimeout(() => finish(), timeout);
-        socket.send(
-          'M-SEARCH * HTTP/1.0',
-          clients ? 32_412 : 32_414,
-          clients ? '255.255.255.255' : '239.0.0.250',
-          error => {
-            if (error) {
-              finish(error);
-            }
-          },
-        );
-      } catch (error) {
-        finish(error);
-      }
-    });
+  const { promise, resolve, reject } = Promise.withResolvers<DiscoveryEntry[]>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let settled = false;
+  const finish = (error?: unknown): void => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+    try {
+      socket.close();
+    } catch (closeError) {
+      // A failed bind may leave the socket without a running handle.
+      error ??= closeError;
+    }
+    if (error !== undefined) {
+      reject(error);
+    } else {
+      resolve([...entries.values()]);
+    }
+  };
+  const abort = (): void => finish(signal?.reason ?? new DOMException('Aborted', 'AbortError'));
+  socket.on('error', finish);
+  socket.on('message', (message, remote) => {
+    const data = parseDiscoveryResponse(message.toString());
+    if (!data || (contentType && !data['Content-Type']?.includes(contentType))) {
+      return;
+    }
+    if (!Object.entries(filters).every(([key, value]) => data[key] === value)) {
+      return;
+    }
+    const id = data['Resource-Identifier'] ?? `${remote.address}:${remote.port}`;
+    entries.set(id, { address: remote.address, port: remote.port, data });
   });
+  socket.bind(() => {
+    if (settled) {
+      return;
+    }
+    try {
+      if (clients) {
+        socket.setBroadcast(true);
+      } else {
+        socket.setMulticastTTL(1);
+      }
+      signal?.addEventListener('abort', abort, { once: true });
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
+      timer = setTimeout(() => finish(), timeout);
+      socket.send(
+        'M-SEARCH * HTTP/1.0',
+        clients ? 32_412 : 32_414,
+        clients ? '255.255.255.255' : '239.0.0.250',
+        error => {
+          if (error) {
+            finish(error);
+          }
+        },
+      );
+    } catch (error) {
+      finish(error);
+    }
+  });
+  return promise;
 }
 
 /** Parse a successful GDM response, preserving colons inside header values. */

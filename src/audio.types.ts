@@ -1,23 +1,43 @@
-import type { ImageData, UltraBlurColorsData } from './media.types.ts';
-import type { ChapterData, MediaData, MediaTagData } from './video.types.ts';
+import type { GuidData, ImageData, UltraBlurColorsData } from './media.types.ts';
+import type { ChapterData, Field, MediaData, MediaTagData } from './video.types.ts';
 
-export interface AlbumData {
-  // Core identifiers and meta
+type NumericValue = number | `${number}`;
+
+/** Fields shared by artists, albums, and tracks. */
+export interface AudioItemData {
   key: string;
   type: string;
-  title: string;
+  title?: string;
   ratingKey?: string;
   guid?: string;
-  index?: number | string;
+  index?: NumericValue;
   summary?: string;
   thumb?: string;
   art?: string;
-  librarySectionID?: number | string;
+  artBlurHash?: string;
+  thumbBlurHash?: string;
+  /** Sonic distance, only on sonically similar results. */
+  distance?: NumericValue;
+  librarySectionID?: NumericValue;
+  librarySectionKey?: string;
+  librarySectionTitle?: string;
   addedAt?: number;
   updatedAt?: number;
+  lastRatedAt?: number;
   lastViewedAt?: number;
+  musicAnalysisVersion?: NumericValue;
+  playlistItemID?: number;
+  titleSort?: string;
+  userRating?: NumericValue;
   viewCount?: number;
+  Field?: Field[];
+  Image?: ImageData[];
+  Location?: Array<{ path: string }>;
+  Mood?: MediaTagData[];
+  UltraBlurColors?: UltraBlurColorsData;
+}
 
+export interface AlbumData extends AudioItemData {
   // Album-specific numeric/text fields
   audienceRating?: number;
   leafCount?: number;
@@ -38,24 +58,16 @@ export interface AlbumData {
   Collection?: MediaTagData[];
   Format?: MediaTagData[];
   Genre?: MediaTagData[];
-  Guid?: MediaTagData[];
+  Guid?: GuidData[];
   Label?: MediaTagData[];
   Style?: MediaTagData[];
   Subformat?: MediaTagData[];
-  UltraBlurColors?: UltraBlurColorsData;
-  Image?: ImageData[];
 }
 
-export interface TrackData {
+export interface TrackData extends AudioItemData {
   // Core identifiers and meta
-  key: string;
-  type: string;
-  title?: string;
   rating?: number;
   year?: number;
-  index?: number;
-  addedAt?: number;
-  updatedAt?: number;
 
   // Relationships
   parentKey?: string;
@@ -84,54 +96,30 @@ export interface TrackData {
   ratingCount?: number | string;
   skipCount?: number;
   source?: string; // remote playlist items
-  lastViewedAt?: number;
-  viewCount?: number;
   viewOffset?: number;
-  thumb?: string;
-  art?: string;
-  summary?: string;
-  ratingKey?: string;
-  guid?: string;
 
   // Tag arrays
   Chapter?: ChapterData[];
   Collection?: MediaTagData[];
   Genre?: MediaTagData[];
-  Guid?: MediaTagData[];
-  Image?: ImageData[];
+  Guid?: GuidData[];
   Label?: MediaTagData[];
   Media?: MediaData[];
 }
 
-export interface ArtistData {
+export interface ArtistData extends AudioItemData {
   // Core identifiers and meta
-  key: string;
-  type: string;
-  title?: string;
   rating?: number;
   albumSort?: number | string;
   audienceRating?: number;
   theme?: string;
-  ratingKey?: string;
-  guid?: string;
-  titleSort?: string;
-  summary?: string;
-  index?: number;
-  thumb?: string;
-  art?: string;
-  addedAt?: number;
-  updatedAt?: number;
-  lastViewedAt?: number;
-  viewCount?: number;
 
   // Tag arrays
   Country?: MediaTagData[];
   Genre?: MediaTagData[];
-  Guid?: MediaTagData[];
+  Guid?: GuidData[];
   Label?: MediaTagData[];
   Similar?: MediaTagData[];
   Style?: MediaTagData[];
   Collection?: MediaTagData[];
-  UltraBlurColors?: UltraBlurColorsData;
-  Image?: ImageData[];
 }

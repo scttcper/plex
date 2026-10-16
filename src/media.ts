@@ -6,19 +6,26 @@ import type { Collections } from './library.ts';
 import type {
   ReviewData,
   AgeRatingData,
+  GuidData,
+  ImageData,
+  RatingData,
   ArtworkResourceData,
   CommonSenseMediaData,
   ParentalAdvisoryTopicData,
   TalkingPointData,
 } from './media.types.ts';
 import { searchType } from './search.ts';
-import { type MediaContainer, parsePlexBoolean } from './util.ts';
+import { type MediaContainer, parseOptionalNumber, parsePlexBoolean } from './util.ts';
 import type {
   ChapterData,
   MarkerData,
   MediaData,
   MediaPartData,
+  AudioStreamData,
+  Field as FieldData,
+  LyricStreamData,
   MediaPartStreamData,
+  MediaTagData,
   VideoStreamData,
 } from './video.types.ts';
 
@@ -56,43 +63,51 @@ export abstract class MediaTag extends PlexObject {
     return data.map(item => createPlexItem(this.server, item, this.key, this));
   }
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: MediaTagData): void {
     this.key = data.key;
     this.id = data.id;
     this.filter = data.filter;
     this.role = data.role;
     this.tag = data.tag;
     this.tagType = data.tagType;
-    const parent: { librarySectionID?: number; type?: string } | undefined = this.parent?.deref();
-    if (!this.key && this.filter && parent?.librarySectionID !== undefined && parent.type) {
-      this.key = `/library/sections/${parent.librarySectionID}/all?${this.filter}&type=${searchType(parent.type)}`;
+    const parent = this.parent?.deref();
+    const sectionId = parent && 'librarySectionID' in parent ? parent.librarySectionID : undefined;
+    const parentType = parent && 'type' in parent ? parent.type : undefined;
+    if (
+      !this.key &&
+      this.filter &&
+      typeof sectionId === 'number' &&
+      typeof parentType === 'string' &&
+      parentType
+    ) {
+      this.key = `/library/sections/${sectionId}/all?${this.filter}&type=${searchType(parentType)}`;
     }
   }
 }
 
 export class Media extends PlexObject {
   static override TAG = 'Media' as const;
-  declare aspectRatio: number;
+  declare aspectRatio?: number;
   /**
    * Number of audio channels for this video (ex: 6)
    */
-  declare audioChannels: number;
+  declare audioChannels?: number;
   /**
    * Audio codec used within the video (ex: ac3)
    */
-  declare audioCodec: string;
+  declare audioCodec?: string;
   /**
    * Bitrate of the video (ex: 1624)
    */
-  declare bitrate: number;
+  declare bitrate?: number;
   /**
    * Length of the video in milliseconds (ex: 6990483)
    */
-  declare duration: number;
+  declare duration?: number;
   /**
    * Height of the video in pixels (ex: 256)
    */
-  declare height: number;
+  declare height?: number;
   /**
    * Plex ID of this media item
    */
@@ -103,14 +118,26 @@ export class Media extends PlexObject {
   declare has64bitOffsets: boolean;
   declare optimizedForStreaming: boolean;
   declare title?: string;
-  declare videoCodec: string;
-  declare videoFrameRate: string;
-  declare videoProfile: string;
+  /** Container format of the media (ex: mp4, mkv, mp3). */
+  declare container?: string;
+  /** Audio profile of the media (ex: lc, dts). */
+  declare audioProfile?: string;
+  declare videoCodec?: string;
+  declare videoFrameRate?: string;
+  declare videoProfile?: string;
+  /** Plex resolution bucket (ex: 4k, 1080, 720, 480, sd). */
+  declare videoResolution?: string;
   /** Width of the video in pixels */
-  declare width: number;
+  declare width?: number;
   declare parts: MediaPart[];
   declare proxyType?: number;
   declare hasVoiceActivity?: boolean;
+  /** True if this media version is selected in a playback session. */
+  declare selected?: boolean;
+  /** Optimization target name for optimized versions. */
+  declare target?: string;
+  /** Unique id of this media version, when Plex provides one. */
+  declare uuid?: string;
 
   get isOptimizedVersion(): boolean {
     return this.proxyType === 42;
@@ -135,31 +162,58 @@ export class Media extends PlexObject {
     this.duration = data.duration;
     this.height = data.height;
     this.id = data.id;
-    this.has64bitOffsets = data.has64bitOffsets;
-    this.optimizedForStreaming = data.optimizedForStreaming;
+    this.has64bitOffsets = parsePlexBoolean(data.has64bitOffsets);
+    this.optimizedForStreaming = parsePlexBoolean(data.optimizedForStreaming);
     this.title = data.title;
+    this.container = data.container;
+    this.audioProfile = data.audioProfile;
     this.videoCodec = data.videoCodec;
     this.videoFrameRate = data.videoFrameRate;
     this.videoProfile = data.videoProfile;
+    this.videoResolution = data.videoResolution;
     this.width = data.width;
+    this.selected = data.selected === undefined ? undefined : parsePlexBoolean(data.selected);
+    this.target = data.target;
+    this.uuid = data.uuid;
     this.parts = data.Part.map(part => new MediaPart(this.server, part, undefined, this));
   }
 }
 
 export class MediaPart extends PlexObject {
   static override TAG = 'Part' as const;
+  declare key: string;
 
+  /** True if the file is readable by Plex. Only returned when checking files. */
+  declare accessible?: boolean;
+  /** Audio profile of the part (ex: lc). */
+  declare audioProfile?: string;
   declare container: string;
-  declare duration: number;
+  /** Transcode decision for this part in a playback session (ex: directplay). */
+  declare decision?: string;
+  /** Deep analysis version Plex used for this part. */
+  declare deepAnalysisVersion?: number;
+  declare duration?: number;
   /** Local path, absent for media without a file on this server. */
   declare file?: string;
+  /** True if the file uses 64 bit offsets. */
+  declare has64bitOffsets?: boolean;
+  /** True if the file has embedded artwork. */
+  declare hasThumbnail?: boolean;
   declare id: number;
   declare indexes?: string;
-  declare size: number;
+  /** Packet length of the part, when Plex analyzed it. */
+  declare packetLength?: number;
+  /** Streaming protocol for this part in a playback session (ex: dash). */
+  declare protocol?: string;
+  /** Required bandwidths for streaming this part. */
+  declare requiredBandwidths?: string;
+  /** True if this part is selected in a playback session. */
+  declare selected?: boolean;
+  declare size?: number;
   declare optimizedForStreaming: boolean;
-  declare syncItemId: string;
-  declare syncState: string;
-  declare videoProfile: string;
+  declare syncItemId?: string;
+  declare syncState?: string;
+  declare videoProfile?: string;
   declare streams: MediaPartStream[];
   declare exists?: boolean;
 
@@ -241,14 +295,28 @@ export class MediaPart extends PlexObject {
   }
 
   protected _loadData(data: MediaPartData) {
+    this.accessible = data.accessible === undefined ? undefined : parsePlexBoolean(data.accessible);
+    this.audioProfile = data.audioProfile;
     this.indexes = data.indexes;
     this.container = data.container;
+    this.decision = data.decision;
+    this.deepAnalysisVersion = parseOptionalNumber(data.deepAnalysisVersion);
     this.duration = data.duration;
     this.file = data.file;
+    this.has64bitOffsets =
+      data.has64bitOffsets === undefined ? undefined : parsePlexBoolean(data.has64bitOffsets);
+    this.hasThumbnail =
+      data.hasThumbnail === undefined ? undefined : parsePlexBoolean(data.hasThumbnail);
     this.id = data.id;
     this.key = data.key;
+    this.packetLength = parseOptionalNumber(data.packetLength);
+    this.protocol = data.protocol;
+    this.requiredBandwidths = data.requiredBandwidths;
+    this.selected = data.selected === undefined ? undefined : parsePlexBoolean(data.selected);
     this.size = data.size;
-    this.optimizedForStreaming = data.optimizedForStreaming;
+    this.optimizedForStreaming = parsePlexBoolean(data.optimizedForStreaming);
+    this.syncItemId = data.syncItemId;
+    this.syncState = data.syncState;
     this.videoProfile = data.videoProfile;
     this.exists = data.exists;
     this.streams = data.Stream?.map(stream => createMediaPartStream(this, stream)) ?? [];
@@ -259,7 +327,8 @@ export class MediaPartStream extends PlexObject {
   static override TAG = 'Stream' as const;
 
   declare id: number;
-  declare key: string;
+  /** Stream download path, returned for sidecar streams such as lyrics. */
+  declare key?: string;
   declare codec: string;
   declare bitrate?: number;
   declare decision?: string;
@@ -278,7 +347,7 @@ export class MediaPartStream extends PlexObject {
 
   protected _loadData(data: MediaPartStreamData) {
     this.id = data.id;
-    this.key = data.key ?? '';
+    this.key = data.key;
     this.codec = data.codec;
     this.bitrate = data.bitrate;
     this.decision = data.decision;
@@ -424,7 +493,7 @@ export class SubtitleStream extends MediaPartStream {
     await parent.setSelectedSubtitleStream(this);
   }
 
-  protected override _loadData(data: any): void {
+  protected override _loadData(data: MediaPartStreamData): void {
     super._loadData(data);
     this.canAutoSync = parsePlexBoolean(data.canAutoSync);
     this.container = data.container;
@@ -434,10 +503,10 @@ export class SubtitleStream extends MediaPartStream {
     this.hearingImpaired = parsePlexBoolean(data.hearingImpaired);
     this.perfectMatch = parsePlexBoolean(data.perfectMatch);
     this.providerTitle = data.providerTitle;
-    this.score = data.score ? Number.parseInt(data.score, 10) : undefined;
+    this.score = parseOptionalNumber(data.score);
     this.sourceKey = data.sourceKey;
     this.transient = data.transient;
-    this.userID = data.userID ? Number.parseInt(data.userID, 10) : undefined;
+    this.userID = parseOptionalNumber(data.userID);
   }
 }
 
@@ -456,10 +525,10 @@ export class LyricStream extends MediaPartStream {
   /** True if the lyrics are timed to the track. */
   declare timed: boolean;
 
-  protected override _loadData(data: any): void {
+  protected override _loadData(data: LyricStreamData): void {
     super._loadData(data);
     this.format = data.format;
-    this.minLines = data.minLines ? Number.parseInt(data.minLines, 10) : undefined;
+    this.minLines = parseOptionalNumber(data.minLines);
     this.provider = data.provider;
     this.timed = parsePlexBoolean(data.timed);
   }
@@ -515,10 +584,10 @@ export class Producer extends MediaTag {
   FILTER = 'producer' as const;
 }
 
-export class Marker extends MediaTag {
+export class Marker extends PlexObject {
   static override TAG = 'Marker' as const;
-  FILTER = 'marker' as const;
 
+  declare id?: number;
   declare type: string;
   declare startTimeOffset: number;
   declare endTimeOffset: number;
@@ -529,15 +598,20 @@ export class Marker extends MediaTag {
     if (this.type !== 'credits') {
       return undefined;
     }
-    const parent: { markers?: Marker[] } | undefined = this.parent?.deref();
-    const credits = parent?.markers?.filter(marker => marker.type === 'credits') ?? [];
+    const parent = this.parent?.deref();
+    const markers: unknown = parent && 'markers' in parent ? parent.markers : undefined;
+    const credits = Array.isArray(markers)
+      ? markers.filter(
+          (marker): marker is Marker => marker instanceof Marker && marker.type === 'credits',
+        )
+      : [];
     return (
       credits.length > 0 &&
       this.startTimeOffset === Math.min(...credits.map(marker => marker.startTimeOffset))
     );
   }
 
-  protected override _loadData(data: MarkerData) {
+  protected _loadData(data: MarkerData) {
     this.id = data.id;
     this.final = data.final === undefined ? undefined : parsePlexBoolean(data.final);
     this.version = data.Attributes?.version;
@@ -550,15 +624,23 @@ export class Marker extends MediaTag {
 /**
  * Represents a single Chapter media tag.
  */
-export class Chapter extends MediaTag {
+export class Chapter extends PlexObject {
   static override TAG = 'Chapter' as const;
-  FILTER = 'chapter' as const;
 
+  declare id?: number;
+  declare filter?: string;
+  declare index?: number;
+  /** Chapter name, when the file provides one. */
+  declare tag?: string;
   declare startTimeOffset: number;
   declare endTimeOffset: number;
   declare thumb?: string;
 
-  protected override _loadData(data: ChapterData) {
+  protected _loadData(data: ChapterData) {
+    this.id = data.id;
+    this.filter = data.filter;
+    this.index = data.index;
+    this.tag = data.tag;
     this.startTimeOffset = data.startTimeOffset;
     this.endTimeOffset = data.endTimeOffset;
     this.thumb = data.thumb;
@@ -572,12 +654,13 @@ export class Collection extends MediaTag {
   static override TAG = 'Collection' as const;
   FILTER = 'collection' as const;
   async collection(): Promise<Collections> {
-    const parent: { librarySectionID?: number } | undefined = this.parent?.deref();
-    if (parent?.librarySectionID === undefined) {
+    const parent = this.parent?.deref();
+    const sectionId = parent && 'librarySectionID' in parent ? parent.librarySectionID : undefined;
+    if (typeof sectionId !== 'number') {
       throw new BadRequest('Collection tag is missing its library section.');
     }
     const library = await this.server.library();
-    const section = await library.sectionByID(parent.librarySectionID);
+    const section = await library.sectionByID(sectionId);
     return section.collection(this.tag);
   }
 }
@@ -621,7 +704,7 @@ class GuidTag extends PlexObject {
    */
   declare id: string;
 
-  protected _loadData(data: any) {
+  protected _loadData(data: GuidData): void {
     this.id = data.id;
   }
 }
@@ -653,7 +736,7 @@ export class Rating extends PlexObject {
    */
   declare value: number;
 
-  protected _loadData(data: any) {
+  protected _loadData(data: RatingData): void {
     this.image = data.image;
     this.type = data.type;
     this.value = data.value;
@@ -673,8 +756,8 @@ export class CommonSenseMedia extends PlexObject {
 
   override async reload(): Promise<void> {
     const parent = this.parent?.deref();
-    const guid = parent?.guid;
-    if (!guid?.startsWith('plex://')) {
+    const guid = parent && 'guid' in parent ? parent.guid : undefined;
+    if (typeof guid !== 'string' || !guid.startsWith('plex://')) {
       return;
     }
 
@@ -768,6 +851,7 @@ export class ParentalAdvisoryTopic extends PlexObject {
  * Base class for all Art, Poster, and Theme objects.
  */
 export abstract class BaseResource extends PlexObject {
+  declare key: string;
   /**
    * The source of the resource. 'local' for local files (e.g. theme.mp3),
    */
@@ -789,28 +873,43 @@ export abstract class BaseResource extends PlexObject {
   declare thumb: string;
 
   async select(): Promise<void> {
+    if (!this.initpath) {
+      throw new BadRequest('Selecting artwork requires the list path it was loaded from.');
+    }
     const key = this.initpath.slice(0, -1);
     const params = new URLSearchParams();
     params.append('url', this.ratingKey);
     await this.server.query({ path: `${key}?${params.toString()}`, method: 'put' });
   }
 
-  resourceFilepath(): string {
-    if (this.ratingKey.startsWith('media://')) {
-      return `Media/localhost/${this.ratingKey.split('://')[1]}`;
+  /**
+   * Path to this resource relative to the Plex data directory, or undefined when the
+   * parent item's metadata directory is unknown.
+   */
+  resourceFilepath(): string | undefined {
+    const [scheme, path] = this.ratingKey.split('://', 2);
+    if (path === undefined) {
+      return this.ratingKey;
+    }
+
+    if (scheme === 'media') {
+      return `Media/localhost/${path}`;
+    }
+
+    if (scheme !== 'metadata' && scheme !== 'upload') {
+      return this.ratingKey;
     }
 
     const parent = this.parent?.deref();
-
-    if (this.ratingKey.startsWith('metadata://') && parent) {
-      return `${parent.metadataDirectory}/Contents/_combined/${this.ratingKey.split('://')[1]}`;
+    const directory =
+      parent && 'metadataDirectory' in parent ? parent.metadataDirectory : undefined;
+    if (typeof directory !== 'string') {
+      return undefined;
     }
 
-    if (this.ratingKey.startsWith('upload://') && parent) {
-      return `${parent.metadataDirectory}/Uploads/${this.ratingKey.split('://')[1]}`;
-    }
-
-    return this.ratingKey;
+    return scheme === 'metadata'
+      ? `${directory}/Contents/_combined/${path}`
+      : `${directory}/Uploads/${path}`;
   }
 
   protected _loadData(data: ArtworkResourceData): void {
@@ -881,43 +980,51 @@ export class AudioStream extends MediaPartStream {
   static override TAG = 'Stream' as const;
   static STREAMTYPE = 2;
   /** The audio channel layout of the audio stream (ex: 5.1(side)). */
-  audioChannelLayout?: string;
+  declare audioChannelLayout?: string;
   /** The bit depth of the audio stream (ex: 16). */
-  bitDepth?: number;
+  declare bitDepth?: number;
   /** The bitrate mode of the audio stream (ex: cbr). */
-  bitrateMode?: string;
+  declare bitrateMode?: string;
+  /** True if the audio stream can be normalized for loudness. */
+  declare canNormalizeLoudness: boolean;
   /** The number of audio channels of the audio stream (ex: 6). */
-  channels?: number;
+  declare channels?: number;
   /** The duration of audio stream in milliseconds. */
-  duration?: number;
+  declare duration?: number;
   /** The profile of the audio stream. */
-  profile?: string;
+  declare profile?: string;
   /** The sampling rate of the audio stream (ex: 48000) */
-  samplingRate?: number;
+  declare samplingRate?: number;
   /** The stream identifier of the audio stream. */
-  streamIdentifier?: number;
+  declare streamIdentifier?: number;
   /** True if this is a visually impaired (AD) audio stream. */
   declare visualImpaired: boolean;
 
   // Track only attributes
   /** The gain for the album. */
-  albumGain?: number;
+  declare albumGain?: number;
   /** The peak for the album. */
-  albumPeak?: number;
+  declare albumPeak?: number;
   /** The range for the album. */
-  albumRange?: number;
+  declare albumRange?: number;
   /** The end ramp for the track. */
-  endRamp?: string;
+  declare endRamp?: string;
   /** The gain for the track. */
-  gain?: number;
+  declare gain?: number;
+  /** The gain offset of the audio stream. */
+  declare gainOffset?: number;
   /** The loudness for the track. */
-  loudness?: number;
+  declare loudness?: number;
+  /** The loudness analysis version of the audio stream. */
+  declare loudnessAnalysisVersion?: number;
   /** The lra for the track. */
-  lra?: number;
+  declare lra?: number;
   /** The peak for the track. */
-  peak?: number;
+  declare peak?: number;
   /** The start ramp for the track. */
-  startRamp?: string;
+  declare startRamp?: string;
+  /** The loudness threshold of the audio stream. */
+  declare threshold?: number;
 
   /**
    * Returns evenly distributed loudness samples for this audio stream.
@@ -951,30 +1058,32 @@ export class AudioStream extends MediaPartStream {
     await parent.setSelectedAudioStream(this);
   }
 
-  protected override _loadData(data: any): void {
+  protected override _loadData(data: AudioStreamData): void {
     super._loadData(data);
     this.audioChannelLayout = data.audioChannelLayout;
-    this.bitDepth = data.bitDepth ? Number.parseInt(data.bitDepth, 10) : undefined;
+    this.bitDepth = parseOptionalNumber(data.bitDepth);
     this.bitrateMode = data.bitrateMode;
-    this.channels = data.channels ? Number.parseInt(data.channels, 10) : undefined;
-    this.duration = data.duration ? Number.parseInt(data.duration, 10) : undefined;
+    this.canNormalizeLoudness = parsePlexBoolean(data.canNormalizeLoudness);
+    this.channels = parseOptionalNumber(data.channels);
+    this.duration = parseOptionalNumber(data.duration);
     this.profile = data.profile;
-    this.samplingRate = data.samplingRate ? Number.parseInt(data.samplingRate, 10) : undefined;
-    this.streamIdentifier = data.streamIdentifier
-      ? Number.parseInt(data.streamIdentifier, 10)
-      : undefined;
+    this.samplingRate = parseOptionalNumber(data.samplingRate);
+    this.streamIdentifier = parseOptionalNumber(data.streamIdentifier);
     this.visualImpaired = parsePlexBoolean(data.visualImpaired);
 
     // Track only attributes
-    this.albumGain = data.albumGain ? Number.parseFloat(data.albumGain) : undefined;
-    this.albumPeak = data.albumPeak ? Number.parseFloat(data.albumPeak) : undefined;
-    this.albumRange = data.albumRange ? Number.parseFloat(data.albumRange) : undefined;
+    this.albumGain = parseOptionalNumber(data.albumGain);
+    this.albumPeak = parseOptionalNumber(data.albumPeak);
+    this.albumRange = parseOptionalNumber(data.albumRange);
     this.endRamp = data.endRamp;
-    this.gain = data.gain ? Number.parseFloat(data.gain) : undefined;
-    this.loudness = data.loudness ? Number.parseFloat(data.loudness) : undefined;
-    this.lra = data.lra ? Number.parseFloat(data.lra) : undefined;
-    this.peak = data.peak ? Number.parseFloat(data.peak) : undefined;
+    this.gain = parseOptionalNumber(data.gain);
+    this.gainOffset = parseOptionalNumber(data.gainOffset);
+    this.loudness = parseOptionalNumber(data.loudness);
+    this.loudnessAnalysisVersion = parseOptionalNumber(data.loudnessAnalysisVersion);
+    this.lra = parseOptionalNumber(data.lra);
+    this.peak = parseOptionalNumber(data.peak);
     this.startRamp = data.startRamp;
+    this.threshold = parseOptionalNumber(data.threshold);
   }
 }
 
@@ -1005,10 +1114,9 @@ export class Image extends PlexObject {
   /** The API URL (/library/metadata/<ratingKey>/thumb/<thumbid>). */
   declare url?: string;
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: ImageData): void {
     this.alt = data.alt;
     this.type = data.type;
-    // Assuming server.url is needed to make this a complete URL
     this.url = data.url ? this.server.url(data.url, { includeToken: true })?.toString() : undefined;
   }
 }
@@ -1022,7 +1130,7 @@ export class Field extends PlexObject {
   /** The name of the field. */
   declare name: string;
 
-  protected _loadData(data: any): void {
+  protected _loadData(data: FieldData): void {
     this.locked = parsePlexBoolean(data.locked);
     this.name = data.name;
   }

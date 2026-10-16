@@ -3,12 +3,21 @@ export type { AlertTypes } from './alert.types.ts';
 export * from './artwork.ts';
 export * from './client.ts';
 export type {
+  ClientCommandOptions,
+  ClientMediaType,
+  ClientRepeatMode,
   ClientTimelineData,
   CreateClientPlayQueueOptions,
+  IsPlayingMediaOptions,
+  PlayMediaOptions,
+  PlexClientOptions,
+  PlexClientQueryOptions,
+  ProxyThroughServerOptions,
+  SendCommandOptions,
   SendCommandParams,
   SetParametersOptions,
   SetStreamsOptions,
-  PlayMediaOptions,
+  TimelinesOptions,
 } from './client.types.ts';
 export * from './exceptions.ts';
 export * from './library.ts';
@@ -37,7 +46,7 @@ export type {
   WaitForPlexPinOptions,
 } from './pin.types.ts';
 export { Conversion, Optimized, TranscodeJob } from './optimized.ts';
-export type { OptimizedMediaItem } from './optimized.ts';
+export type { CreateOptimizedVersionOptions, OptimizedMediaItem } from './optimized.ts';
 export type {
   CustomOptimizationTarget,
   OptimizeOptions,
@@ -46,10 +55,22 @@ export type {
 } from './optimized.types.ts';
 export * from './playlist.ts';
 export * from './playqueue.ts';
+export type {
+  AddPlayQueueItemOptions,
+  CreatePlayQueueOptions,
+  GetPlayQueueOptions,
+  MovePlayQueueItemOptions,
+  RemovePlayQueueItemOptions,
+} from './playqueue.types.ts';
 export * from './photo.ts';
 export type { PhotoalbumData, PhotoData, PhotoMediaData, PhotoPartData } from './photo.types.ts';
 export * from './server.ts';
-export type { HistoryResult, BandwidthOptions, TranscodeImageOptions } from './server.types.ts';
+export type {
+  BandwidthOptions,
+  HistoryOptions,
+  HistoryResult,
+  TranscodeImageOptions,
+} from './server.types.ts';
 export type {
   PlexPlaybackSession,
   PlexSessionFields,
@@ -63,8 +84,10 @@ export { Setting, Settings } from './settings.ts';
 export type { SettingEnumValues, SettingType, SettingValue } from './settings.ts';
 export * from './video.ts';
 export * from './audio.ts';
-export { X_PLEX_IDENTIFIER } from './config.ts';
+export { setPlexHeaders, X_PLEX_IDENTIFIER } from './config.ts';
+export type { PlexHeaderOptions } from './config.ts';
 export { SearchResult, Agent, AgentMediaType, SEARCHTYPES } from './search.ts';
+export type { MatchSearchResult } from './search.types.ts';
 
 export type { ServerIdentity, ServerAccount, ServerRelease } from './server.types.ts';
 export { AccountOptOut, GeoLocation } from './account-settings.ts';
@@ -75,7 +98,12 @@ export type {
   MetadataEditOptions,
   MetadataTagEditOptions,
 } from './metadata.ts';
-export type { StreamUrlOptions } from './base/playable.ts';
+export type {
+  PlaybackState,
+  StreamUrlOptions,
+  UpdateProgressOptions,
+  UpdateTimelineOptions,
+} from './base/playable.ts';
 export { discover } from './discovery.ts';
 export type { DiscoveryEntry, DiscoveryOptions } from './discovery.ts';
 export type { DownloadOptions, MediaDownload } from './download.ts';

@@ -2,10 +2,8 @@
   "extends": "@sindresorhus/tsconfig",
   "compilerOptions": {
     "outDir": "dist",
-    "strictNullChecks": false,
-    "noUnusedParameters": false,
+    "lib": ["ES2025", "DOM", "DOM.Iterable"],
     "noPropertyAccessFromIndexSignature": false,
-    "noImplicitAny": false,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,

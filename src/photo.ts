@@ -1,5 +1,3 @@
-import { URLSearchParams } from 'node:url';
-
 import { PartialPlexObject } from './base/partialPlexObject.ts';
 import { Playable } from './base/playable.ts';
 import { PlexObject } from './base/plexObject.ts';
@@ -19,28 +17,15 @@ import type {
   PhotoMetadataResponse,
   PhotoPartData,
 } from './photo.types.ts';
-import type { MediaContainer } from './util.ts';
+import type { PlayQueue } from './playqueue.ts';
+import type { CreatePlayQueueOptions } from './playqueue.types.ts';
+import {
+  firstMetadata,
+  type MediaContainer,
+  parseOptionalDate,
+  parseOptionalNumber,
+} from './util.ts';
 import { Clip } from './video.ts';
-
-function parseOptionalDate(value: number | string | undefined): Date | undefined {
-  if (value === undefined || value === '') {
-    return undefined;
-  }
-
-  if (typeof value === 'number' || /^\d+$/.test(value)) {
-    return new Date(Number(value) * 1000);
-  }
-
-  return new Date(value);
-}
-
-function parseOptionalNumber(value: number | string | undefined): number | undefined {
-  if (value === undefined || value === '') {
-    return undefined;
-  }
-
-  return Number(value);
-}
 
 function isAlbumMetadata(item: Record<string, unknown>): boolean {
   return item.type === 'photo' && String(item.key ?? '').endsWith('/children');
@@ -96,6 +81,11 @@ export class Photoalbum extends PartialPlexObject {
   declare titleSort?: string;
   declare updatedAt?: Date;
   declare userRating?: number;
+
+  /** Create a PlayQueue that plays every photo in this album. */
+  async createPlayQueue(options: CreatePlayQueueOptions = {}): Promise<PlayQueue> {
+    return this.server.createPlayQueue(this, options);
+  }
 
   async album(title: string): Promise<Photoalbum> {
     const [album] = await this.albums({ title__iexact: title });
@@ -166,7 +156,7 @@ export class Photoalbum extends PartialPlexObject {
   }
 
   protected override _loadFullData(data: PhotoMetadataResponse<PhotoalbumData>): void {
-    this._loadData(data.Metadata[0]);
+    this._loadData(firstMetadata(data, this.key));
   }
 
   protected override _loadData(data: PhotoalbumData): void {
@@ -289,7 +279,7 @@ export class Photo extends Playable {
     return this.media
       .flatMap(media => media.parts)
       .map(part => part.file)
-      .filter(Boolean);
+      .filter((file): file is string => Boolean(file));
   }
 
   /**
@@ -300,8 +290,7 @@ export class Photo extends Playable {
     return this.media
       .flatMap(media => media.parts)
       .map(part => part.originalUrl())
-      .filter(Boolean)
-      .map(url => url);
+      .filter((url): url is string => Boolean(url));
   }
 
   /**
@@ -330,7 +319,7 @@ export class Photo extends Playable {
   }
 
   protected override _loadFullData(data: PhotoMetadataResponse<PhotoData>): void {
-    this._loadData(data.Metadata[0]);
+    this._loadData(firstMetadata(data, this.key));
   }
 
   protected override _loadData(data: PhotoData): void {

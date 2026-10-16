@@ -4,5 +4,9 @@
     "node": true
   },
   "plugins": ["react", "unicorn", "typescript", "oxc", "import"],
-  "extends": ["./node_modules/@ctrl/oxlint-config/.oxlintrc.json"]
+  "extends": ["./node_modules/@ctrl/oxlint-config/.oxlintrc.json"],
+  "rules": {
+    // TypeScript already rejects real redeclarations; this rule flags `const X` + `type X` enum pairs.
+    "no-redeclare": "off"
+  }
 }
