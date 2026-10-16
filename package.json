@@ -8,7 +8,10 @@
   ],
   "license": "MIT",
   "author": "Scott Cooper <scttcper@gmail.com>",
-  "repository": "scttcper/plex",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/scttcper/plex.git"
+  },
   "files": [
     "dist/src"
   ],
